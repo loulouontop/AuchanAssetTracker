@@ -508,12 +508,14 @@ $(function () {
         10
       ) || 0;
     }
+    var width = $field.attr('data-aat-width') || '220px';
     $.ajax({
       url: __AJAX__,
       data: {
         display: 'dropdown',
         locations_id: locId,
-        value: current
+        value: current,
+        width: width
       },
       dataType: 'html'
     }).done(function (html) {

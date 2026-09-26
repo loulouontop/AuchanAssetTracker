@@ -602,12 +602,12 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             $container_value = 0;
         }
 
-        echo "<span class='aat-container-field'>";
+        echo "<span class='aat-container-field' data-aat-width='220px'>";
         PluginAuchanassettrackerContainer::dropdownWithActions([
             'name'          => 'plugin_auchanassettracker_containers_id',
             'value'         => $container_value,
             'condition'     => $container_condition,
-            'width'         => '280px',
+            'width'         => '220px',
             // Central admin: reload native dropdown when Location changes.
             'sync_location' => ($scope === null),
         ]);

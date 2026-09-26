@@ -14,6 +14,10 @@ if (!Session::getLoginUserID()) {
 $locations_id = (int) ($_GET['locations_id'] ?? 0);
 $display = (string) ($_GET['display'] ?? 'dropdown');
 $value = (int) ($_GET['value'] ?? 0);
+$width = (string) ($_GET['width'] ?? '220px');
+if (!preg_match('/^\d+(\.\d+)?(px|%|em|rem)$/', $width)) {
+    $width = '220px';
+}
 
 // Scoped users are locked to their profile location.
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
@@ -46,7 +50,7 @@ if ($display !== 'json') {
         'name'          => 'plugin_auchanassettracker_containers_id',
         'value'         => $value,
         'condition'     => $condition,
-        'width'         => '100%',
+        'width'         => $width,
         'sync_location' => false,
         'plain'         => true,
     ]);

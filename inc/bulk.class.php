@@ -74,7 +74,7 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
         }
 
         ob_start();
-        echo "<span class='aat-container-field'>";
+        echo "<span class='aat-container-field' data-aat-width='100%'>";
         PluginAuchanassettrackerContainer::dropdownWithActions([
             'name'          => 'plugin_auchanassettracker_containers_id',
             'condition'     => $cond,
