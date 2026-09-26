@@ -28,6 +28,27 @@
   right: auto !important;
 }
 
+/* Native asset / bulk forms: fill the field cell like Location & Manufacturer. */
+.aat-container-field[data-aat-width="100%"],
+.aat-model-field.aat-field-fill {
+  display: block;
+  width: 100%;
+}
+
+.aat-container-field[data-aat-width="100%"] .aat-container-dropdown {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.aat-container-field[data-aat-width="100%"] .select2-container,
+.aat-model-field.aat-field-fill .select2-container {
+  flex: 1 1 auto;
+  width: 100% !important;
+  max-width: 100%;
+}
+
 /*
  * Contents tab: keep Search / Sort on the left and map→download actions
  * on the top-right (native GLPI search-header layout breaks inside tabs
