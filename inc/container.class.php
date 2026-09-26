@@ -408,7 +408,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         $options['comments'] = $options['comments'] ?? true;
         $options['addicon'] = $options['addicon'] ?? true;
         $options['name'] = $options['name'] ?? 'plugin_auchanassettracker_containers_id';
-        $options['width'] = $options['width'] ?? '100%';
+        $options['width'] = $options['width'] ?? '220px';
 
         if (!isset($options['condition']) || !is_array($options['condition'])) {
             $options['condition'] = [];
