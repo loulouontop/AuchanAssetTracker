@@ -57,12 +57,12 @@ class PluginAuchanassettrackerAssetform
         echo Html::entities_deep(__('Physical container', 'auchanassettracker'));
         echo '</label>';
         echo "<div class='col-xxl-7 field-container'>";
-        echo "<div class='aat-container-field' data-aat-width='220px'>";
+        echo "<div class='aat-container-field' data-aat-width='100%'>";
         PluginAuchanassettrackerContainer::dropdownWithActions([
             'name'          => 'plugin_auchanassettracker_containers_id',
             'value'         => $container_id,
             'condition'     => $condition,
-            'width'         => '220px',
+            'width'         => '100%',
             // Native dropdown HTML reload when Location changes (central admin).
             'sync_location' => ($scope === null),
         ]);
