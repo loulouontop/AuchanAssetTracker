@@ -16,22 +16,27 @@ if (isset($_POST['add'])) {
                 PluginAuchanassettrackerContainer::getTypeName(1),
                 $_SERVER['PHP_SELF']
             );
-            echo Html::scriptBlock(<<<JS
+            $js = str_replace(
+                '__NEW_ID__',
+                (string) $new_id_js,
+                <<<'JS'
 (function () {
   try {
     var p = window.parent;
     if (p && p !== window) {
       if (typeof p.aatRefreshContainerDropdownAfterAdd === 'function') {
-        p.aatRefreshContainerDropdownAfterAdd({$new_id_js});
+        p.aatRefreshContainerDropdownAfterAdd(__NEW_ID__);
       }
-      var \$m = p.$('.modal.show');
-      if (\$m.length && typeof \$m.modal === 'function') {
-        \$m.modal('hide');
+      var $m = p.$('.modal.show');
+      if ($m.length && typeof $m.modal === 'function') {
+        $m.modal('hide');
       }
     }
   } catch (e) {}
 })();
-JS);
+JS
+            );
+            echo Html::scriptBlock($js);
             Html::popFooter();
             exit;
         }
