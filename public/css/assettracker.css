@@ -11,9 +11,11 @@
   width: 220px !important;
 }
 
-.aat-container-dropdown .select2-container {
-  min-width: 220px;
+/* Native CommonDropdown already builds btn-group; only size the wrapper. */
+.aat-container-dropdown {
+  display: inline-block;
   max-width: 100%;
+  vertical-align: middle;
 }
 
 .aat-container-dropdown .btn-group,
@@ -21,6 +23,9 @@
 .aat-container-dropdown a.btn,
 .aat-container-dropdown a.dropdown_tooltip {
   flex: 0 0 auto;
+  margin-left: auto !important;
+  position: static !important;
+  right: auto !important;
 }
 
 /*
