@@ -9,11 +9,33 @@ $in_modal = !empty($_REQUEST['_in_modal']);
 if (isset($_POST['add'])) {
     $item->check(-1, CREATE, $_POST);
     if ($newID = $item->add($_POST)) {
-        $url = $item->getFormURL() . '?id=' . $newID;
+        // Popup add: close modal and refresh parent dropdown (no iframe redirect glitch).
         if ($in_modal || !empty($_POST['_in_modal'])) {
-            $url .= '&_in_modal=1';
+            $new_id_js = (int) $newID;
+            Html::popHeader(
+                PluginAuchanassettrackerContainer::getTypeName(1),
+                $_SERVER['PHP_SELF']
+            );
+            echo Html::scriptBlock(<<<JS
+(function () {
+  try {
+    var p = window.parent;
+    if (p && p !== window) {
+      if (typeof p.aatRefreshContainerDropdownAfterAdd === 'function') {
+        p.aatRefreshContainerDropdownAfterAdd({$new_id_js});
+      }
+      var \$m = p.$('.modal.show');
+      if (\$m.length && typeof \$m.modal === 'function') {
+        \$m.modal('hide');
+      }
+    }
+  } catch (e) {}
+})();
+JS);
+            Html::popFooter();
+            exit;
         }
-        Html::redirect($url);
+        Html::redirect($item->getFormURL() . '?id=' . $newID);
     }
     Html::back();
 } elseif (isset($_POST['update'])) {
@@ -45,6 +67,10 @@ if ($id > 0) {
     $item->check($id, READ);
 } else {
     $item->check(-1, CREATE);
+    // Prefill location when opened from Equipment / asset dropdown +.
+    if (empty($item->fields['locations_id']) && !empty($_GET['locations_id'])) {
+        $item->fields['locations_id'] = (int) $_GET['locations_id'];
+    }
 }
 
 // Popup/iframe must NOT render full GLPI chrome (sidebar) — form only.

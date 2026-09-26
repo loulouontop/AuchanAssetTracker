@@ -63,7 +63,7 @@ class PluginAuchanassettrackerAssetform
             'value'         => $container_id,
             'condition'     => $condition,
             'width'         => '100%',
-            // Native dropdown HTML reload when Location changes (central admin).
+            // Refresh options when Location changes (central admin).
             'sync_location' => ($scope === null),
         ]);
         echo '</div>';
