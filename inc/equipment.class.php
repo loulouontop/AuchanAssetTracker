@@ -618,7 +618,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'value'         => $container_value,
             'condition'     => $container_condition,
             'width'         => '280px',
-            // Central admin: refresh container options when Location changes.
+            // Central admin: reload native dropdown when Location changes.
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
