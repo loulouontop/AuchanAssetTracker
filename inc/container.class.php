@@ -417,8 +417,13 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             $locations_id = 0;
         }
 
-        $choices = self::dropdownOptionsForLocation($locations_id, $value);
+        global $CFG_GLPI;
 
+        $choices = self::dropdownOptionsForLocation($locations_id, $value);
+        $field_id = 'dropdown_' . $name . $rand;
+        $modal_id = 'add_' . $field_id;
+
+        // Match GLPI Dropdown::show chrome: select + info tooltip + add modal.
         echo "<span class='aat-container-dropdown d-inline-flex align-items-center flex-wrap gap-1'>";
         Dropdown::showFromArray($name, $choices, [
             'value' => $value,
@@ -426,76 +431,77 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'width' => $width,
         ]);
 
-        $add_url = self::getFormURL() . '?_in_modal=1';
-        if ($locations_id > 0) {
-            $add_url .= '&locations_id=' . $locations_id;
-        }
-        $view_base = self::getFormURL() . '?_in_modal=1&id=';
-        $modal_id = 'aat_container_add_' . $rand;
-        $sel_id = 'dropdown_' . $name . $rand;
-
-        // Same chrome as GLPI dropdown actions: info + add (iframe modal).
-        echo "<a class='btn btn-outline-secondary btn-sm' href='#' id='aat_info_{$rand}' title='"
-            . Html::entities_deep(__('View')) . "'>"
-            . "<i class='ti ti-info-circle'></i></a>";
-
-        if (class_exists('Ajax') && method_exists('Ajax', 'createIframeModalWindow')) {
-            Ajax::createIframeModalWindow(
-                $modal_id,
-                $add_url,
-                [
-                    'title' => sprintf(
-                        __('%1$s - %2$s'),
-                        __('New item'),
-                        self::getTypeName(1)
-                    ),
-                ]
+        // Native “i” (comment / view) — same markup as Manufacturer dropdown.
+        if (self::canView()) {
+            $comment_id = Html::cleanId('comment_' . $name . $rand);
+            $link_id = Html::cleanId('comment_link_' . $name . $rand);
+            $link = self::getSearchURL();
+            if ($value > 0) {
+                $tmp = new self();
+                if ($tmp->getFromDB($value) && $tmp->canViewItem()) {
+                    $link = $tmp->getLinkURL();
+                }
+            }
+            $comment = Toolbox::ucfirst(
+                sprintf(__('Show %1$s'), self::getTypeName(Session::getPluralNumber()))
             );
-            echo "<a class='btn btn-outline-secondary btn-sm' href='#'"
-                . " data-bs-toggle='modal' data-bs-target='#{$modal_id}'"
-                . " id='aat_add_{$rand}' title='"
-                . Html::entities_deep(__('Add')) . "'>"
-                . "<i class='ti ti-plus'></i></a>";
-        } else {
-            $add_js = json_encode($add_url, JSON_UNESCAPED_SLASHES);
-            echo "<a class='btn btn-outline-secondary btn-sm' href='#' id='aat_add_{$rand}' title='"
-                . Html::entities_deep(__('Add')) . "'"
-                . " onclick='window.open({$add_js}, \"aat_container_add\", \"width=1024,height=720,scrollbars=yes\"); return false;'>"
-                . "<i class='ti ti-plus'></i></a>";
+
+            $paramscomment = [
+                'value'       => '__VALUE__',
+                'itemtype'    => self::class,
+                '_idor_token' => Session::getNewIDORToken(self::class),
+                'withlink'    => $link_id,
+            ];
+            echo Ajax::updateItemOnSelectEvent(
+                $field_id,
+                $comment_id,
+                ($CFG_GLPI['root_doc'] ?? '') . '/ajax/comments.php',
+                $paramscomment,
+                false
+            );
+            echo Html::showToolTip($comment, [
+                'contentid'  => $comment_id,
+                'linkid'     => $link_id,
+                'link'       => $link,
+                'link_class' => 'btn btn-outline-secondary',
+                'display'    => false,
+            ]);
         }
-        echo '</span>';
 
-        $js = str_replace(
-            ['__RAND__', '__SEL_ID__', '__NAME__', '__VIEW_URL__', '__MODAL_ID__'],
-            [
-                (string) $rand,
-                json_encode($sel_id, JSON_UNESCAPED_SLASHES),
-                json_encode($name, JSON_UNESCAPED_SLASHES),
-                json_encode($view_base, JSON_UNESCAPED_SLASHES),
+        // Native “+” — Ajax iframe modal (same pattern as GLPI CommonDropdown).
+        if (self::canCreate() && empty($_REQUEST['_in_modal'])) {
+            $add_url = self::getFormURL();
+            $modal_opts = [
+                'display' => false,
+                'title'   => sprintf(
+                    __('%1$s - %2$s'),
+                    __('New item'),
+                    self::getTypeName(1)
+                ),
+            ];
+            if ($locations_id > 0) {
+                $modal_opts['extradata'] = ['locations_id' => $locations_id];
+            }
+
+            $add_label = Html::entities_deep(__('Add'));
+            echo '<div class="btn btn-outline-secondary" title="' . $add_label . '"'
+                . ' data-bs-toggle="modal" data-bs-target="#'
+                . Html::entities_deep($modal_id) . '">';
+            echo Ajax::createIframeModalWindow($modal_id, $add_url, $modal_opts);
+            echo '<span data-bs-toggle="tooltip">'
+                . '<i class="ti ti-plus"></i>'
+                . '<span class="sr-only">' . $add_label . '</span>'
+                . '</span>';
+            echo '</div>';
+
+            // Refresh options when the add popup closes.
+            $js = str_replace(
+                '__MODAL_ID__',
                 json_encode($modal_id, JSON_UNESCAPED_SLASHES),
-            ],
-            <<<'JS'
+                <<<'JS'
 $(function () {
-  $('#aat_info___RAND__').on('click', function (e) {
-    e.preventDefault();
-    var id = $('#' + __SEL_ID__).val() || $('select[name="' + __NAME__ + '"]').val();
-    if (id && parseInt(id, 10) > 0) {
-      var url = __VIEW_URL__ + id;
-      if (typeof glpi_ajax_dialog === 'function') {
-        glpi_ajax_dialog({
-          url: url,
-          modal: true,
-          dialogclass: 'modal-xl',
-          title: ''
-        });
-      } else {
-        window.open(url, 'aat_container_view', 'width=1024,height=720,scrollbars=yes');
-      }
-    }
-  });
-
-  $(document).off('hidden.bs.modal.aatContainer__RAND__', '#' + __MODAL_ID__)
-    .on('hidden.bs.modal.aatContainer__RAND__', '#' + __MODAL_ID__, function () {
+  $(document).off('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__)
+    .on('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__, function () {
       if (typeof window.aatRefreshContainerDropdown === 'function') {
         var loc = $('select[name="locations_id"]').filter(':visible').last().val()
           || $('input[name="locations_id"]').last().val()
@@ -505,8 +511,11 @@ $(function () {
     });
 });
 JS
-        );
-        echo Html::scriptBlock($js);
+            );
+            echo Html::scriptBlock($js);
+        }
+
+        echo '</span>';
 
         if ($sync_location) {
             self::scriptSyncLocationContainers($name);

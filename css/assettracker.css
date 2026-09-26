@@ -18,8 +18,40 @@
 
 .aat-container-dropdown .btn-group,
 .aat-container-dropdown .btn,
-.aat-container-dropdown a.btn {
+.aat-container-dropdown a.btn,
+.aat-container-dropdown a.dropdown_tooltip {
   flex: 0 0 auto;
+}
+
+/*
+ * Contents tab: keep Search / Sort on the left and map→download actions
+ * on the top-right (native GLPI search-header layout breaks inside tabs
+ * because sticky secondary-controls need .search-container context).
+ */
+.aat-container-contents .card-header.search-header .search-controls {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+}
+
+.aat-container-contents .search-controls .primary-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.aat-container-contents .search-controls .secondary-controls {
+  display: flex !important;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: auto !important;
+  position: static !important;
+  right: auto !important;
 }
 
 /*
