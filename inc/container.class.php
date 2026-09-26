@@ -74,6 +74,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
+        // GLPI search table of equipment currently stored in this container.
+        $this->addStandardTab('PluginAuchanassettrackerEquipment', $ong, $options);
         return $ong;
     }
 

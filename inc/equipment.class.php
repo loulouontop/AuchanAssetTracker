@@ -79,6 +79,95 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         return $ong;
     }
 
+    /**
+     * Tab on Physical container: equipment currently in this shelf / box.
+     */
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    {
+        if (!$item instanceof PluginAuchanassettrackerContainer || (int) $item->getID() <= 0) {
+            return '';
+        }
+        if (!$item->can($item->getID(), READ)) {
+            return '';
+        }
+
+        $nb = 0;
+        if ($_SESSION['glpishow_count_on_tabs'] ?? true) {
+            $nb = countElementsInTable(self::getTable(), [
+                'plugin_auchanassettracker_containers_id' => (int) $item->getID(),
+                'is_deleted'                              => 0,
+            ]);
+        }
+
+        return self::createTabEntry(
+            __('Contents', 'auchanassettracker'),
+            $nb,
+            $item->getType(),
+            self::getIcon()
+        );
+    }
+
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+    {
+        if ($item instanceof PluginAuchanassettrackerContainer) {
+            return self::showForContainer($item);
+        }
+        return false;
+    }
+
+    /**
+     * GLPI search table of equipment stored in a physical container.
+     */
+    public static function showForContainer(PluginAuchanassettrackerContainer $container): bool
+    {
+        $id = (int) $container->getID();
+        if ($id <= 0 || !$container->can($id, READ)) {
+            return false;
+        }
+
+        echo "<div class='spaced aat-container-contents'>";
+        echo "<div class='center mb-2'>";
+        echo "<h3 class='mb-0'>"
+            . Html::entities_deep(__('Equipment in this container', 'auchanassettracker'))
+            . '</h3>';
+        echo "<p class='text-muted mb-0'>"
+            . Html::entities_deep(__(
+                'Stock currently assigned to this shelf / box. Use search, columns and actions like elsewhere in GLPI.',
+                'auchanassettracker'
+            ))
+            . '</p>';
+        echo '</div>';
+
+        // Search option id 7 = Physical container (dropdown / FK).
+        $params = [
+            'reset'              => 'reset',
+            'usesession'         => false,
+            'is_deleted'         => 0,
+            'sort'               => 1,
+            'order'              => 'ASC',
+            'showmassiveactions' => true,
+            'criteria'           => [
+                [
+                    'link'       => 'AND',
+                    'field'      => 7,
+                    'searchtype' => 'equals',
+                    'value'      => $id,
+                ],
+            ],
+        ];
+
+        if (class_exists(\Glpi\Search\SearchEngine::class)
+            && method_exists(\Glpi\Search\SearchEngine::class, 'showList')
+        ) {
+            \Glpi\Search\SearchEngine::showList(self::class, $params);
+        } else {
+            Search::showList(self::class, $params);
+        }
+
+        echo '</div>';
+        return true;
+    }
+
     public function rawSearchOptions()
     {
         $tab = [];
@@ -147,6 +236,14 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'name'      => __('Manufacturer'),
             'datatype'  => 'dropdown',
             'linkfield' => 'manufacturers_id',
+        ];
+        $tab[] = [
+            'id'        => 10,
+            'table'     => 'glpi_users',
+            'field'     => 'name',
+            'name'      => __('User'),
+            'datatype'  => 'dropdown',
+            'linkfield' => 'users_id',
         ];
 
         return $tab;
