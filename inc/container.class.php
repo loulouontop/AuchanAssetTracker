@@ -423,22 +423,17 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         $field_id = 'dropdown_' . $name . $rand;
         $modal_id = 'add_' . $field_id;
 
-        // Match GLPI Dropdown::show chrome: select + info tooltip + add modal.
-        echo "<span class='aat-container-dropdown d-inline-flex align-items-center flex-wrap gap-1'>";
-        Dropdown::showFromArray($name, $choices, [
-            'value' => $value,
-            'rand'  => $rand,
-            'width' => $width,
-        ]);
+        // Build icons first (same order/markup as GLPI Dropdown::show).
+        $icons = '';
 
-        // Native “i” (comment / view) — same markup as Manufacturer dropdown.
+        // Native “i” (comment / view).
         if (self::canView()) {
             $comment_id = Html::cleanId('comment_' . $name . $rand);
             $link_id = Html::cleanId('comment_link_' . $name . $rand);
             $link = self::getSearchURL();
             if ($value > 0) {
                 $tmp = new self();
-                if ($tmp->getFromDB($value) && $tmp->canViewItem()) {
+                if ($tmp->getFromDB($value) && $tmp->can($value, READ)) {
                     $link = $tmp->getLinkURL();
                 }
             }
@@ -452,14 +447,14 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                 '_idor_token' => Session::getNewIDORToken(self::class),
                 'withlink'    => $link_id,
             ];
-            echo Ajax::updateItemOnSelectEvent(
+            $icons .= Ajax::updateItemOnSelectEvent(
                 $field_id,
                 $comment_id,
                 ($CFG_GLPI['root_doc'] ?? '') . '/ajax/comments.php',
                 $paramscomment,
                 false
             );
-            echo Html::showToolTip($comment, [
+            $icons .= Html::showToolTip($comment, [
                 'contentid'  => $comment_id,
                 'linkid'     => $link_id,
                 'link'       => $link,
@@ -468,7 +463,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             ]);
         }
 
-        // Native “+” — Ajax iframe modal (same pattern as GLPI CommonDropdown).
+        // Native “+” button + iframe modal.
         if (self::canCreate() && empty($_REQUEST['_in_modal'])) {
             $add_url = self::getFormURL();
             $modal_opts = [
@@ -483,18 +478,18 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                 $modal_opts['extradata'] = ['locations_id' => $locations_id];
             }
 
-            $add_label = Html::entities_deep(__('Add'));
-            echo '<div class="btn btn-outline-secondary" title="' . $add_label . '"'
-                . ' data-bs-toggle="modal" data-bs-target="#'
-                . Html::entities_deep($modal_id) . '">';
-            echo Ajax::createIframeModalWindow($modal_id, $add_url, $modal_opts);
-            echo '<span data-bs-toggle="tooltip">'
-                . '<i class="ti ti-plus"></i>'
-                . '<span class="sr-only">' . $add_label . '</span>'
-                . '</span>';
-            echo '</div>';
+            $add_label = Html::entities_deep(
+                sprintf(__('Add a new %s'), self::getTypeName(1))
+            );
+            // Modal markup/script first (GLPI moves the modal node to <body>).
+            $icons .= Ajax::createIframeModalWindow($modal_id, $add_url, $modal_opts);
+            $icons .= '<button type="button" class="btn btn-outline-secondary" title="'
+                . $add_label . '" data-bs-toggle="modal" data-bs-target="#'
+                . Html::entities_deep($modal_id) . '">'
+                . "<i class='ti ti-plus' aria-hidden='true'></i>"
+                . '<span class="visually-hidden">' . $add_label . '</span>'
+                . '</button>';
 
-            // Refresh options when the add popup closes.
             $js = str_replace(
                 '__MODAL_ID__',
                 json_encode($modal_id, JSON_UNESCAPED_SLASHES),
@@ -512,10 +507,19 @@ $(function () {
 });
 JS
             );
-            echo Html::scriptBlock($js);
+            $icons .= Html::scriptBlock($js);
         }
 
-        echo '</span>';
+        // Same wrapper as Location / Manufacturer: compact btn-group around select + icons.
+        echo "<div class='aat-container-dropdown btn-group btn-group-sm' role='group' style='width: "
+            . Html::entities_deep($width) . "'>";
+        Dropdown::showFromArray($name, $choices, [
+            'value' => $value,
+            'rand'  => $rand,
+            'width' => '100%',
+        ]);
+        echo $icons;
+        echo '</div>';
 
         if ($sync_location) {
             self::scriptSyncLocationContainers($name);

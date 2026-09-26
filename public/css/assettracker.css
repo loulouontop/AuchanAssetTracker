@@ -11,16 +11,33 @@
   width: 220px !important;
 }
 
-.aat-container-dropdown .select2-container {
-  min-width: 220px;
+/* Match GLPI Location dropdown: select grows, compact i/+ in one btn-group. */
+.aat-container-dropdown.btn-group {
+  display: inline-flex;
+  align-items: stretch;
   max-width: 100%;
+  vertical-align: middle;
 }
 
-.aat-container-dropdown .btn-group,
-.aat-container-dropdown .btn,
-.aat-container-dropdown a.btn,
-.aat-container-dropdown a.dropdown_tooltip {
+.aat-container-dropdown.btn-group > .select2-container {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0;
+}
+
+.aat-container-dropdown.btn-group > .select2-container .select2-selection--single {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  height: 100%;
+}
+
+.aat-container-dropdown.btn-group > .btn,
+.aat-container-dropdown.btn-group > a.btn,
+.aat-container-dropdown.btn-group > a.dropdown_tooltip {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /*
