@@ -74,6 +74,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     {
         $ong = [];
         $this->addDefaultFormTab($ong);
+        // GLPI search table of equipment currently stored in this container.
+        $this->addStandardTab('PluginAuchanassettrackerEquipment', $ong, $options);
         return $ong;
     }
 
@@ -523,12 +525,29 @@ JS);
             JSON_UNESCAPED_SLASHES
         );
 
-        echo Html::scriptBlock(<<<JS
+        if ($helper_done) {
+            if ($bind_location) {
+                echo Html::scriptBlock(<<<JS
 $(function () {
-  if (window.aatPluginContainerSyncBound) {
-    return;
-  }
-  window.aatPluginContainerSyncBound = true;
+  if (window.aatPluginContainerLocBound) { return; }
+  window.aatPluginContainerLocBound = true;
+  $(document)
+    .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
+    .on(
+      'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
+      'select[name="locations_id"]',
+      function () {
+        if (typeof window.aatRefreshContainerDropdown === 'function') {
+          window.aatRefreshContainerDropdown($(this).val(), false);
+        }
+      }
+    );
+});
+JS);
+            }
+            return;
+        }
+        $helper_done = true;
 
   function aatContainerField() {
     var \$f = $('.aat-native-container-field .aat-container-field').first();
@@ -564,6 +583,29 @@ $(function () {
         window.aatEnhanceContainerActions(\$field.find('.aat-container-dropdown'));
       }
     });
+  };
+
+  // Prefer-id form: aatRefreshContainerDropdown(newId) from modal iframe.
+  window.aatRefreshContainerDropdownAfterAdd = function (newId) {
+    var loc = $('select[name="locations_id"]').filter(':visible').last().val()
+      || $('input[name="locations_id"]').last().val()
+      || 0;
+    window.aatRefreshContainerDropdown(loc, false, newId);
+  };
+
+  if ({$bind_js}) {
+    if (!window.aatPluginContainerLocBound) {
+      window.aatPluginContainerLocBound = true;
+      $(document)
+        .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
+        .on(
+          'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
+          'select[name="locations_id"]',
+          function () {
+            window.aatRefreshContainerDropdown($(this).val(), false);
+          }
+        );
+    }
   }
 
   $(document)

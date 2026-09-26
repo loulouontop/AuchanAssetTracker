@@ -12,7 +12,7 @@
 }
 
 .aat-container-dropdown .select2-container {
-  width: 280px !important;
+  min-width: 220px;
   max-width: 100%;
 }
 
@@ -20,10 +20,6 @@
 .aat-container-dropdown .btn,
 .aat-container-dropdown a.btn {
   flex: 0 0 auto;
-}
-
-.aat-container-newtab {
-  margin-left: 0.15rem !important;
 }
 
 /*
