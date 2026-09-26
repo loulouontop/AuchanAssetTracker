@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Containers for a location — JSON list or native GLPI dropdown HTML.
+ * Containers for a location — native dropdown HTML (or JSON fallback).
  */
 include_once dirname(__DIR__) . '/front/_bootstrap.php';
 plugin_auchanassettracker_front_bootstrap();
@@ -12,7 +12,7 @@ if (!Session::getLoginUserID()) {
 }
 
 $locations_id = (int) ($_GET['locations_id'] ?? 0);
-$display = (string) ($_GET['display'] ?? 'json');
+$display = (string) ($_GET['display'] ?? 'dropdown');
 $value = (int) ($_GET['value'] ?? 0);
 
 // Scoped users are locked to their profile location.
@@ -40,7 +40,7 @@ if ($locations_id > 0 && PluginAuchanassettrackerRighthelper::canAccessLocation(
     $value = 0;
 }
 
-if ($display === 'dropdown') {
+if ($display !== 'json') {
     header('Content-Type: text/html; charset=UTF-8');
     PluginAuchanassettrackerContainer::dropdownWithActions([
         'name'          => 'plugin_auchanassettracker_containers_id',

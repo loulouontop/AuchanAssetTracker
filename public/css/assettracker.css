@@ -11,33 +11,16 @@
   width: 220px !important;
 }
 
-/* Match GLPI Location dropdown: select grows, compact i/+ in one btn-group. */
-.aat-container-dropdown.btn-group {
-  display: inline-flex;
-  align-items: stretch;
+/* Native CommonDropdown already builds btn-group; only size the wrapper. */
+.aat-container-dropdown {
+  display: inline-block;
   max-width: 100%;
   vertical-align: middle;
 }
 
-.aat-container-dropdown.btn-group > .select2-container {
-  flex: 1 1 auto !important;
-  width: auto !important;
-  min-width: 0;
-}
-
-.aat-container-dropdown.btn-group > .select2-container .select2-selection--single {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  height: 100%;
-}
-
-.aat-container-dropdown.btn-group > .btn,
-.aat-container-dropdown.btn-group > a.btn,
-.aat-container-dropdown.btn-group > a.dropdown_tooltip {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.aat-container-dropdown > .btn-group {
+  width: 100%;
+  max-width: 100%;
 }
 
 /*

@@ -394,161 +394,54 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     }
 
     /**
-     * GLPI Select2 dropdown with preloaded options (+ modal / i view).
-     * Uses showFromArray so the open menu always lists shelves (plugin AJAX
-     * CommonDropdown often returns an empty list in this context).
+     * Native GLPI CommonDropdown (same attached i/+ btn-group as Location).
      *
      * @param array<string, mixed> $options
      */
     public static function dropdownWithActions(array $options = []): void
     {
-        $rand = (int) ($options['rand'] ?? mt_rand());
         $sync_location = !empty($options['sync_location']);
-        $name = (string) ($options['name'] ?? 'plugin_auchanassettracker_containers_id');
-        $value = (int) ($options['value'] ?? 0);
-        $width = (string) ($options['width'] ?? '280px');
+        $plain = !empty($options['plain']); // AJAX fragment: no sync scripts
+        unset($options['sync_location'], $options['plain']);
 
-        $locations_id = 0;
-        $condition = $options['condition'] ?? [];
-        if (is_array($condition) && isset($condition['locations_id'])) {
-            $locations_id = (int) $condition['locations_id'];
+        $options['rand'] = (int) ($options['rand'] ?? mt_rand());
+        $options['comments'] = $options['comments'] ?? true;
+        $options['addicon'] = $options['addicon'] ?? true;
+        $options['name'] = $options['name'] ?? 'plugin_auchanassettracker_containers_id';
+        $options['width'] = $options['width'] ?? '100%';
+
+        if (!isset($options['condition']) || !is_array($options['condition'])) {
+            $options['condition'] = [];
         }
-        if ($locations_id < 0) {
-            $locations_id = 0;
+        // Native AJAX dropdown: never pass locations_id = -1.
+        if (isset($options['condition']['locations_id'])
+            && (int) $options['condition']['locations_id'] < 0) {
+            $options['condition']['locations_id'] = 0;
+            $options['condition']['id'] = -1;
         }
-
-        global $CFG_GLPI;
-
-        $choices = self::dropdownOptionsForLocation($locations_id, $value);
-        $field_id = 'dropdown_' . $name . $rand;
-        $modal_id = 'add_' . $field_id;
-
-        // Build icons first (same order/markup as GLPI Dropdown::show).
-        $icons = '';
-
-        // Native “i” (comment / view).
-        if (self::canView()) {
-            $comment_id = Html::cleanId('comment_' . $name . $rand);
-            $link_id = Html::cleanId('comment_link_' . $name . $rand);
-            $link = self::getSearchURL();
-            if ($value > 0) {
-                $tmp = new self();
-                if ($tmp->getFromDB($value) && $tmp->can($value, READ)) {
-                    $link = $tmp->getLinkURL();
-                }
-            }
-            $comment = Toolbox::ucfirst(
-                sprintf(__('Show %1$s'), self::getTypeName(Session::getPluralNumber()))
-            );
-
-            $paramscomment = [
-                'value'       => '__VALUE__',
-                'itemtype'    => self::class,
-                '_idor_token' => Session::getNewIDORToken(self::class),
-                'withlink'    => $link_id,
-            ];
-            $icons .= Ajax::updateItemOnSelectEvent(
-                $field_id,
-                $comment_id,
-                ($CFG_GLPI['root_doc'] ?? '') . '/ajax/comments.php',
-                $paramscomment,
-                false
-            );
-            $icons .= Html::showToolTip($comment, [
-                'contentid'  => $comment_id,
-                'linkid'     => $link_id,
-                'link'       => $link,
-                'link_class' => 'btn btn-outline-secondary',
-                'display'    => false,
-            ]);
+        if (!isset($options['condition']['is_deleted'])) {
+            $options['condition']['is_deleted'] = 0;
         }
 
-        // Native “+” button + iframe modal.
-        if (self::canCreate() && empty($_REQUEST['_in_modal'])) {
-            $add_url = self::getFormURL();
-            $modal_opts = [
-                'display' => false,
-                'title'   => sprintf(
-                    __('%1$s - %2$s'),
-                    __('New item'),
-                    self::getTypeName(1)
-                ),
-            ];
-            if ($locations_id > 0) {
-                $modal_opts['extradata'] = ['locations_id' => $locations_id];
-            }
+        // Exact same renderer as Location / Manufacturer (btn-group + i + +).
+        echo "<span class='aat-container-dropdown'>";
+        self::dropdown($options);
+        echo '</span>';
 
-            $add_label = Html::entities_deep(
-                sprintf(__('Add a new %s'), self::getTypeName(1))
-            );
-            // Modal markup/script first (GLPI moves the modal node to <body>).
-            $icons .= Ajax::createIframeModalWindow($modal_id, $add_url, $modal_opts);
-            $icons .= '<button type="button" class="btn btn-outline-secondary" title="'
-                . $add_label . '" data-bs-toggle="modal" data-bs-target="#'
-                . Html::entities_deep($modal_id) . '">'
-                . "<i class='ti ti-plus' aria-hidden='true'></i>"
-                . '<span class="visually-hidden">' . $add_label . '</span>'
-                . '</button>';
-
-            $js = str_replace(
-                '__MODAL_ID__',
-                json_encode($modal_id, JSON_UNESCAPED_SLASHES),
-                <<<'JS'
-$(function () {
-  $(document).off('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__)
-    .on('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__, function () {
-      if (typeof window.aatRefreshContainerDropdown === 'function') {
-        var loc = $('select[name="locations_id"]').filter(':visible').last().val()
-          || $('input[name="locations_id"]').last().val()
-          || 0;
-        window.aatRefreshContainerDropdown(loc, true);
-      }
-    });
-});
-JS
-            );
-            $icons .= Html::scriptBlock($js);
+        if ($plain) {
+            return;
         }
 
-        // Same wrapper as Location / Manufacturer: compact btn-group around select + icons.
-        echo "<div class='aat-container-dropdown btn-group btn-group-sm' role='group' style='width: "
-            . Html::entities_deep($width) . "'>";
-        Dropdown::showFromArray($name, $choices, [
-            'value' => $value,
-            'rand'  => $rand,
-            'width' => '100%',
-        ]);
-        echo $icons;
-        echo '</div>';
-
-        if ($sync_location) {
-            self::scriptSyncLocationContainers($name);
-        } else {
-            // Still expose refresh helper (used after modal add).
-            self::scriptSyncLocationContainers($name, false);
-        }
+        self::scriptSyncLocationContainers($sync_location);
     }
 
     /**
-     * Refresh Select2 options from JSON when Location changes (and after + modal).
-     *
-     * @param string $select_name
-     * @param bool   $bind_location Bind to locations_id change events.
+     * Reload a fresh native CommonDropdown when Location changes / after + add.
      */
-    public static function scriptSyncLocationContainers(
-        string $select_name = 'plugin_auchanassettracker_containers_id',
-        bool $bind_location = true
-    ): void {
-        static $helper_done = false;
-
-        $ajax = json_encode(
-            plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
-            JSON_UNESCAPED_SLASHES
-        );
-        $name_js = json_encode($select_name, JSON_UNESCAPED_SLASHES);
-        $bind_js = $bind_location ? 'true' : 'false';
-
-        if ($helper_done) {
+    public static function scriptSyncLocationContainers(bool $bind_location = true): void
+    {
+        static $done = false;
+        if ($done) {
             if ($bind_location) {
                 echo Html::scriptBlock(<<<'JS'
 $(function () {
@@ -570,75 +463,64 @@ JS);
             }
             return;
         }
-        $helper_done = true;
+        $done = true;
+
+        $ajax = json_encode(
+            plugin_auchanassettracker_web_dir() . '/ajax/containers.php',
+            JSON_UNESCAPED_SLASHES
+        );
+        $bind_js = $bind_location ? 'true' : 'false';
 
         $js = str_replace(
-            ['__NAME_JS__', '__AJAX__', '__BIND__'],
-            [$name_js, $ajax, $bind_js],
+            ['__AJAX__', '__BIND__'],
+            [$ajax, $bind_js],
             <<<'JS'
 $(function () {
-  function aatFindContainerSelect() {
-    var name = __NAME_JS__;
-    var $root = $('.aat-container-field, .aat-native-container-field').first();
-    var $sel = $root.find('select[name="' + name + '"]').first();
-    if (!$sel.length) {
-      $sel = $('select[name="' + name + '"]').first();
+  function aatContainerField() {
+    var $f = $('.aat-native-container-field .aat-container-field').first();
+    if (!$f.length) {
+      $f = $('.aat-container-field').first();
     }
-    return $sel;
+    return $f;
   }
 
-  function aatApplyContainerOptions($sel, results, keepValue, preferId) {
-    if (!$sel.length) {
-      return;
-    }
-    var current = keepValue ? (parseInt($sel.val(), 10) || 0) : 0;
-    if (preferId && parseInt(preferId, 10) > 0) {
-      current = parseInt(preferId, 10);
-    }
-    var html = '';
-    for (var i = 0; i < results.length; i++) {
-      var r = results[i];
-      var id = r.id != null ? r.id : 0;
-      var text = r.text != null ? String(r.text) : '';
-      html += '<option value="' + id + '">' + $('<div/>').text(text).html() + '</option>';
-    }
-    var wasSelect2 = $sel.hasClass('select2-hidden-accessible');
-    if (wasSelect2 && $sel.data('select2')) {
-      try { $sel.select2('destroy'); } catch (e) {}
-    }
-    $sel.html(html);
-    if (current > 0 && $sel.find('option[value="' + current + '"]').length) {
-      $sel.val(String(current));
-    } else {
-      $sel.val('0');
-    }
-    if (wasSelect2 && typeof $sel.select2 === 'function') {
-      $sel.select2({ width: 'style' });
-    }
-    $sel.trigger('change');
+  function aatRunScripts($root) {
+    $root.find('script').each(function () {
+      var code = this.text || this.textContent || '';
+      if (code) {
+        $.globalEval(code);
+      }
+    });
   }
 
   window.aatRefreshContainerDropdown = function (locId, keepValue, preferId) {
-    var $sel = aatFindContainerSelect();
-    if (!$sel.length) {
+    var $field = aatContainerField();
+    if (!$field.length) {
       return;
     }
     locId = parseInt(locId, 10) || 0;
+    var current = 0;
+    if (preferId && parseInt(preferId, 10) > 0) {
+      current = parseInt(preferId, 10);
+    } else if (keepValue) {
+      current = parseInt(
+        $field.find('select[name="plugin_auchanassettracker_containers_id"]').val(),
+        10
+      ) || 0;
+    }
     $.ajax({
       url: __AJAX__,
       data: {
-        display: 'json',
+        display: 'dropdown',
         locations_id: locId,
-        value: keepValue ? (parseInt($sel.val(), 10) || 0) : (parseInt(preferId, 10) || 0)
+        value: current
       },
-      dataType: 'json'
-    }).done(function (data) {
-      aatApplyContainerOptions(
-        $sel,
-        (data && data.results) ? data.results : [],
-        !!keepValue,
-        preferId
-      );
+      dataType: 'html'
+    }).done(function (html) {
+      // Keep markup; run scripts so Select2 + add modal re-init.
+      var $tmp = $('<div/>').append($.parseHTML(html, document, true));
+      $field.empty().append($tmp.contents());
+      aatRunScripts($field);
     });
   };
 
@@ -648,6 +530,20 @@ $(function () {
       || 0;
     window.aatRefreshContainerDropdown(loc, false, newId);
   };
+
+  // After native + modal closes, refresh list (new shelf appears).
+  $(document)
+    .off('hidden.bs.modal.aatContainerAdd')
+    .on(
+      'hidden.bs.modal.aatContainerAdd',
+      '[id^="add_dropdown_plugin_auchanassettracker_containers_id"]',
+      function () {
+        var loc = $('select[name="locations_id"]').filter(':visible').last().val()
+          || $('input[name="locations_id"]').last().val()
+          || 0;
+        window.aatRefreshContainerDropdown(loc, true);
+      }
+    );
 
   if (__BIND__) {
     if (!window.aatPluginContainerLocBound) {
