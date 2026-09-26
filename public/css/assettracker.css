@@ -18,9 +18,14 @@
   vertical-align: middle;
 }
 
-.aat-container-dropdown > .btn-group {
-  width: 100%;
-  max-width: 100%;
+.aat-container-dropdown .btn-group,
+.aat-container-dropdown .btn,
+.aat-container-dropdown a.btn,
+.aat-container-dropdown a.dropdown_tooltip {
+  flex: 0 0 auto;
+  margin-left: auto !important;
+  position: static !important;
+  right: auto !important;
 }
 
 /*

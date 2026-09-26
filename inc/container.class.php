@@ -419,13 +419,105 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             $options['condition']['locations_id'] = 0;
             $options['condition']['id'] = -1;
         }
-        if (!isset($options['condition']['is_deleted'])) {
-            $options['condition']['is_deleted'] = 0;
+
+        global $CFG_GLPI;
+
+        $choices = self::dropdownOptionsForLocation($locations_id, $value);
+        $field_id = 'dropdown_' . $name . $rand;
+        $modal_id = 'add_' . $field_id;
+
+        // Match GLPI Dropdown::show chrome: select + info tooltip + add modal.
+        echo "<span class='aat-container-dropdown d-inline-flex align-items-center flex-wrap gap-1'>";
+        Dropdown::showFromArray($name, $choices, [
+            'value' => $value,
+            'rand'  => $rand,
+            'width' => $width,
+        ]);
+
+        // Native “i” (comment / view) — same markup as Manufacturer dropdown.
+        if (self::canView()) {
+            $comment_id = Html::cleanId('comment_' . $name . $rand);
+            $link_id = Html::cleanId('comment_link_' . $name . $rand);
+            $link = self::getSearchURL();
+            if ($value > 0) {
+                $tmp = new self();
+                if ($tmp->getFromDB($value) && $tmp->canViewItem()) {
+                    $link = $tmp->getLinkURL();
+                }
+            }
+            $comment = Toolbox::ucfirst(
+                sprintf(__('Show %1$s'), self::getTypeName(Session::getPluralNumber()))
+            );
+
+            $paramscomment = [
+                'value'       => '__VALUE__',
+                'itemtype'    => self::class,
+                '_idor_token' => Session::getNewIDORToken(self::class),
+                'withlink'    => $link_id,
+            ];
+            echo Ajax::updateItemOnSelectEvent(
+                $field_id,
+                $comment_id,
+                ($CFG_GLPI['root_doc'] ?? '') . '/ajax/comments.php',
+                $paramscomment,
+                false
+            );
+            echo Html::showToolTip($comment, [
+                'contentid'  => $comment_id,
+                'linkid'     => $link_id,
+                'link'       => $link,
+                'link_class' => 'btn btn-outline-secondary',
+                'display'    => false,
+            ]);
         }
 
-        // Exact same renderer as Location / Manufacturer (btn-group + i + +).
-        echo "<span class='aat-container-dropdown'>";
-        self::dropdown($options);
+        // Native “+” — Ajax iframe modal (same pattern as GLPI CommonDropdown).
+        if (self::canCreate() && empty($_REQUEST['_in_modal'])) {
+            $add_url = self::getFormURL();
+            $modal_opts = [
+                'display' => false,
+                'title'   => sprintf(
+                    __('%1$s - %2$s'),
+                    __('New item'),
+                    self::getTypeName(1)
+                ),
+            ];
+            if ($locations_id > 0) {
+                $modal_opts['extradata'] = ['locations_id' => $locations_id];
+            }
+
+            $add_label = Html::entities_deep(__('Add'));
+            echo '<div class="btn btn-outline-secondary" title="' . $add_label . '"'
+                . ' data-bs-toggle="modal" data-bs-target="#'
+                . Html::entities_deep($modal_id) . '">';
+            echo Ajax::createIframeModalWindow($modal_id, $add_url, $modal_opts);
+            echo '<span data-bs-toggle="tooltip">'
+                . '<i class="ti ti-plus"></i>'
+                . '<span class="sr-only">' . $add_label . '</span>'
+                . '</span>';
+            echo '</div>';
+
+            // Refresh options when the add popup closes.
+            $js = str_replace(
+                '__MODAL_ID__',
+                json_encode($modal_id, JSON_UNESCAPED_SLASHES),
+                <<<'JS'
+$(function () {
+  $(document).off('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__)
+    .on('hidden.bs.modal.aatContainerAdd', '#' + __MODAL_ID__, function () {
+      if (typeof window.aatRefreshContainerDropdown === 'function') {
+        var loc = $('select[name="locations_id"]').filter(':visible').last().val()
+          || $('input[name="locations_id"]').last().val()
+          || 0;
+        window.aatRefreshContainerDropdown(loc, true);
+      }
+    });
+});
+JS
+            );
+            echo Html::scriptBlock($js);
+        }
+
         echo '</span>';
 
         if ($plain) {
