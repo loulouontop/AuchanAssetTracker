@@ -125,18 +125,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
+        // Native GLPI search card (controls left / actions right), scoped by CSS.
         echo "<div class='spaced aat-container-contents'>";
-        echo "<div class='center mb-2'>";
-        echo "<h3 class='mb-0'>"
-            . Html::entities_deep(__('Equipment in this container', 'auchanassettracker'))
-            . '</h3>';
-        echo "<p class='text-muted mb-0'>"
-            . Html::entities_deep(__(
-                'Stock currently assigned to this shelf / box. Use search, columns and actions like elsewhere in GLPI.',
-                'auchanassettracker'
-            ))
-            . '</p>';
-        echo '</div>';
 
         // Search option id 7 = Physical container (dropdown / FK).
         $params = [
