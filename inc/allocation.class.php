@@ -162,17 +162,11 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         echo "<div class='row g-2 align-items-end mb-3' id='aat-gear-picker'>";
         echo "<div class='col-md-6'><label class='form-label'>"
             . __('Recipient user', 'auchanassettracker') . "</label>";
-        $user_dropdown = [
+        PluginAuchanassettrackerRighthelper::dropdownRecipientUser([
             'name'  => 'users_id',
             'value' => $preview_user,
-            'right' => 'all',
             'width' => '100%',
-        ];
-        $user_condition = PluginAuchanassettrackerRighthelper::getRecipientUserDropdownCondition();
-        if ($user_condition !== null) {
-            $user_dropdown['condition'] = $user_condition;
-        }
-        User::dropdown($user_dropdown);
+        ]);
         echo "</div><div class='col-md-auto'>";
         echo "<button type='button' class='btn btn-secondary' id='aat-show-gear'>"
             . Html::entities_deep(__('Show current gear', 'auchanassettracker'))
