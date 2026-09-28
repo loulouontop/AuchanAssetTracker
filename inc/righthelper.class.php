@@ -139,21 +139,155 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
-     * User::dropdown condition for the allocation recipient picker.
+     * Select2 search for allocation recipients (location-scoped when applicable).
      *
-     * @return array<string, mixed>|null null = no extra filter (all locations)
+     * @return array{results: list<array{id: int, text: string}>, more: bool}
      */
-    public static function getRecipientUserDropdownCondition(): ?array
+    public static function searchRecipientUsers(string $term, int $page = 1, int $page_limit = 30): array
     {
+        global $DB;
+
+        $page = max(1, $page);
+        $page_limit = max(1, min(100, $page_limit));
         $scope = self::getScopedLocationId();
-        if ($scope === null) {
-            return null;
+
+        if ($scope !== null && $scope <= 0) {
+            return ['results' => [], 'more' => false];
         }
-        if ($scope <= 0) {
-            // Mapped role with no location: empty list.
-            return ['id' => -1];
+
+        $where = [
+            'is_active'  => 1,
+            'is_deleted' => 0,
+        ];
+        if ($scope !== null) {
+            $where['locations_id'] = $scope;
         }
-        return ['locations_id' => $scope];
+
+        $term = trim($term);
+        if ($term !== '') {
+            $esc = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $term);
+            $like = '%' . $esc . '%';
+            $where[] = [
+                'OR' => [
+                    ['name'      => ['LIKE', $like]],
+                    ['realname'  => ['LIKE', $like]],
+                    ['firstname' => ['LIKE', $like]],
+                ],
+            ];
+        }
+
+        $start = ($page - 1) * $page_limit;
+        $rows = [];
+        foreach ($DB->request([
+            'SELECT' => ['id', 'name', 'realname', 'firstname'],
+            'FROM'   => User::getTable(),
+            'WHERE'  => $where,
+            'ORDER'  => 'realname ASC, firstname ASC, name ASC',
+            'START'  => $start,
+            'LIMIT'  => $page_limit + 1,
+        ]) as $row) {
+            $rows[] = $row;
+        }
+
+        $more = count($rows) > $page_limit;
+        if ($more) {
+            array_pop($rows);
+        }
+
+        $results = [];
+        foreach ($rows as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            if ($id <= 0) {
+                continue;
+            }
+            $label = trim(strip_tags((string) getUserName($id)));
+            if ($label === '') {
+                $login = trim((string) ($row['name'] ?? ''));
+                $label = $login !== '' ? $login : ('#' . $id);
+            }
+            $results[] = [
+                'id'   => $id,
+                'text' => $label,
+            ];
+        }
+
+        return ['results' => $results, 'more' => $more];
+    }
+
+    /**
+     * Searchable recipient User dropdown (Select2 AJAX), location-filtered for scoped roles.
+     */
+    public static function dropdownRecipientUser(array $options = []): void
+    {
+        $name  = (string) ($options['name'] ?? 'users_id');
+        $value = (int) ($options['value'] ?? 0);
+        $width = (string) ($options['width'] ?? '100%');
+        $rand  = (int) ($options['rand'] ?? mt_rand());
+
+        if ($value > 0 && !self::canAccessRecipientUser($value)) {
+            $value = 0;
+        }
+
+        $field_id = Html::cleanId('dropdown_' . $name . $rand);
+        $ajax = json_encode(
+            plugin_auchanassettracker_web_dir() . '/ajax/users.php',
+            JSON_UNESCAPED_SLASHES
+        );
+        $width_js = json_encode($width, JSON_UNESCAPED_SLASHES);
+        $field_js = json_encode($field_id, JSON_UNESCAPED_SLASHES);
+        $placeholder = json_encode(Dropdown::EMPTY_VALUE, JSON_UNESCAPED_UNICODE);
+
+        echo "<select name='" . Html::entities_deep($name) . "' id='"
+            . Html::entities_deep($field_id) . "' class='form-select aat-recipient-user'"
+            . " style='width:" . Html::entities_deep($width) . "'>";
+        echo "<option value='0'>" . Html::entities_deep(Dropdown::EMPTY_VALUE) . "</option>";
+        if ($value > 0) {
+            $label = trim(strip_tags((string) getUserName($value)));
+            if ($label === '') {
+                $label = '#' . $value;
+            }
+            echo "<option value='" . $value . "' selected>"
+                . Html::entities_deep($label) . "</option>";
+        }
+        echo '</select>';
+
+        echo Html::scriptBlock(<<<JS
+$(function () {
+  var \$sel = $('#' + {$field_js});
+  if (!\$sel.length) { return; }
+  if (\$sel.hasClass('select2-hidden-accessible')) {
+    \$sel.select2('destroy');
+  }
+  \$sel.select2({
+    width: {$width_js},
+    allowClear: true,
+    placeholder: {$placeholder},
+    minimumInputLength: 0,
+    minimumResultsForSearch: 0,
+    ajax: {
+      url: {$ajax},
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          term: params.term || '',
+          page: params.page || 1
+        };
+      },
+      processResults: function (data, params) {
+        params.page = params.page || 1;
+        return {
+          results: (data && data.results) ? data.results : [],
+          pagination: {
+            more: !!(data && data.pagination && data.pagination.more)
+          }
+        };
+      },
+      cache: true
+    }
+  });
+});
+JS);
     }
 
     public static function requireCanAccessLocation(int $locations_id): void
