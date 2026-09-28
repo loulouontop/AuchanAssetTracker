@@ -116,8 +116,71 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
+     * User IDs assigned to a GLPI profile that has this plugin Location mapping.
+     *
+     * @return list<int>
+     */
+    public static function getUserIdsWithPluginLocation(int $locations_id): array
+    {
+        global $DB;
+
+        if ($locations_id <= 0
+            || !$DB->tableExists(PluginAuchanassettrackerProfile::getTable())
+            || !$DB->tableExists('glpi_profiles_users')) {
+            return [];
+        }
+
+        $profile_ids = [];
+        foreach ($DB->request([
+            'SELECT' => ['profiles_id'],
+            'FROM'   => PluginAuchanassettrackerProfile::getTable(),
+            'WHERE'  => ['locations_id' => $locations_id],
+        ]) as $row) {
+            $pid = (int) ($row['profiles_id'] ?? 0);
+            if ($pid > 0) {
+                $profile_ids[$pid] = true;
+            }
+        }
+        if ($profile_ids === []) {
+            return [];
+        }
+
+        $uids = [];
+        foreach ($DB->request([
+            'SELECT' => ['users_id'],
+            'FROM'   => 'glpi_profiles_users',
+            'WHERE'  => ['profiles_id' => array_keys($profile_ids)],
+        ]) as $row) {
+            $uid = (int) ($row['users_id'] ?? 0);
+            if ($uid > 0) {
+                $uids[$uid] = true;
+            }
+        }
+        return array_map('intval', array_keys($uids));
+    }
+
+    /**
+     * Whether a user belongs to a location via GLPI default location
+     * and/or the Auchan Asset Tracker location on one of their GLPI profiles.
+     */
+    public static function userMatchesRecipientLocation(int $users_id, int $locations_id): bool
+    {
+        if ($users_id <= 0 || $locations_id <= 0) {
+            return false;
+        }
+
+        $user = new User();
+        if ($user->getFromDB($users_id)
+            && (int) ($user->fields['locations_id'] ?? 0) === $locations_id) {
+            return true;
+        }
+
+        return in_array($users_id, self::getUserIdsWithPluginLocation($locations_id), true);
+    }
+
+    /**
      * Whether the current role may pick this GLPI user as allocation recipient.
-     * Scoped roles: only users whose default location matches the profile location.
+     * Scoped roles: GLPI user location OR plugin profile location must match.
      */
     public static function canAccessRecipientUser(int $users_id): bool
     {
@@ -131,11 +194,7 @@ class PluginAuchanassettrackerRighthelper
         if ($scope <= 0) {
             return false;
         }
-        $user = new User();
-        if (!$user->getFromDB($users_id)) {
-            return false;
-        }
-        return (int) ($user->fields['locations_id'] ?? 0) === $scope;
+        return self::userMatchesRecipientLocation($users_id, $scope);
     }
 
     /**
@@ -160,7 +219,15 @@ class PluginAuchanassettrackerRighthelper
             'is_deleted' => 0,
         ];
         if ($scope !== null) {
-            $where['locations_id'] = $scope;
+            // Match GLPI native location OR plugin profile location mapping.
+            $plugin_uids = self::getUserIdsWithPluginLocation($scope);
+            $loc_or = [
+                ['locations_id' => $scope],
+            ];
+            if ($plugin_uids !== []) {
+                $loc_or[] = ['id' => $plugin_uids];
+            }
+            $where[] = ['OR' => $loc_or];
         }
 
         $term = trim($term);

@@ -143,13 +143,9 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         $base = plugin_auchanassettracker_web_dir();
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $preview_user = (int) ($_GET['users_id'] ?? $_POST['users_id'] ?? 0);
+        // Silently ignore out-of-scope deep-links (no flash on every refresh).
         if ($preview_user > 0
             && !PluginAuchanassettrackerRighthelper::canAccessRecipientUser($preview_user)) {
-            Session::addMessageAfterRedirect(
-                __('You can only select users from your location.', 'auchanassettracker'),
-                false,
-                ERROR
-            );
             $preview_user = 0;
         }
 
