@@ -143,6 +143,15 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         $base = plugin_auchanassettracker_web_dir();
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         $preview_user = (int) ($_GET['users_id'] ?? $_POST['users_id'] ?? 0);
+        if ($preview_user > 0
+            && !PluginAuchanassettrackerRighthelper::canAccessRecipientUser($preview_user)) {
+            Session::addMessageAfterRedirect(
+                __('You can only select users from your location.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            $preview_user = 0;
+        }
 
         echo "<div class='aat-workspace'>";
         self::displayActiveAlerts($scope);
@@ -153,12 +162,17 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
         echo "<div class='row g-2 align-items-end mb-3' id='aat-gear-picker'>";
         echo "<div class='col-md-6'><label class='form-label'>"
             . __('Recipient user', 'auchanassettracker') . "</label>";
-        User::dropdown([
+        $user_dropdown = [
             'name'  => 'users_id',
             'value' => $preview_user,
             'right' => 'all',
             'width' => '100%',
-        ]);
+        ];
+        $user_condition = PluginAuchanassettrackerRighthelper::getRecipientUserDropdownCondition();
+        if ($user_condition !== null) {
+            $user_dropdown['condition'] = $user_condition;
+        }
+        User::dropdown($user_dropdown);
         echo "</div><div class='col-md-auto'>";
         echo "<button type='button' class='btn btn-secondary' id='aat-show-gear'>"
             . Html::entities_deep(__('Show current gear', 'auchanassettracker'))
@@ -328,6 +342,15 @@ JS);
         if (!PluginAuchanassettrackerRighthelper::canAccessLocation($loc)) {
             Session::addMessageAfterRedirect(
                 __('You cannot allocate equipment from another location.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        if (!PluginAuchanassettrackerRighthelper::canAccessRecipientUser($users_id_recipient)) {
+            Session::addMessageAfterRedirect(
+                __('You can only allocate to users from your location.', 'auchanassettracker'),
                 false,
                 ERROR
             );

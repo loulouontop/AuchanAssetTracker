@@ -48,6 +48,8 @@ return [
     'Single item' => 'Articol unic',
     'Support technician' => 'Tehnician suport',
     'Type, manufacturer and model are mandatory.' => 'Tipul, producătorul și modelul sunt obligatorii.',
+    'You can only allocate to users from your location.' => 'Puteți aloca doar utilizatorilor din locația dvs.',
+    'You can only select users from your location.' => 'Puteți selecta doar utilizatori din locația dvs.',
     'You cannot access data from another location.' => 'Nu puteți accesa date din altă locație.',
     'You cannot add equipment in another location.' => 'Nu puteți adăuga echipament în altă locație.',
     'You cannot create a container in another location.' => 'Nu puteți crea un container în altă locație.',
