@@ -204,6 +204,8 @@ return [
     'Written off (30 days)' => 'Casate (30 zile)',
     'You cannot access data from another location.' => 'Nu puteți accesa date din altă locație.',
     'You cannot add equipment in another location.' => 'Nu puteți adăuga echipament în altă locație.',
+    'You can only allocate to users from your location.' => 'Puteți aloca doar utilizatorilor din locația dvs.',
+    'You can only select users from your location.' => 'Puteți selecta doar utilizatori din locația dvs.',
     'You cannot allocate equipment from another location.' => 'Nu puteți aloca echipament din altă locație.',
     'You cannot create a container in another location.' => 'Nu puteți crea un container în altă locație.',
     'You cannot modify equipment from another location.' => 'Nu puteți modifica echipament din altă locație.',

@@ -115,6 +115,47 @@ class PluginAuchanassettrackerRighthelper
         return $scope === $locations_id;
     }
 
+    /**
+     * Whether the current role may pick this GLPI user as allocation recipient.
+     * Scoped roles: only users whose default location matches the profile location.
+     */
+    public static function canAccessRecipientUser(int $users_id): bool
+    {
+        if ($users_id <= 0) {
+            return false;
+        }
+        $scope = self::getScopedLocationId();
+        if ($scope === null) {
+            return true;
+        }
+        if ($scope <= 0) {
+            return false;
+        }
+        $user = new User();
+        if (!$user->getFromDB($users_id)) {
+            return false;
+        }
+        return (int) ($user->fields['locations_id'] ?? 0) === $scope;
+    }
+
+    /**
+     * User::dropdown condition for the allocation recipient picker.
+     *
+     * @return array<string, mixed>|null null = no extra filter (all locations)
+     */
+    public static function getRecipientUserDropdownCondition(): ?array
+    {
+        $scope = self::getScopedLocationId();
+        if ($scope === null) {
+            return null;
+        }
+        if ($scope <= 0) {
+            // Mapped role with no location: empty list.
+            return ['id' => -1];
+        }
+        return ['locations_id' => $scope];
+    }
+
     public static function requireCanAccessLocation(int $locations_id): void
     {
         if (!self::canAccessLocation($locations_id)) {
