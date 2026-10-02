@@ -235,8 +235,85 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'datatype'  => 'dropdown',
             'linkfield' => 'users_id',
         ];
+        $tab[] = [
+            'id'            => 11,
+            'table'         => self::getTable(),
+            'field'         => 'date_creation',
+            'name'          => __('Creation date', 'auchanassettracker'),
+            'datatype'      => 'datetime',
+            'massiveaction' => false,
+        ];
+        $tab[] = [
+            'id'            => 12,
+            'table'         => self::getTable(),
+            'field'         => 'date_mod',
+            'name'          => __('Last update', 'auchanassettracker'),
+            'datatype'      => 'datetime',
+            'massiveaction' => false,
+        ];
+        $tab[] = [
+            'id'              => 13,
+            'table'           => self::getTable(),
+            'field'           => 'items_id',
+            'name'            => __('GLPI asset', 'auchanassettracker'),
+            'datatype'        => 'specific',
+            'nosearch'        => true,
+            'nosort'          => true,
+            'massiveaction'   => false,
+            'additionalfields' => ['itemtype'],
+        ];
 
         return $tab;
+    }
+
+    /**
+     * Native-looking button / link to the linked GLPI asset form.
+     */
+    public static function getGlpiAssetButtonHtml(string $itemtype, int $items_id): string
+    {
+        if ($itemtype === ''
+            || $items_id <= 0
+            || !class_exists($itemtype)
+            || !method_exists($itemtype, 'getFormURLWithID')) {
+            return '<span class="text-muted">—</span>';
+        }
+
+        $href = $itemtype::getFormURLWithID($items_id);
+        $label = __('View item');
+        $type_label = method_exists($itemtype, 'getTypeName')
+            ? $itemtype::getTypeName(1)
+            : $itemtype;
+        $title = sprintf('%s — %s', $label, $type_label);
+
+        // List cells: compact icon button (native ghost).
+        return '<a class="btn btn-sm btn-ghost-secondary" href="'
+            . Html::entities_deep($href) . '" title="'
+            . Html::entities_deep($title) . '" data-bs-toggle="tooltip">'
+            . '<i class="ti ti-eye"></i>'
+            . '<span class="sr-only">' . Html::entities_deep($label) . '</span>'
+            . '</a>';
+    }
+
+    /**
+     * Form / toolbar style: labeled native secondary button.
+     */
+    public static function getGlpiAssetOpenButtonHtml(string $itemtype, int $items_id): string
+    {
+        if ($itemtype === ''
+            || $items_id <= 0
+            || !class_exists($itemtype)
+            || !method_exists($itemtype, 'getFormURLWithID')) {
+            return '<span class="text-muted">—</span>';
+        }
+
+        $href = $itemtype::getFormURLWithID($items_id);
+        $label = __('View item');
+
+        return '<a class="btn btn-sm btn-outline-secondary" href="'
+            . Html::entities_deep($href) . '">'
+            . '<i class="ti ti-eye me-1"></i>'
+            . Html::entities_deep($label)
+            . '</a>';
     }
 
     public static function getSpecificValueToDisplay($field, $values, array $options = [])
@@ -246,6 +323,20 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
         if ($field === 'status') {
             return self::getStatusLabel((string) ($values[$field] ?? ''));
+        }
+        if ($field === 'items_id') {
+            $items_id = (int) ($values['items_id'] ?? 0);
+            $itemtype = (string) ($values['itemtype'] ?? '');
+            if (($items_id <= 0 || $itemtype === '')
+                && isset($options['raw_data']['id'])
+                && (int) $options['raw_data']['id'] > 0) {
+                $eq = new self();
+                if ($eq->getFromDB((int) $options['raw_data']['id'])) {
+                    $items_id = (int) ($eq->fields['items_id'] ?? 0);
+                    $itemtype = (string) ($eq->fields['itemtype'] ?? '');
+                }
+            }
+            return self::getGlpiAssetButtonHtml($itemtype, $items_id);
         }
         return parent::getSpecificValueToDisplay($field, $values, $options);
     }
@@ -619,6 +710,30 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             . Html::entities_deep($this->fields['notes'] ?? '')
             . "</textarea>";
         echo "</td></tr>";
+
+        if ($ID > 0) {
+            $glpi_items_id = (int) ($this->fields['items_id'] ?? 0);
+            $glpi_itemtype = (string) ($this->fields['itemtype'] ?? '');
+            echo "<tr class='tab_bg_1'><td>"
+                . __('Linked GLPI asset', 'auchanassettracker') . "</td><td colspan='3'>";
+            if ($glpi_items_id > 0
+                && $glpi_itemtype !== ''
+                && class_exists($glpi_itemtype)
+                && method_exists($glpi_itemtype, 'getFormURLWithID')) {
+                echo self::getGlpiAssetOpenButtonHtml($glpi_itemtype, $glpi_items_id);
+                $type_label = method_exists($glpi_itemtype, 'getTypeName')
+                    ? $glpi_itemtype::getTypeName(1)
+                    : $glpi_itemtype;
+                echo ' <span class="text-muted ms-2">'
+                    . Html::entities_deep($type_label . ' #' . $glpi_items_id)
+                    . '</span>';
+            } else {
+                echo '<span class="text-muted">'
+                    . Html::entities_deep(__('None.', 'auchanassettracker'))
+                    . '</span>';
+            }
+            echo "</td></tr>";
+        }
 
         $this->showFormButtons($options);
         return true;

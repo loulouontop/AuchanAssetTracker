@@ -364,6 +364,71 @@ function plugin_auchanassettracker_ensure_schema(): void
             ], ['id' => (int) $row['id']]);
         }
     }
+
+    plugin_auchanassettracker_ensure_equipment_displayprefs();
+}
+
+/**
+ * Ensure Equipment search shows creation / last update / GLPI asset columns.
+ * Adds missing prefs for the default template (users_id = 0) and existing users.
+ */
+function plugin_auchanassettracker_ensure_equipment_displayprefs(): void
+{
+    global $DB;
+
+    if (!$DB->tableExists('glpi_displaypreferences')) {
+        return;
+    }
+
+    $itemtype = 'PluginAuchanassettrackerEquipment';
+    $default_nums = [1, 8, 2, 4, 5, 7, 11, 12, 13];
+    $must_have = [11, 12, 13];
+
+    $user_ids = [0];
+    foreach ($DB->request([
+        'SELECT' => ['users_id'],
+        'FROM'   => 'glpi_displaypreferences',
+        'WHERE'  => ['itemtype' => $itemtype],
+        'GROUPBY' => 'users_id',
+    ]) as $row) {
+        $user_ids[] = (int) ($row['users_id'] ?? 0);
+    }
+    $user_ids = array_values(array_unique($user_ids));
+
+    foreach ($user_ids as $users_id) {
+        $existing = [];
+        $max_rank = 0;
+        foreach ($DB->request([
+            'FROM'  => 'glpi_displaypreferences',
+            'WHERE' => [
+                'itemtype' => $itemtype,
+                'users_id' => $users_id,
+            ],
+        ]) as $row) {
+            $num = (int) ($row['num'] ?? 0);
+            $existing[$num] = true;
+            $max_rank = max($max_rank, (int) ($row['rank'] ?? 0));
+        }
+
+        // First time: seed a sensible default column set.
+        $to_add = $existing === [] ? $default_nums : $must_have;
+        foreach ($to_add as $num) {
+            if (isset($existing[$num])) {
+                continue;
+            }
+            $max_rank++;
+            try {
+                $DB->insert('glpi_displaypreferences', [
+                    'itemtype' => $itemtype,
+                    'num'      => $num,
+                    'rank'     => $max_rank,
+                    'users_id' => $users_id,
+                ]);
+            } catch (Throwable $e) {
+                // Duplicate / race — ignore.
+            }
+        }
+    }
 }
 
 /**
