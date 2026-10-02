@@ -128,7 +128,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
         if ($is_admin) {
             $content[self::MENU_CONFIG] = [
-                'title' => __('Configuration'),
+                'title' => __('Configuration', 'auchanassettracker'),
                 'page'  => "$base/front/config.form.php",
                 'icon'  => 'ti ti-settings',
             ];
