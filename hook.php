@@ -369,8 +369,8 @@ function plugin_auchanassettracker_ensure_schema(): void
 }
 
 /**
- * Ensure Equipment search shows creation / last update / GLPI asset columns.
- * Adds missing prefs for the default template (users_id = 0) and existing users.
+ * Seed default Equipment search columns once (users_id = 0 only).
+ * Never re-add columns after the user removes them via “Select items to show”.
  */
 function plugin_auchanassettracker_ensure_equipment_displayprefs(): void
 {
@@ -381,52 +381,34 @@ function plugin_auchanassettracker_ensure_equipment_displayprefs(): void
     }
 
     $itemtype = 'PluginAuchanassettrackerEquipment';
-    $default_nums = [1, 8, 2, 4, 5, 7, 11, 12, 13];
-    $must_have = [11, 12, 13];
-
-    $user_ids = [0];
+    $existing = 0;
     foreach ($DB->request([
-        'SELECT' => ['users_id'],
-        'FROM'   => 'glpi_displaypreferences',
-        'WHERE'  => ['itemtype' => $itemtype],
-        'GROUPBY' => 'users_id',
+        'COUNT' => 'cpt',
+        'FROM'  => 'glpi_displaypreferences',
+        'WHERE' => [
+            'itemtype' => $itemtype,
+            'users_id' => 0,
+        ],
     ]) as $row) {
-        $user_ids[] = (int) ($row['users_id'] ?? 0);
+        $existing = (int) ($row['cpt'] ?? 0);
     }
-    $user_ids = array_values(array_unique($user_ids));
+    if ($existing > 0) {
+        return;
+    }
 
-    foreach ($user_ids as $users_id) {
-        $existing = [];
-        $max_rank = 0;
-        foreach ($DB->request([
-            'FROM'  => 'glpi_displaypreferences',
-            'WHERE' => [
+    $default_nums = [1, 8, 2, 4, 5, 7, 11, 12, 13];
+    $rank = 1;
+    foreach ($default_nums as $num) {
+        try {
+            $DB->insert('glpi_displaypreferences', [
                 'itemtype' => $itemtype,
-                'users_id' => $users_id,
-            ],
-        ]) as $row) {
-            $num = (int) ($row['num'] ?? 0);
-            $existing[$num] = true;
-            $max_rank = max($max_rank, (int) ($row['rank'] ?? 0));
-        }
-
-        // First time: seed a sensible default column set.
-        $to_add = $existing === [] ? $default_nums : $must_have;
-        foreach ($to_add as $num) {
-            if (isset($existing[$num])) {
-                continue;
-            }
-            $max_rank++;
-            try {
-                $DB->insert('glpi_displaypreferences', [
-                    'itemtype' => $itemtype,
-                    'num'      => $num,
-                    'rank'     => $max_rank,
-                    'users_id' => $users_id,
-                ]);
-            } catch (Throwable $e) {
-                // Duplicate / race — ignore.
-            }
+                'num'      => $num,
+                'rank'     => $rank,
+                'users_id' => 0,
+            ]);
+            $rank++;
+        } catch (Throwable $e) {
+            // Duplicate / race — ignore.
         }
     }
 }

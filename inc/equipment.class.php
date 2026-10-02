@@ -553,6 +553,9 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 ], ['id' => (int) $this->getID()]);
                 $this->fields['items_id'] = $asset_id;
             }
+        } else {
+            // Linked at create time (import): push notes / status onto the asset.
+            self::syncGlpiAssetFromPlugin($this->fields);
         }
 
         PluginAuchanassettrackerAuditlog::record(
@@ -572,12 +575,18 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public function post_updateItem($history = true)
     {
+        $touched = array_keys($this->updates ?? []);
+        if ($touched === []
+            || array_intersect($touched, ['notes', 'status', 'name', 'serial', 'locations_id', 'manufacturers_id']) !== []) {
+            self::syncGlpiAssetFromPlugin($this->fields);
+        }
+
         PluginAuchanassettrackerAuditlog::record(
             'equipment_update',
             self::class,
             (int) $this->getID(),
             json_encode([
-                'updates' => array_keys($this->updates ?? []),
+                'updates' => $touched,
                 'status'  => $this->fields['status'] ?? '',
             ])
         );
@@ -721,12 +730,6 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 && class_exists($glpi_itemtype)
                 && method_exists($glpi_itemtype, 'getFormURLWithID')) {
                 echo self::getGlpiAssetOpenButtonHtml($glpi_itemtype, $glpi_items_id);
-                $type_label = method_exists($glpi_itemtype, 'getTypeName')
-                    ? $glpi_itemtype::getTypeName(1)
-                    : $glpi_itemtype;
-                echo ' <span class="text-muted ms-2">'
-                    . Html::entities_deep($type_label . ' #' . $glpi_items_id)
-                    . '</span>';
             } else {
                 echo '<span class="text-muted">'
                     . Html::entities_deep(__('None.', 'auchanassettracker'))
@@ -958,6 +961,15 @@ JS);
             'is_deleted'       => 0,
             'is_template'      => 0,
         ];
+
+        if ($asset->isField('states_id')) {
+            $states_id = self::resolveGlpiStateIdForStatus(
+                (string) ($fields['status'] ?? self::STATUS_AVAILABLE)
+            );
+            if ($states_id > 0) {
+                $input['states_id'] = $states_id;
+            }
+        }
 
         $models_id = (int) ($fields['models_id'] ?? 0);
         $model_class = self::getModelClassForItemtype($itemtype);
@@ -1231,6 +1243,150 @@ JS);
     }
 
     /**
+     * Resolve / create a GLPI State matching a plugin workflow status.
+     */
+    public static function resolveGlpiStateIdForStatus(string $status): int
+    {
+        static $cache = [];
+
+        if ($status === '') {
+            $status = self::STATUS_AVAILABLE;
+        }
+        if (isset($cache[$status])) {
+            return $cache[$status];
+        }
+
+        $labels = [
+            self::STATUS_AVAILABLE           => __('Available', 'auchanassettracker'),
+            self::STATUS_AWAITING_VALIDATION => __('Awaiting validation', 'auchanassettracker'),
+            self::STATUS_ALLOCATED           => __('Allocated', 'auchanassettracker'),
+        ];
+        $name = $labels[$status] ?? '';
+        if ($name === '' || !class_exists('State')) {
+            return $cache[$status] = 0;
+        }
+
+        global $DB;
+        $table = State::getTable();
+        if (!$DB->tableExists($table)) {
+            return $cache[$status] = 0;
+        }
+
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => $table,
+            'WHERE'  => ['name' => $name],
+            'LIMIT'  => 1,
+        ]) as $row) {
+            return $cache[$status] = (int) ($row['id'] ?? 0);
+        }
+
+        // Create a visible state so stock shows “Available” on native assets.
+        try {
+            $input = ['name' => $name];
+            if ($DB->fieldExists($table, 'states_id')) {
+                $input['states_id'] = 0;
+            }
+            // GLPI State visibility flags (per asset type) — set when columns exist.
+            if (method_exists($DB, 'listFields')) {
+                foreach ($DB->listFields($table) as $fname => $_) {
+                    $fname = (string) $fname;
+                    if (str_starts_with($fname, 'is_visible')) {
+                        $input[$fname] = 1;
+                    }
+                }
+            }
+            $state = new State();
+            $new_id = $state->add($input);
+            return $cache[$status] = $new_id ? (int) $new_id : 0;
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'resolveGlpiStateIdForStatus');
+            return $cache[$status] = 0;
+        }
+    }
+
+    /**
+     * Push plugin notes / status (and related fields) onto the linked GLPI asset.
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function syncGlpiAssetFromPlugin(array $fields): void
+    {
+        $itemtype = (string) ($fields['itemtype'] ?? '');
+        $items_id = (int) ($fields['items_id'] ?? 0);
+        if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
+            return;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return;
+        }
+
+        try {
+            /** @var CommonDBTM $asset */
+            $asset = new $itemtype();
+            if (!$asset->getFromDB($items_id)) {
+                return;
+            }
+
+            $update = [];
+            if ($asset->isField('comment')) {
+                $notes = trim((string) ($fields['notes'] ?? ''));
+                if ((string) ($asset->fields['comment'] ?? '') !== $notes) {
+                    $update['comment'] = $notes;
+                }
+            }
+            if ($asset->isField('states_id')) {
+                $states_id = self::resolveGlpiStateIdForStatus(
+                    (string) ($fields['status'] ?? self::STATUS_AVAILABLE)
+                );
+                if ($states_id > 0
+                    && (int) ($asset->fields['states_id'] ?? 0) !== $states_id) {
+                    $update['states_id'] = $states_id;
+                }
+            }
+            if ($asset->isField('name')) {
+                $name = self::resolveAssetName($fields);
+                if ($name !== '' && (string) ($asset->fields['name'] ?? '') !== $name) {
+                    $update['name'] = $name;
+                }
+            }
+            if ($asset->isField('serial')) {
+                $serial = trim((string) ($fields['serial'] ?? ''));
+                if ((string) ($asset->fields['serial'] ?? '') !== $serial) {
+                    $update['serial'] = $serial;
+                }
+            }
+            if ($asset->isField('locations_id')) {
+                $loc = (int) ($fields['locations_id'] ?? 0);
+                if ((int) ($asset->fields['locations_id'] ?? 0) !== $loc) {
+                    $update['locations_id'] = $loc;
+                }
+            }
+            if ($asset->isField('manufacturers_id')) {
+                $mfr = (int) ($fields['manufacturers_id'] ?? 0);
+                if ((int) ($asset->fields['manufacturers_id'] ?? 0) !== $mfr) {
+                    $update['manufacturers_id'] = $mfr;
+                }
+            }
+
+            if ($update === []) {
+                return;
+            }
+
+            self::suppressNativeHook(true);
+            try {
+                // Prefer silent DB write to avoid form noise; fall back to update().
+                global $DB;
+                $DB->update($asset::getTable(), $update, ['id' => $items_id]);
+            } finally {
+                self::suppressNativeHook(false);
+            }
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetFromPlugin');
+        }
+    }
+
+    /**
      * Set / clear users_id on the linked native GLPI asset.
      *
      * @param array<string, mixed> $fields
@@ -1252,18 +1408,28 @@ JS);
             if (!$asset->getFromDB($items_id)) {
                 return;
             }
-            if (!$asset->isField('users_id')) {
-                return;
+            $patch = [];
+            if ($asset->isField('users_id')) {
+                $next = max(0, $users_id);
+                if ((int) ($asset->fields['users_id'] ?? 0) !== $next) {
+                    $patch['users_id'] = $next;
+                }
             }
-            $next = max(0, $users_id);
-            if ((int) ($asset->fields['users_id'] ?? 0) === $next) {
+            if ($asset->isField('states_id')) {
+                $states_id = self::resolveGlpiStateIdForStatus(
+                    (string) ($fields['status'] ?? self::STATUS_AVAILABLE)
+                );
+                if ($states_id > 0
+                    && (int) ($asset->fields['states_id'] ?? 0) !== $states_id) {
+                    $patch['states_id'] = $states_id;
+                }
+            }
+            if ($patch === []) {
                 return;
             }
             // Silent DB write — avoid GLPI “User or group updated / connected items…” noise.
             global $DB;
-            $DB->update($asset::getTable(), [
-                'users_id' => $next,
-            ], ['id' => $items_id]);
+            $DB->update($asset::getTable(), $patch, ['id' => $items_id]);
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetOwner');
         }
@@ -1369,6 +1535,7 @@ JS);
         $serial = trim((string) ($asset->fields['serial'] ?? ''));
         $mfr_id = (int) ($asset->fields['manufacturers_id'] ?? 0);
         $entities_id = (int) ($asset->fields['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0));
+        $notes = trim((string) ($asset->fields['comment'] ?? ''));
 
         $models_id = 0;
         $model_class = self::getModelClassForItemtype($itemtype);
@@ -1438,6 +1605,7 @@ JS);
                 'users_id'         => $users_id,
                 'status'           => $status,
                 'entities_id'      => $entities_id,
+                'notes'            => $notes,
                 'plugin_auchanassettracker_containers_id' => $next_container,
             ];
 
@@ -1477,6 +1645,7 @@ JS);
             'users_id'         => $users_id,
             'status'           => $status,
             'entities_id'      => $entities_id,
+            'notes'            => $notes,
             'plugin_auchanassettracker_containers_id' => $cid,
             '_aat_from_glpi'   => 1,
             '_no_message'      => true,
