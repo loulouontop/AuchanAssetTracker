@@ -41,13 +41,16 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_containers` (
     `is_active` TINYINT(1) NOT NULL DEFAULT 1,
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
     `entities_id` INT UNSIGNED NOT NULL DEFAULT 0,
+    `is_recursive` TINYINT(1) NOT NULL DEFAULT 0,
     `date_creation` TIMESTAMP NULL DEFAULT NULL,
     `date_mod` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
     UNIQUE KEY `code` (`code`),
     KEY `locations_id` (`locations_id`),
     KEY `is_active` (`is_active`),
-    KEY `is_deleted` (`is_deleted`)
+    KEY `is_deleted` (`is_deleted`),
+    KEY `entities_id` (`entities_id`),
+    KEY `is_recursive` (`is_recursive`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
@@ -68,6 +71,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     `notes` TEXT DEFAULT NULL,
     `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
     `entities_id` INT UNSIGNED NOT NULL DEFAULT 0,
+    `is_recursive` TINYINT(1) NOT NULL DEFAULT 0,
     `date_creation` TIMESTAMP NULL DEFAULT NULL,
     `date_mod` TIMESTAMP NULL DEFAULT NULL,
     PRIMARY KEY (`id`),
@@ -80,7 +84,9 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_equipments` (
     KEY `plugin_auchanassettracker_equipmenttypes_id` (`plugin_auchanassettracker_equipmenttypes_id`),
     KEY `itemtype_items` (`itemtype`, `items_id`),
     KEY `manufacturers_id` (`manufacturers_id`),
-    KEY `models_id` (`models_id`)
+    KEY `models_id` (`models_id`),
+    KEY `entities_id` (`entities_id`),
+    KEY `is_recursive` (`is_recursive`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_allocations` (

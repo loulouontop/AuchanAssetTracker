@@ -333,8 +333,9 @@ class PluginAuchanassettrackerRighthelper
         $width_js = json_encode($width, JSON_UNESCAPED_SLASHES);
         $field_js = json_encode($field_id, JSON_UNESCAPED_SLASHES);
 
+        // Hidden until Select2 binds — avoids native browser menu with only "-----".
         echo "<select name='" . Html::entities_deep($name) . "' id='"
-            . Html::entities_deep($field_id) . "' class='form-select aat-recipient-user'"
+            . Html::entities_deep($field_id) . "' class='form-select aat-recipient-user aat-recipient-pending'"
             . " data-glpicontainername='" . Html::entities_deep($name) . "'"
             . " style='width:" . Html::entities_deep($width) . "'>";
         echo "<option value='0'>" . Html::entities_deep(Dropdown::EMPTY_VALUE) . "</option>";
@@ -354,46 +355,49 @@ class PluginAuchanassettrackerRighthelper
         }
         echo '</select>';
 
+        // Init immediately (and again on DOM ready) so refresh/switch never shows the native menu.
         echo Html::scriptBlock(<<<JS
-$(function () {
-  var \$sel = $('#' + {$field_js});
-  if (!\$sel.length) { return; }
-  if (\$sel.hasClass('select2-hidden-accessible')) {
-    try { \$sel.select2('destroy'); } catch (e) {}
-  }
-  \$sel.select2({
-    width: {$width_js},
-    allowClear: false,
-    minimumInputLength: 0,
-    minimumResultsForSearch: 0,
-    ajax: {
-      url: {$ajax},
-      dataType: 'json',
-      delay: 100,
-      data: function (params) {
-        return {
-          term: params.term || '',
-          page: params.page || 1
-        };
-      },
-      processResults: function (data, params) {
-        params.page = params.page || 1;
-        var rows = (data && data.results) ? data.results : [];
-        // Keep empty choice at top like native GLPI users dropdown.
-        if (!params.term && params.page === 1) {
-          rows = [{ id: 0, text: \$sel.find('option[value="0"]').text() || '-----' }].concat(rows);
-        }
-        return {
-          results: rows,
-          pagination: {
-            more: !!(data && data.pagination && data.pagination.more)
-          }
-        };
-      },
-      cache: true
+(function () {
+  function aatInitRecipientUser() {
+    var \$sel = $('#' + {$field_js});
+    if (!\$sel.length || \$sel.data('aatSelect2Ready')) { return; }
+    if (\$sel.hasClass('select2-hidden-accessible')) {
+      try { \$sel.select2('destroy'); } catch (e) {}
     }
-  });
-});
+    \$sel.select2({
+      width: {$width_js},
+      allowClear: false,
+      minimumInputLength: 0,
+      minimumResultsForSearch: 0,
+      ajax: {
+        url: {$ajax},
+        dataType: 'json',
+        delay: 100,
+        data: function (params) {
+          return {
+            term: params.term || '',
+            page: params.page || 1
+          };
+        },
+        processResults: function (data, params) {
+          params.page = params.page || 1;
+          return {
+            results: (data && data.results) ? data.results : [],
+            pagination: {
+              more: !!(data && data.pagination && data.pagination.more)
+            }
+          };
+        },
+        cache: true
+      }
+    });
+    \$sel.removeClass('aat-recipient-pending').data('aatSelect2Ready', true);
+  }
+  if (window.jQuery) {
+    aatInitRecipientUser();
+    $(aatInitRecipientUser);
+  }
+})();
 JS);
     }
 

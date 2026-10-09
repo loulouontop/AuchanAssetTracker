@@ -174,7 +174,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 
         $input['is_active'] = isset($input['is_active']) ? (int) (bool) $input['is_active'] : 1;
         $input['is_deleted'] = 0;
-        $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
+        $input['entities_id'] = (int) ($input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0));
+        $input['is_recursive'] = isset($input['is_recursive']) ? (int) (bool) $input['is_recursive'] : 0;
 
         $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         $input['date_creation'] = $now;
@@ -200,6 +201,13 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         // Soft-delete only — never hard delete from UI.
         if (isset($input['is_deleted']) && (int) $input['is_deleted'] === 1) {
             $input['is_active'] = 0;
+        }
+
+        if (isset($input['is_recursive'])) {
+            $input['is_recursive'] = (int) (bool) $input['is_recursive'];
+        }
+        if (isset($input['entities_id'])) {
+            $input['entities_id'] = (int) $input['entities_id'];
         }
 
         $input['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
@@ -386,11 +394,12 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     }
 
     /**
-     * Containers are location-scoped, not entity-scoped, for dropdown listing.
+     * Entity-assignable so form header shows Entity + Child entities (is_recursive).
+     * Location still drives stock shelf filtering separately.
      */
     public function isEntityAssign(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -451,9 +460,12 @@ $(function () {
   $(document)
     .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
     .on('change.aatLoc', 'select[name="locations_id"]', function () {
-      if (typeof window.aatRefreshContainerDropdown === 'function') {
-        window.aatRefreshContainerDropdown($(this).val(), false);
-      }
+      if (typeof window.aatRefreshContainerDropdown !== 'function') { return; }
+      var loc = $(this).val();
+      clearTimeout(window.aatContainerLocTimer);
+      window.aatContainerLocTimer = setTimeout(function () {
+        window.aatRefreshContainerDropdown(loc, false);
+      }, 120);
     });
 });
 JS);
@@ -485,15 +497,16 @@ $(function () {
     if (!$root || !$root.length) {
       return;
     }
+    // Only tear down Select2 inside the container field — never wipe body menus
+    // (that was freezing the Location dropdown on the previous value).
     $root.find('select').each(function () {
       var $s = $(this);
       if ($s.hasClass('select2-hidden-accessible')) {
-        try { $s.select2('destroy'); } catch (e) {}
+        try { $s.select2('close'); } catch (e) {}
+        try { $s.select2('destroy'); } catch (e2) {}
       }
     });
-    // Orphaned open menus (often stuck at top-left) after a replace without destroy.
-    $('body > .select2-container--open').remove();
-    $('body > .select2-dropdown').remove();
+    $root.find('.select2-container').remove();
   }
 
   function aatRunScripts($root) {
@@ -571,10 +584,15 @@ $(function () {
   if (__BIND__) {
     if (!window.aatPluginContainerLocBound) {
       window.aatPluginContainerLocBound = true;
+      // Debounce so rapid Location re-picks don't race / stick on the previous value.
       $(document)
         .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
         .on('change.aatLoc', 'select[name="locations_id"]', function () {
-          window.aatRefreshContainerDropdown($(this).val(), false);
+          var loc = $(this).val();
+          clearTimeout(window.aatContainerLocTimer);
+          window.aatContainerLocTimer = setTimeout(function () {
+            window.aatRefreshContainerDropdown(loc, false);
+          }, 120);
         });
     }
   }
