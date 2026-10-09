@@ -267,11 +267,8 @@ class PluginAuchanassettrackerRighthelper
             if ($id <= 0) {
                 continue;
             }
-            $label = trim(strip_tags((string) getUserName($id)));
-            if ($label === '') {
-                $login = trim((string) ($row['name'] ?? ''));
-                $label = $login !== '' ? $login : ('#' . $id);
-            }
+            // Build label from already-fetched columns (avoid N+1 getUserName).
+            $label = self::formatRecipientLabel($row);
             $results[] = [
                 'id'   => $id,
                 'text' => $label,
@@ -282,7 +279,40 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
+     * GLPI-style user label from a users row (no extra DB hit).
+     *
+     * @param array<string, mixed> $row
+     */
+    public static function formatRecipientLabel(array $row): string
+    {
+        $id = (int) ($row['id'] ?? 0);
+        $login = trim((string) ($row['name'] ?? ''));
+        $realname = trim((string) ($row['realname'] ?? ''));
+        $firstname = trim((string) ($row['firstname'] ?? ''));
+
+        if (function_exists('formatUserName')) {
+            $label = trim(strip_tags((string) formatUserName($id, $login, $realname, $firstname)));
+            if ($label !== '') {
+                return $label;
+            }
+        }
+
+        $parts = array_filter([$realname, $firstname], static fn ($p) => $p !== '');
+        if ($parts !== []) {
+            $label = implode(' ', $parts);
+            return $login !== '' ? $label . ' (' . $login . ')' : $label;
+        }
+
+        if ($login !== '') {
+            return $login;
+        }
+
+        return $id > 0 ? ('#' . $id) : Dropdown::EMPTY_VALUE;
+    }
+
+    /**
      * Searchable recipient User dropdown (Select2 AJAX), location-filtered for scoped roles.
+     * Matches GLPI users dropdown UX: empty "-----" choice, no clear (X), fast typeahead.
      */
     public static function dropdownRecipientUser(array $options = []): void
     {
@@ -302,16 +332,22 @@ class PluginAuchanassettrackerRighthelper
         );
         $width_js = json_encode($width, JSON_UNESCAPED_SLASHES);
         $field_js = json_encode($field_id, JSON_UNESCAPED_SLASHES);
-        $placeholder = json_encode(Dropdown::EMPTY_VALUE, JSON_UNESCAPED_UNICODE);
 
         echo "<select name='" . Html::entities_deep($name) . "' id='"
             . Html::entities_deep($field_id) . "' class='form-select aat-recipient-user'"
+            . " data-glpicontainername='" . Html::entities_deep($name) . "'"
             . " style='width:" . Html::entities_deep($width) . "'>";
         echo "<option value='0'>" . Html::entities_deep(Dropdown::EMPTY_VALUE) . "</option>";
         if ($value > 0) {
-            $label = trim(strip_tags((string) getUserName($value)));
-            if ($label === '') {
-                $label = '#' . $value;
+            $u = new User();
+            $label = '#' . $value;
+            if ($u->getFromDB($value)) {
+                $label = self::formatRecipientLabel([
+                    'id'        => $value,
+                    'name'      => $u->fields['name'] ?? '',
+                    'realname'  => $u->fields['realname'] ?? '',
+                    'firstname' => $u->fields['firstname'] ?? '',
+                ]);
             }
             echo "<option value='" . $value . "' selected>"
                 . Html::entities_deep($label) . "</option>";
@@ -323,18 +359,17 @@ $(function () {
   var \$sel = $('#' + {$field_js});
   if (!\$sel.length) { return; }
   if (\$sel.hasClass('select2-hidden-accessible')) {
-    \$sel.select2('destroy');
+    try { \$sel.select2('destroy'); } catch (e) {}
   }
   \$sel.select2({
     width: {$width_js},
-    allowClear: true,
-    placeholder: {$placeholder},
+    allowClear: false,
     minimumInputLength: 0,
     minimumResultsForSearch: 0,
     ajax: {
       url: {$ajax},
       dataType: 'json',
-      delay: 250,
+      delay: 100,
       data: function (params) {
         return {
           term: params.term || '',
@@ -343,8 +378,13 @@ $(function () {
       },
       processResults: function (data, params) {
         params.page = params.page || 1;
+        var rows = (data && data.results) ? data.results : [];
+        // Keep empty choice at top like native GLPI users dropdown.
+        if (!params.term && params.page === 1) {
+          rows = [{ id: 0, text: \$sel.find('option[value="0"]').text() || '-----' }].concat(rows);
+        }
         return {
-          results: (data && data.results) ? data.results : [],
+          results: rows,
           pagination: {
             more: !!(data && data.pagination && data.pagination.more)
           }

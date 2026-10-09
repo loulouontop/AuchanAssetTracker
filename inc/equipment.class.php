@@ -1387,6 +1387,46 @@ JS);
     }
 
     /**
+     * Silent workflow write for allocate / confirm / reject.
+     * Bypasses CommonDBTM rights — caller must already authorize the action.
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function applyWorkflowFields(int $id, array $fields): bool
+    {
+        global $DB;
+
+        if ($id <= 0 || !$DB->tableExists(self::getTable())) {
+            return false;
+        }
+
+        $allowed = [
+            'status',
+            'users_id',
+            'plugin_auchanassettracker_containers_id',
+            'items_id',
+        ];
+        $patch = [];
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $fields)) {
+                $patch[$key] = $fields[$key];
+            }
+        }
+        if ($patch === []) {
+            return false;
+        }
+
+        $patch['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+
+        try {
+            return (bool) $DB->update(self::getTable(), $patch, ['id' => $id]);
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'applyWorkflowFields');
+            return false;
+        }
+    }
+
+    /**
      * Set / clear users_id on the linked native GLPI asset.
      *
      * @param array<string, mixed> $fields
@@ -1574,7 +1614,14 @@ JS);
             }
 
             $status = (string) ($existing['status'] ?? self::STATUS_AVAILABLE);
-            if ($status !== self::STATUS_AWAITING_VALIDATION) {
+            $existing_users_id = (int) ($existing['users_id'] ?? 0);
+
+            // Pending receipt: GLPI owner is still 0 until confirm — never wipe the recipient.
+            if ($status === self::STATUS_AWAITING_VALIDATION) {
+                if ($users_id <= 0) {
+                    $users_id = $existing_users_id;
+                }
+            } else {
                 $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
             }
 
@@ -1588,6 +1635,11 @@ JS);
                     $container_id = 0;
                 }
                 $next_container = max(0, $container_id);
+            }
+
+            // Pending allocations leave the shelf; do not restore a container from native sync.
+            if ($status === self::STATUS_AWAITING_VALIDATION) {
+                $next_container = 0;
             }
 
             $next_name = $name !== '' ? $name : (string) ($existing['name'] ?? '');
