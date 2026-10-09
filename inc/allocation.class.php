@@ -393,25 +393,27 @@ JS);
             return false;
         }
 
-        $ok = $eq->update([
-            'id'     => $equipment_id,
-            'status' => PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
+        $ok = PluginAuchanassettrackerEquipment::applyWorkflowFields($equipment_id, [
+            'status'   => PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
             'users_id' => $users_id_recipient,
             'plugin_auchanassettracker_containers_id' => 0,
-            '_aat_skip_container_check' => 1,
         ]);
 
-        if ($ok) {
-            PluginAuchanassettrackerAuditlog::record(
-                'allocation_initiate',
-                self::class,
-                (int) $aid,
-                sprintf('equipment=%d user=%d', $equipment_id, $users_id_recipient)
-            );
-            PluginAuchanassettrackerMailhelper::notifyAllocationPending($users_id_recipient, $equipment_id);
+        if (!$ok) {
+            // Do not leave a pending allocation without the equipment transition.
+            $alloc->delete(['id' => (int) $aid], true);
+            return false;
         }
 
-        return (bool) $ok;
+        PluginAuchanassettrackerAuditlog::record(
+            'allocation_initiate',
+            self::class,
+            (int) $aid,
+            sprintf('equipment=%d user=%d', $equipment_id, $users_id_recipient)
+        );
+        PluginAuchanassettrackerMailhelper::notifyAllocationPending($users_id_recipient, $equipment_id);
+
+        return true;
     }
 
     public static function confirm(int $allocation_id): bool
@@ -436,6 +438,23 @@ JS);
         $eq_id = (int) $alloc->fields['plugin_auchanassettracker_equipments_id'];
         $recipient = (int) $alloc->fields['users_id_recipient'];
 
+        // Silent write: end users confirm receipt but cannot CommonDBTM-update equipment.
+        $ok = PluginAuchanassettrackerEquipment::applyWorkflowFields($eq_id, [
+            'status'   => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
+            'users_id' => $recipient,
+            'plugin_auchanassettracker_containers_id' => 0,
+        ]);
+
+        if (!$ok) {
+            Session::addMessageAfterRedirect(
+                __('Unable to confirm this allocation.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        // Mark confirmed only after equipment is allocated (avoids history/gear desync).
         $alloc->update([
             'id'                  => $allocation_id,
             'allocation_status'   => self::STATUS_CONFIRMED,
@@ -444,23 +463,14 @@ JS);
         ]);
 
         $eq = new PluginAuchanassettrackerEquipment();
-        $ok = $eq->update([
-            'id'     => $eq_id,
-            'status' => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
-            'users_id' => $recipient,
-            'plugin_auchanassettracker_containers_id' => 0,
-            '_aat_skip_container_check' => 1,
-        ]);
-
-        if ($ok && $eq->getFromDB($eq_id)) {
+        if ($eq->getFromDB($eq_id)) {
             // Ensure a linked native GLPI asset exists, then set its owner.
             if ((int) ($eq->fields['items_id'] ?? 0) <= 0) {
                 $asset_id = PluginAuchanassettrackerEquipment::createLinkedGlpiAsset($eq->fields);
                 if ($asset_id > 0) {
-                    global $DB;
-                    $DB->update(PluginAuchanassettrackerEquipment::getTable(), [
+                    PluginAuchanassettrackerEquipment::applyWorkflowFields($eq_id, [
                         'items_id' => $asset_id,
-                    ], ['id' => $eq_id]);
+                    ]);
                     $eq->fields['items_id'] = $asset_id;
                 }
             }
@@ -474,7 +484,7 @@ JS);
             'equipment=' . $eq_id
         );
 
-        return (bool) $ok;
+        return true;
     }
 
     /**
@@ -512,22 +522,32 @@ JS);
             $container_id = $prev;
         }
 
-        $update = [
-            'id'       => $eq_id,
+        $fields = [
             'status'   => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
             'users_id' => 0,
-            '_aat_skip_container_check' => 1,
         ];
 
         if ($container_id > 0) {
             if (!PluginAuchanassettrackerEquipment::containerBelongsToLocation($container_id, $loc)) {
                 // Previous shelf missing/inactive — leave empty for manager.
-                $update['plugin_auchanassettracker_containers_id'] = 0;
+                $fields['plugin_auchanassettracker_containers_id'] = 0;
             } else {
-                $update['plugin_auchanassettracker_containers_id'] = $container_id;
+                $fields['plugin_auchanassettracker_containers_id'] = $container_id;
             }
         } else {
-            $update['plugin_auchanassettracker_containers_id'] = 0;
+            $fields['plugin_auchanassettracker_containers_id'] = 0;
+        }
+
+        // Silent write: end users reject receipt but cannot CommonDBTM-update equipment.
+        $ok = PluginAuchanassettrackerEquipment::applyWorkflowFields($eq_id, $fields);
+
+        if (!$ok) {
+            Session::addMessageAfterRedirect(
+                __('Unable to reject this allocation.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
         }
 
         $alloc->update([
@@ -537,9 +557,7 @@ JS);
             'date_mod'          => $now,
         ]);
 
-        $ok = $eq->update($update);
-
-        if ($ok && $eq->getFromDB($eq_id)) {
+        if ($eq->getFromDB($eq_id)) {
             PluginAuchanassettrackerEquipment::syncGlpiAssetOwner($eq->fields, 0);
         }
 
@@ -552,11 +570,11 @@ JS);
 
         $allocator = (int) ($alloc->fields['users_id_allocator'] ?? 0);
         if ($allocator > 0) {
-            $restored = (int) ($update['plugin_auchanassettracker_containers_id'] ?? 0) > 0;
+            $restored = (int) ($fields['plugin_auchanassettracker_containers_id'] ?? 0) > 0;
             PluginAuchanassettrackerMailhelper::notifyAllocationRejected($allocator, $eq_id, $restored);
         }
 
-        return (bool) $ok;
+        return true;
     }
 
     public static function hasPendingForEquipment(int $equipment_id): bool
@@ -573,6 +591,81 @@ JS);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Repair confirmed allocations whose equipment row never reached "allocated"
+     * (e.g. end-user confirm failed CommonDBTM rights, or GLPI sync wiped users_id).
+     * Only touches stuck awaiting_validation / mis-owned allocated rows — never stock.
+     */
+    public static function healConfirmedEquipmentForUser(int $users_id): void
+    {
+        global $DB;
+
+        if ($users_id <= 0
+            || !$DB->tableExists(self::getTable())
+            || !$DB->tableExists(PluginAuchanassettrackerEquipment::getTable())) {
+            return;
+        }
+
+        $seen_eq = [];
+        foreach ($DB->request([
+            'SELECT' => ['id', 'plugin_auchanassettracker_equipments_id'],
+            'FROM'   => self::getTable(),
+            'WHERE'  => [
+                'users_id_recipient' => $users_id,
+                'allocation_status'  => self::STATUS_CONFIRMED,
+            ],
+            'ORDER'  => 'id DESC',
+        ]) as $row) {
+            $eq_id = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+            if ($eq_id <= 0 || isset($seen_eq[$eq_id])) {
+                continue;
+            }
+            $seen_eq[$eq_id] = true;
+
+            // Newer pending/returned allocation supersedes this confirm — skip.
+            if (self::hasPendingForEquipment($eq_id)) {
+                continue;
+            }
+
+            $eq = new PluginAuchanassettrackerEquipment();
+            if (!$eq->getFromDB($eq_id)) {
+                continue;
+            }
+
+            $status = (string) ($eq->fields['status'] ?? '');
+            $owner  = (int) ($eq->fields['users_id'] ?? 0);
+
+            // Only stuck mid-confirm (or allocated with wrong/zero owner).
+            $stuck_pending = $status === PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION;
+            $stuck_owner   = $status === PluginAuchanassettrackerEquipment::STATUS_ALLOCATED
+                && $owner !== $users_id;
+            if (!$stuck_pending && !$stuck_owner) {
+                continue;
+            }
+
+            if (!PluginAuchanassettrackerEquipment::applyWorkflowFields($eq_id, [
+                'status'   => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
+                'users_id' => $users_id,
+                'plugin_auchanassettracker_containers_id' => 0,
+            ])) {
+                continue;
+            }
+
+            if ($eq->getFromDB($eq_id)) {
+                if ((int) ($eq->fields['items_id'] ?? 0) <= 0) {
+                    $asset_id = PluginAuchanassettrackerEquipment::createLinkedGlpiAsset($eq->fields);
+                    if ($asset_id > 0) {
+                        PluginAuchanassettrackerEquipment::applyWorkflowFields($eq_id, [
+                            'items_id' => $asset_id,
+                        ]);
+                        $eq->fields['items_id'] = $asset_id;
+                    }
+                }
+                PluginAuchanassettrackerEquipment::syncGlpiAssetOwner($eq->fields, $users_id);
+            }
+        }
     }
 
     /**
@@ -670,23 +763,17 @@ JS);
     }
 
     /**
-     * Plugin equipment currently with a user.
+     * Plugin equipment currently with a user (confirmed only).
+     * Pending / awaiting_validation stays in Confirm receipt until validated.
      *
      * @return list<array<string, mixed>>
      */
     public static function getUserEquipment(int $users_id): array
     {
-        return array_merge(
-            PluginAuchanassettrackerEquipment::findByStatus(
-                PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
-                null,
-                $users_id
-            ),
-            PluginAuchanassettrackerEquipment::findByStatus(
-                PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
-                null,
-                $users_id
-            )
+        return PluginAuchanassettrackerEquipment::findByStatus(
+            PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
+            null,
+            $users_id
         );
     }
 
@@ -697,6 +784,7 @@ JS);
      */
     public static function getCurrentGearForUser(int $users_id): array
     {
+        self::healConfirmedEquipmentForUser($users_id);
         $plugin = self::getUserEquipment($users_id);
         foreach ($plugin as &$row) {
             $row['source'] = 'plugin';

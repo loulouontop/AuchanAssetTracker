@@ -84,21 +84,34 @@ class PluginAuchanassettrackerAssetform
     {
         echo Html::scriptBlock(<<<JS
 $(function () {
+  function aatDestroyMovedSelect2(\$root) {
+    \$root.find('select').each(function () {
+      var \$s = $(this);
+      if (\$s.hasClass('select2-hidden-accessible')) {
+        try { \$s.select2('destroy'); } catch (e) {}
+      }
+    });
+    $('body > .select2-container--open').remove();
+    $('body > .select2-dropdown').remove();
+  }
+
   function aatMoveContainerIntoForm() {
     var \$block = $('.aat-native-container-field').first();
     if (!\$block.length) {
-      return;
+      return false;
     }
     if (\$block.closest('form').length) {
-      return;
+      return false;
     }
     var \$form = $('form').has('select[name="locations_id"]').first();
     if (!\$form.length) {
       \$form = $('form[method="post"]').filter(':visible').last();
     }
     if (!\$form.length) {
-      return;
+      return false;
     }
+    // Destroy Select2 before relocating — moving an init'd widget opens at top-left.
+    aatDestroyMovedSelect2(\$block);
     var \$anchor = \$form.find('.card-footer, .form-buttons, button[type="submit"], input[type="submit"]').first();
     if (\$anchor.length) {
       \$block.insertBefore(\$anchor.closest('.card-footer, .form-buttons, .row, div').length
@@ -111,12 +124,32 @@ $(function () {
     if (!\$form.find('input[name="_aat_container_field"]').length) {
       \$form.append($('<input>', { type: 'hidden', name: '_aat_container_field', value: '1' }));
     }
+    return true;
   }
 
-  aatMoveContainerIntoForm();
+  function aatAfterMoveRefresh() {
+    var loc = $('select[name="locations_id"]').filter(':visible').last().val()
+      || $('input[name="locations_id"]').last().val()
+      || 0;
+    if (typeof window.aatRefreshContainerDropdown === 'function') {
+      window.aatRefreshContainerDropdown(loc, true);
+    }
+  }
+
+  if (aatMoveContainerIntoForm()) {
+    aatAfterMoveRefresh();
+  }
   // Twig forms may finish rendering slightly later.
-  setTimeout(aatMoveContainerIntoForm, 100);
-  setTimeout(aatMoveContainerIntoForm, 400);
+  setTimeout(function () {
+    if (aatMoveContainerIntoForm()) {
+      aatAfterMoveRefresh();
+    }
+  }, 100);
+  setTimeout(function () {
+    if (aatMoveContainerIntoForm()) {
+      aatAfterMoveRefresh();
+    }
+  }, 400);
 });
 JS);
     }

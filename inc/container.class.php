@@ -447,17 +447,14 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 $(function () {
   if (window.aatPluginContainerLocBound) { return; }
   window.aatPluginContainerLocBound = true;
+  // Only bind change (not select2:select too) — Select2 fires both and caused duplicate menus.
   $(document)
     .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
-    .on(
-      'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
-      'select[name="locations_id"]',
-      function () {
-        if (typeof window.aatRefreshContainerDropdown === 'function') {
-          window.aatRefreshContainerDropdown($(this).val(), false);
-        }
+    .on('change.aatLoc', 'select[name="locations_id"]', function () {
+      if (typeof window.aatRefreshContainerDropdown === 'function') {
+        window.aatRefreshContainerDropdown($(this).val(), false);
       }
-    );
+    });
 });
 JS);
             }
@@ -482,6 +479,21 @@ $(function () {
       $f = $('.aat-container-field').first();
     }
     return $f;
+  }
+
+  function aatDestroyContainerSelect2($root) {
+    if (!$root || !$root.length) {
+      return;
+    }
+    $root.find('select').each(function () {
+      var $s = $(this);
+      if ($s.hasClass('select2-hidden-accessible')) {
+        try { $s.select2('destroy'); } catch (e) {}
+      }
+    });
+    // Orphaned open menus (often stuck at top-left) after a replace without destroy.
+    $('body > .select2-container--open').remove();
+    $('body > .select2-dropdown').remove();
   }
 
   function aatRunScripts($root) {
@@ -509,6 +521,12 @@ $(function () {
       ) || 0;
     }
     var width = $field.attr('data-aat-width') || '220px';
+    window.aatContainerRefreshSeq = (window.aatContainerRefreshSeq || 0) + 1;
+    var seq = window.aatContainerRefreshSeq;
+
+    // Tear down current Select2 before replacing HTML (prevents duplicate / top-left menus).
+    aatDestroyContainerSelect2($field);
+
     $.ajax({
       url: __AJAX__,
       data: {
@@ -519,7 +537,10 @@ $(function () {
       },
       dataType: 'html'
     }).done(function (html) {
-      // Keep markup; run scripts so Select2 + add modal re-init.
+      if (seq !== window.aatContainerRefreshSeq) {
+        return; // stale response — a newer refresh already started
+      }
+      aatDestroyContainerSelect2($field);
       var $tmp = $('<div/>').append($.parseHTML(html, document, true));
       $field.empty().append($tmp.contents());
       aatRunScripts($field);
@@ -552,13 +573,9 @@ $(function () {
       window.aatPluginContainerLocBound = true;
       $(document)
         .off('change.aatLoc select2:select.aatLoc select2:clear.aatLoc')
-        .on(
-          'change.aatLoc select2:select.aatLoc select2:clear.aatLoc',
-          'select[name="locations_id"]',
-          function () {
-            window.aatRefreshContainerDropdown($(this).val(), false);
-          }
-        );
+        .on('change.aatLoc', 'select[name="locations_id"]', function () {
+          window.aatRefreshContainerDropdown($(this).val(), false);
+        });
     }
   }
 });

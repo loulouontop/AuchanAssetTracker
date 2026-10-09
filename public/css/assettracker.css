@@ -49,6 +49,20 @@
   max-width: 100%;
 }
 
+/* Keep container Select2 results anchored under the field (not top-left orphans). */
+.aat-container-field {
+  position: relative;
+}
+
+.aat-container-field .select2-container {
+  z-index: 1;
+}
+
+/* Recipient user: no Select2 clear (X) — match native GLPI users dropdown. */
+.aat-recipient-user + .select2-container .select2-selection__clear {
+  display: none !important;
+}
+
 /*
  * Contents tab: keep Search / Sort on the left and map→download actions
  * on the top-right (native GLPI search-header layout breaks inside tabs
