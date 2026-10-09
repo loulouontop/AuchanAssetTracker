@@ -69,6 +69,18 @@ select.aat-recipient-user.aat-recipient-pending {
   min-height: 38px;
 }
 
+/* Physical container: same native ----- flash while CommonDropdown Select2 inits / reloads. */
+.aat-container-dropdown select:not(.select2-hidden-accessible),
+.aat-container-field.aat-container-pending select {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  min-height: 38px;
+}
+
+.aat-container-field.aat-container-pending {
+  min-height: 38px;
+}
+
 /*
  * Contents tab: keep Search / Sort on the left and map→download actions
  * on the top-right (native GLPI search-header layout breaks inside tabs
