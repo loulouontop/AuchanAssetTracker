@@ -458,14 +458,21 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $input['plugin_auchanassettracker_manufacturers_id'] = 0;
         $input['serial'] = $serial !== '' ? $serial : null;
         $input['is_deleted'] = 0;
-        $input['entities_id'] = $input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0);
+        $input['entities_id'] = (int) ($input['entities_id'] ?? ($_SESSION['glpiactive_entity'] ?? 0));
+        $input['is_recursive'] = isset($input['is_recursive']) ? (int) (bool) $input['is_recursive'] : 0;
 
         // Optional display name — never prefix with asset type.
         $input['name'] = trim((string) ($input['name'] ?? ''));
 
+        $keep_dates = !empty($input['_aat_keep_dates']);
+        unset($input['_aat_keep_dates']);
         $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
-        $input['date_creation'] = $now;
-        $input['date_mod'] = $now;
+        if (!$keep_dates || empty($input['date_creation'])) {
+            $input['date_creation'] = $now;
+        }
+        if (!$keep_dates || empty($input['date_mod'])) {
+            $input['date_mod'] = $now;
+        }
 
         return $input;
     }
@@ -535,6 +542,13 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             if (!in_array((string) $input['status'], $allowed, true)) {
                 $input['status'] = $current_status;
             }
+        }
+
+        if (isset($input['is_recursive'])) {
+            $input['is_recursive'] = (int) (bool) $input['is_recursive'];
+        }
+        if (isset($input['entities_id'])) {
+            $input['entities_id'] = (int) $input['entities_id'];
         }
 
         $input['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
@@ -961,6 +975,9 @@ JS);
             'is_deleted'       => 0,
             'is_template'      => 0,
         ];
+        if ($asset->isField('is_recursive')) {
+            $input['is_recursive'] = (int) ($fields['is_recursive'] ?? 0);
+        }
 
         if ($asset->isField('states_id')) {
             $states_id = self::resolveGlpiStateIdForStatus(
@@ -1660,6 +1677,9 @@ JS);
                 'notes'            => $notes,
                 'plugin_auchanassettracker_containers_id' => $next_container,
             ];
+            if ($DB->fieldExists(self::getTable(), 'is_recursive')) {
+                $fields['is_recursive'] = (int) ($asset->fields['is_recursive'] ?? $existing['is_recursive'] ?? 0);
+            }
 
             $changed = false;
             foreach ($fields as $key => $val) {
@@ -1671,7 +1691,8 @@ JS);
             }
 
             if ($changed) {
-                $fields['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+                // Keep existing date_mod — background sync must not rise to top of "Last update".
+                unset($fields['date_mod']);
                 // Silent write — no CommonDBTM success / validation flash for background sync.
                 $DB->update(self::getTable(), $fields, ['id' => $id]);
             }
@@ -1683,6 +1704,10 @@ JS);
         if ($cid > 0 && $locations_id > 0 && !self::containerBelongsToLocation($cid, $locations_id)) {
             $cid = 0;
         }
+
+        // Prefer native asset timestamps so imports don't look freshly updated.
+        $asset_mod = trim((string) ($asset->fields['date_mod'] ?? ''));
+        $asset_created = trim((string) ($asset->fields['date_creation'] ?? ''));
 
         // Background import: suppress “Item successfully added” noise from CommonDBTM.
         $new_id = $eq->add([
@@ -1697,9 +1722,13 @@ JS);
             'users_id'         => $users_id,
             'status'           => $status,
             'entities_id'      => $entities_id,
+            'is_recursive'     => (int) ($asset->fields['is_recursive'] ?? 0),
             'notes'            => $notes,
             'plugin_auchanassettracker_containers_id' => $cid,
+            'date_creation'    => $asset_created !== '' ? $asset_created : null,
+            'date_mod'         => $asset_mod !== '' ? $asset_mod : null,
             '_aat_from_glpi'   => 1,
+            '_aat_keep_dates'  => 1,
             '_no_message'      => true,
             '_disablenotif'    => true,
         ]);

@@ -299,6 +299,7 @@ function plugin_auchanassettracker_ensure_schema(): void
             'manufacturers_id' => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'models_id'        => 'INT UNSIGNED NOT NULL DEFAULT 0',
             'users_id'         => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'is_recursive'     => 'TINYINT(1) NOT NULL DEFAULT 0',
         ];
 
         foreach ($columns as $name => $definition) {
@@ -313,6 +314,20 @@ function plugin_auchanassettracker_ensure_schema(): void
                 if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
                     throw $e;
                 }
+            }
+        }
+    }
+
+    $containers = 'glpi_plugin_auchanassettracker_containers';
+    if ($DB->tableExists($containers) && !$DB->fieldExists($containers, 'is_recursive')) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$containers` ADD `is_recursive` TINYINT(1) NOT NULL DEFAULT 0"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
             }
         }
     }

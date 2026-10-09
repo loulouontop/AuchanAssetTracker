@@ -63,6 +63,12 @@
   display: none !important;
 }
 
+/* Hide raw <select> until Select2 binds (avoids native ----- flash on refresh). */
+select.aat-recipient-user.aat-recipient-pending {
+  visibility: hidden;
+  min-height: 38px;
+}
+
 /*
  * Contents tab: keep Search / Sort on the left and map→download actions
  * on the top-right (native GLPI search-header layout breaks inside tabs

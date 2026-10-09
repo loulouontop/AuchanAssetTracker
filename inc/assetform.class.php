@@ -85,14 +85,15 @@ class PluginAuchanassettrackerAssetform
         echo Html::scriptBlock(<<<JS
 $(function () {
   function aatDestroyMovedSelect2(\$root) {
+    // Scope to the container block only — never strip Location/other body Select2 menus.
     \$root.find('select').each(function () {
       var \$s = $(this);
       if (\$s.hasClass('select2-hidden-accessible')) {
-        try { \$s.select2('destroy'); } catch (e) {}
+        try { \$s.select2('close'); } catch (e) {}
+        try { \$s.select2('destroy'); } catch (e2) {}
       }
     });
-    $('body > .select2-container--open').remove();
-    $('body > .select2-dropdown').remove();
+    \$root.find('.select2-container').remove();
   }
 
   function aatMoveContainerIntoForm() {
