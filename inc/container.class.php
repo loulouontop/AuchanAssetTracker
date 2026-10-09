@@ -518,22 +518,6 @@ $(function () {
     });
   }
 
-  function aatMarkContainerReady($field) {
-    if (!$field || !$field.length) {
-      return;
-    }
-    // Drop pending once Select2 has replaced the native <select>.
-    if ($field.find('select.select2-hidden-accessible').length
-        || !$field.find('select').length) {
-      $field.removeClass('aat-container-pending');
-      return;
-    }
-    // GLPI init can be a tick later after globalEval.
-    setTimeout(function () {
-      $field.removeClass('aat-container-pending');
-    }, 50);
-  }
-
   window.aatRefreshContainerDropdown = function (locId, keepValue, preferId) {
     var $field = aatContainerField();
     if (!$field.length) {
@@ -553,11 +537,8 @@ $(function () {
     window.aatContainerRefreshSeq = (window.aatContainerRefreshSeq || 0) + 1;
     var seq = window.aatContainerRefreshSeq;
 
-    // Hide native ----- menu while Select2 is torn down / rebuilt.
-    $field.addClass('aat-container-pending');
-
-    // Tear down current Select2 before replacing HTML (prevents duplicate / top-left menus).
-    aatDestroyContainerSelect2($field);
+    // Keep the current Select2 visible while loading — no blank/disappear gap.
+    $field.addClass('aat-container-loading');
 
     $.ajax({
       url: __AJAX__,
@@ -572,14 +553,15 @@ $(function () {
       if (seq !== window.aatContainerRefreshSeq) {
         return; // stale response — a newer refresh already started
       }
+      // Atomic swap only after HTML is ready (avoids disappear-then-comeback).
       aatDestroyContainerSelect2($field);
       var $tmp = $('<div/>').append($.parseHTML(html, document, true));
       $field.empty().append($tmp.contents());
       aatRunScripts($field);
-      aatMarkContainerReady($field);
+      $field.removeClass('aat-container-loading');
     }).fail(function () {
       if (seq === window.aatContainerRefreshSeq) {
-        $field.removeClass('aat-container-pending');
+        $field.removeClass('aat-container-loading');
       }
     });
   };
