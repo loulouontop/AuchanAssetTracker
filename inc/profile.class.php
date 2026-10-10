@@ -421,14 +421,14 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             ]);
         }
 
-        // Role + Location: title only once (same grey fs-4 bar as matrix), dropdowns left-aligned.
-        echo "<table class='tab_cadre_fixe aat-profile-meta-table'>";
-
-        echo "<tr class='border-top'><th colspan='1'>"
+        // Same wrapper/title markup as components/checkbox_matrix.html.twig.
+        echo "<div class='mb-4 table-responsive aat-profile-meta'>";
+        echo "<table class='table table-hover card-table'>";
+        echo "<thead><tr class='border-top'><th colspan='1' class=''>"
             . "<span class='fs-4'>"
             . Html::entities_deep(__('Role', 'auchanassettracker'))
-            . "</span></th></tr>";
-        echo "<tr class='tab_bg_1'><td class='aat-profile-meta-cell'>";
+            . "</span></th></tr></thead>";
+        echo "<tbody><tr><td class='aat-profile-meta-cell'>";
         echo "<div class='aat-profile-field'>";
         if ($canedit) {
             Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
@@ -439,13 +439,16 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $roles = PluginAuchanassettrackerRighthelper::getRoles();
             echo Html::entities_deep($roles[$role] ?? $role);
         }
-        echo "</div></td></tr>";
+        echo "</div></td></tr></tbody>";
+        echo "</table></div>";
 
-        echo "<tr class='border-top'><th colspan='1'>"
+        echo "<div class='mb-4 table-responsive aat-profile-meta'>";
+        echo "<table class='table table-hover card-table'>";
+        echo "<thead><tr class='border-top'><th colspan='1' class=''>"
             . "<span class='fs-4'>"
             . Html::entities_deep(__('Location', 'auchanassettracker'))
-            . "</span></th></tr>";
-        echo "<tr class='tab_bg_1'><td class='aat-profile-meta-cell'>";
+            . "</span></th></tr></thead>";
+        echo "<tbody><tr><td class='aat-profile-meta-cell'>";
         echo "<div class='aat-profile-field aat-profile-location-field'>";
         if ($canedit) {
             Location::dropdown([
@@ -465,9 +468,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'auchanassettracker'
             ))
             . "</div>";
-        echo "</td></tr>";
-
-        echo "</table>";
+        echo "</td></tr></tbody>";
+        echo "</table></div>";
 
         if ($canedit) {
             echo "<div class='center my-2'>";
