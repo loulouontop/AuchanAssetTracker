@@ -7,6 +7,9 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 {
     public static $rightname = 'plugin_auchanassettracker_equipment';
 
+    /** Enable GLPI History (Log) tab. */
+    public $dohistory = true;
+
     public const STATUS_AVAILABLE           = 'available';
     public const STATUS_AWAITING_VALIDATION = 'awaiting_validation';
     public const STATUS_ALLOCATED           = 'allocated';
@@ -101,6 +104,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         $ong = [];
         $this->addDefaultFormTab($ong);
         $this->addStandardTab(__CLASS__, $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
         return $ong;
     }
 
@@ -134,7 +139,12 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             $status = (string) ($item->fields['status'] ?? '');
             if (self::isFinalStatus($status)
                 && PluginAuchanassettrackerRighthelper::canChangeFinalStatus()) {
-                return __('Reintroduce into stock', 'auchanassettracker');
+                return self::createTabEntry(
+                    __('Reintroduce into stock', 'auchanassettracker'),
+                    0,
+                    $item->getType(),
+                    'ti ti-refresh'
+                );
             }
             if (PluginAuchanassettrackerRighthelper::canWriteOff()
                 && !self::isFinalStatus($status)
@@ -142,7 +152,12 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                     self::STATUS_IN_TRANSIT,
                     self::STATUS_AWAITING_VALIDATION,
                 ], true)) {
-                return __('Write-off / Lost / Stolen', 'auchanassettracker');
+                return self::createTabEntry(
+                    __('Write-off / Lost / Stolen', 'auchanassettracker'),
+                    0,
+                    $item->getType(),
+                    'ti ti-trash'
+                );
             }
         }
 
@@ -173,6 +188,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
         $status = (string) ($this->fields['status'] ?? '');
         $base = plugin_auchanassettracker_web_dir();
+        $req = " <span class='aat-required'>*</span>";
 
         if (PluginAuchanassettrackerRighthelper::canWriteOff()
             && !self::isFinalStatus($status)
@@ -184,9 +200,13 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 __('Write-off / Lost / Stolen', 'auchanassettracker'),
                 'ti ti-trash'
             );
-            echo "<form method='post' action='" . Html::entities_deep($base . '/front/equipment.form.php') . "'>";
+            if (method_exists(Html::class, 'requireJs')) {
+                Html::requireJs('fileupload');
+            }
+            echo "<form method='post' enctype='multipart/form-data' action='"
+                . Html::entities_deep($base . '/front/equipment.form.php') . "'>";
             echo Html::hidden('id', ['value' => $id]);
-            echo "<div class='mb-3'><label class='form-label'>" . __('Action') . "</label>";
+            echo "<div class='mb-3'><label class='form-label'>" . __('Action') . $req . "</label>";
             Dropdown::showFromArray('final_status', [
                 self::STATUS_WRITTEN_OFF => __('Written off', 'auchanassettracker'),
                 self::STATUS_LOST        => __('Lost', 'auchanassettracker'),
@@ -194,18 +214,24 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             ]);
             echo "</div>";
             echo "<div class='mb-3'><label class='form-label'>"
-                . __('Reason', 'auchanassettracker') . " *</label>";
+                . __('Reason', 'auchanassettracker') . $req . "</label>";
             echo "<textarea name='final_reason' class='form-control' required rows='3'></textarea></div>";
             echo "<div class='mb-3'><label class='form-label'>"
-                . __('Document (optional)', 'auchanassettracker') . "</label>";
-            echo Html::input('final_document', ['value' => '', 'class' => 'form-control']);
-            echo "</div><div class='text-center'>";
-            echo Html::submit(__('Apply', 'auchanassettracker'), [
-                'name'  => 'mark_final',
-                'class' => 'btn btn-warning',
+                . __('Document', 'auchanassettracker') . "</label>";
+            Html::file([
+                'name'       => 'filename',
+                'multiple'   => true,
+                'showtitle'  => true,
+                'display'    => true,
             ]);
             echo "</div>";
-            Html::closeForm();
+            echo "<div class='form-button-separator card-body mx-n2 mb-n2 border-top"
+                . " d-flex flex-row-reverse align-items-center flex-wrap gap-2'>";
+            echo "<button class='btn btn-primary me-2' type='submit' name='mark_final' value='1'>";
+            echo "<i class='ti ti-device-floppy'></i> ";
+            echo "<span>" . Html::entities_deep(_sx('button', 'Save')) . "</span>";
+            echo "</button></div>";
+            echo "</form>";
             PluginAuchanassettrackerMenu::endNativeFormCard();
         }
 
@@ -218,7 +244,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             echo "<form method='post' action='" . Html::entities_deep($base . '/front/equipment.form.php') . "'>";
             echo Html::hidden('id', ['value' => $id]);
             echo "<div class='mb-3'><label class='form-label'>"
-                . __('Container', 'auchanassettracker') . " *</label>";
+                . __('Container', 'auchanassettracker') . $req . "</label>";
             echo "<span class='aat-container-field' data-aat-width='220px'>";
             PluginAuchanassettrackerContainer::dropdownWithActions([
                 'name'      => 'plugin_auchanassettracker_containers_id',
@@ -229,13 +255,14 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
                 ],
                 'width' => '220px',
             ]);
-            echo "</span></div><div class='text-center'>";
-            echo Html::submit(__('Reintroduce', 'auchanassettracker'), [
-                'name'  => 'reintroduce',
-                'class' => 'btn btn-primary',
-            ]);
-            echo "</div>";
-            Html::closeForm();
+            echo "</span></div>";
+            echo "<div class='form-button-separator card-body mx-n2 mb-n2 border-top"
+                . " d-flex flex-row-reverse align-items-center flex-wrap gap-2'>";
+            echo "<button class='btn btn-primary me-2' type='submit' name='reintroduce' value='1'>";
+            echo "<i class='ti ti-device-floppy'></i> ";
+            echo "<span>" . Html::entities_deep(_sx('button', 'Save')) . "</span>";
+            echo "</button></div>";
+            echo "</form>";
             PluginAuchanassettrackerMenu::endNativeFormCard();
         }
     }
@@ -660,12 +687,25 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
 
         // Preserve workflow status unless the caller explicitly changes it.
+        $mark_final = !empty($input['_aat_mark_final']);
+        unset($input['_aat_mark_final']);
         if (!isset($input['status'])) {
             unset($input['status']);
         } else {
             $allowed = array_keys(self::getStatuses());
             if (!in_array((string) $input['status'], $allowed, true)) {
                 $input['status'] = $current_status;
+            }
+            // Final statuses only via write-off tab; leave final only via reintroduce (manager).
+            if (!$mark_final) {
+                if (self::isFinalStatus($new_status) && !self::isFinalStatus($current_status)) {
+                    $input['status'] = $current_status;
+                } elseif (self::isFinalStatus($current_status) && $new_status !== $current_status) {
+                    if (!PluginAuchanassettrackerRighthelper::canChangeFinalStatus()
+                        || $new_status !== self::STATUS_AVAILABLE) {
+                        $input['status'] = $current_status;
+                    }
+                }
             }
         }
 
@@ -2067,6 +2107,7 @@ JS);
             'final_document'                      => $document,
             'final_users_id'                      => (int) Session::getLoginUserID(),
             'final_date'                          => $now,
+            '_aat_mark_final'                     => 1,
         ]);
 
         if ($ok) {
@@ -2078,6 +2119,97 @@ JS);
             );
         }
         return $ok;
+    }
+
+    /**
+     * Attach uploaded files (Html::file) to this equipment after write-off.
+     *
+     * @return list<string> document names attached
+     */
+    public function attachUploadedDocuments(array $post): array
+    {
+        $names = [];
+        if (empty($post['_filename']) || !is_array($post['_filename'])) {
+            return $names;
+        }
+        if (!method_exists($this, 'addFiles')) {
+            return $names;
+        }
+        $this->getFromDB($this->getID());
+        $this->addFiles($post);
+        if (!$this->getFromDB($this->getID())) {
+            return $names;
+        }
+        // Collect linked document names for final_document summary.
+        global $DB;
+        if (!$DB->tableExists('glpi_documents_items') || !$DB->tableExists('glpi_documents')) {
+            return $names;
+        }
+        foreach ($DB->request([
+            'SELECT' => ['glpi_documents.name', 'glpi_documents.filename'],
+            'FROM'   => 'glpi_documents_items',
+            'INNER JOIN' => [
+                'glpi_documents' => [
+                    'ON' => [
+                        'glpi_documents' => 'id',
+                        'glpi_documents_items' => 'documents_id',
+                    ],
+                ],
+            ],
+            'WHERE' => [
+                'glpi_documents_items.itemtype' => self::class,
+                'glpi_documents_items.items_id' => (int) $this->getID(),
+            ],
+            'ORDER' => 'glpi_documents_items.id DESC',
+            'LIMIT' => 5,
+        ]) as $row) {
+            $label = trim((string) ($row['name'] ?? ''));
+            if ($label === '') {
+                $label = trim((string) ($row['filename'] ?? ''));
+            }
+            if ($label !== '') {
+                $names[] = $label;
+            }
+        }
+        return $names;
+    }
+
+    /**
+     * Equipment at a GLPI Location (search list).
+     */
+    public static function showForLocation(Location $location): bool
+    {
+        $id = (int) $location->getID();
+        if ($id <= 0) {
+            return false;
+        }
+
+        echo "<div class='spaced aat-location-contents'>";
+        $params = [
+            'reset'              => 'reset',
+            'usesession'         => false,
+            'is_deleted'         => 0,
+            'sort'               => 1,
+            'order'              => 'ASC',
+            'showmassiveactions' => true,
+            'criteria'           => [
+                [
+                    'link'       => 'AND',
+                    'field'      => 5, // Location
+                    'searchtype' => 'equals',
+                    'value'      => $id,
+                ],
+            ],
+        ];
+        if (class_exists(\Glpi\Search\SearchEngine::class)
+            && method_exists(\Glpi\Search\SearchEngine::class, 'showList')
+        ) {
+            \Glpi\Search\SearchEngine::showList(self::class, $params);
+        } else {
+            Search::showList(self::class, $params);
+        }
+        echo '</div>';
+        return true;
     }
 
     /**

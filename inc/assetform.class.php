@@ -75,6 +75,109 @@ class PluginAuchanassettrackerAssetform
         echo '</div></div></div></div>';
 
         self::scriptEnsureInsideForm();
+        self::lockFinalStatusDropdown($item);
+    }
+
+    /**
+     * When linked plugin equipment is written off / lost / stolen, lock native states_id
+     * until a manager reintroduces it.
+     */
+    public static function lockFinalStatusDropdown(CommonDBTM $item): void
+    {
+        if ($item->isNewItem()) {
+            return;
+        }
+        $eq = PluginAuchanassettrackerEquipment::findByGlpiAsset(
+            $item->getType(),
+            (int) $item->getID()
+        );
+        if ($eq === null) {
+            return;
+        }
+        $status = (string) ($eq['status'] ?? '');
+        if (!PluginAuchanassettrackerEquipment::isFinalStatus($status)) {
+            return;
+        }
+
+        $label = PluginAuchanassettrackerEquipment::getStatusLabel($status);
+        echo "<div class='alert alert-secondary aat-final-status-lock mt-2 mb-0'>";
+        echo Html::entities_deep(sprintf(
+            __('Status is locked to “%s”. Only a manager can reintroduce this item into stock.', 'auchanassettracker'),
+            $label
+        ));
+        echo '</div>';
+
+        $states_id = (int) ($item->fields['states_id'] ?? 0);
+        echo Html::scriptBlock(<<<JS
+$(function () {
+  var lockedId = {$states_id};
+  function aatLockStates() {
+    var \$sel = $('select[name="states_id"]').filter(':visible').last();
+    if (!\$sel.length) {
+      \$sel = $('select[name="states_id"]').last();
+    }
+    if (!\$sel.length) {
+      return;
+    }
+    if (lockedId > 0) {
+      \$sel.val(String(lockedId)).trigger('change');
+    }
+    \$sel.prop('disabled', true);
+    if (\$sel.hasClass('select2-hidden-accessible')) {
+      try { \$sel.select2({ disabled: true }); } catch (e) {}
+    }
+    var \$form = \$sel.closest('form');
+    if (\$form.length && !\$form.find('input[name="states_id"][type="hidden"].aat-locked-state').length) {
+      \$form.append($('<input>', {
+        type: 'hidden',
+        name: 'states_id',
+        value: lockedId > 0 ? lockedId : \$sel.val(),
+        'class': 'aat-locked-state'
+      }));
+    }
+  }
+  aatLockStates();
+  setTimeout(aatLockStates, 200);
+  setTimeout(aatLockStates, 600);
+});
+JS
+        );
+    }
+
+    /**
+     * Keep write-off / lost / stolen states_id locked on native asset save.
+     */
+    public static function preItemUpdate(CommonDBTM $item): bool
+    {
+        if (PluginAuchanassettrackerEquipment::isNativeHookSuppressed()) {
+            return true;
+        }
+        if (!isset($item->input['states_id'])) {
+            return true;
+        }
+
+        $eq = PluginAuchanassettrackerEquipment::findByGlpiAsset(
+            $item->getType(),
+            (int) $item->getID()
+        );
+        if ($eq === null) {
+            return true;
+        }
+        $status = (string) ($eq['status'] ?? '');
+        if (!PluginAuchanassettrackerEquipment::isFinalStatus($status)) {
+            return true;
+        }
+
+        $locked = PluginAuchanassettrackerEquipment::resolveGlpiStateIdForStatus($status);
+        if ($locked > 0 && (int) $item->input['states_id'] !== $locked) {
+            $item->input['states_id'] = $locked;
+            Session::addMessageAfterRedirect(
+                __('Status is locked until a manager reintroduces this item into stock.', 'auchanassettracker'),
+                true,
+                WARNING
+            );
+        }
+        return true;
     }
 
     /**
