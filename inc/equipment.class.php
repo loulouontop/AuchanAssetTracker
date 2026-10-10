@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerEquipment extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_equipment';
 
     public const STATUS_AVAILABLE           = 'available';
     public const STATUS_AWAITING_VALIDATION = 'awaiting_validation';
@@ -1222,50 +1222,74 @@ JS);
 
     public function canViewItem(): bool
     {
-        $role = PluginAuchanassettrackerRighthelper::getCurrentRole();
-        if ($role === PluginAuchanassettrackerRighthelper::ROLE_USER) {
-            return (int) ($this->fields['users_id'] ?? 0) === (int) Session::getLoginUserID();
+        if (!self::canView()) {
+            return false;
         }
+        $uid = (int) Session::getLoginUserID();
+        $owner = (int) ($this->fields['users_id'] ?? 0);
         $loc = (int) ($this->fields['locations_id'] ?? 0);
-        return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
+
+        if (Session::haveRight(self::$rightname, READ)) {
+            return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
+        }
+        if (Session::haveRight(self::$rightname, READ_OWNED) && $owner === $uid && $uid > 0) {
+            return true;
+        }
+        if (Session::haveRight(self::$rightname, READ_ASSIGNED)
+            && $owner === $uid
+            && PluginAuchanassettrackerRighthelper::canAccessLocation($loc)) {
+            return true;
+        }
+        return false;
     }
 
     public function canUpdateItem(): bool
     {
-        if (!PluginAuchanassettrackerRighthelper::canManageStock()
-            && !PluginAuchanassettrackerRighthelper::canAllocate()
-            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+        if (!self::canUpdate()) {
             return false;
         }
-        return PluginAuchanassettrackerRighthelper::canAccessLocation(
-            (int) ($this->fields['locations_id'] ?? 0)
-        );
+        $uid = (int) Session::getLoginUserID();
+        $owner = (int) ($this->fields['users_id'] ?? 0);
+        $loc = (int) ($this->fields['locations_id'] ?? 0);
+
+        if (Session::haveRight(self::$rightname, UPDATE)) {
+            return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
+        }
+        if (Session::haveRight(self::$rightname, UPDATE_OWNED) && $owner === $uid && $uid > 0) {
+            return true;
+        }
+        if (Session::haveRight(self::$rightname, UPDATE_ASSIGNED)
+            && PluginAuchanassettrackerRighthelper::canAccessLocation($loc)) {
+            return true;
+        }
+        return false;
     }
 
     public function canCreateItem(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canManageStock()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return self::canCreate();
     }
 
     public static function canCreate(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return Session::haveRight(self::$rightname, CREATE);
     }
 
     public static function canView(): bool
     {
-        return (bool) Session::getLoginUserID();
+        return PluginAuchanassettrackerRighthelper::canSeeEquipment();
     }
 
     public static function canUpdate(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::canAllocate()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return PluginAuchanassettrackerRighthelper::haveAnyRight(self::$rightname, [
+            UPDATE, UPDATE_ASSIGNED, UPDATE_OWNED,
+        ]);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
     public function delete(array $input, $force = 0, $history = 1)

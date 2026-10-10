@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerAllocation extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_allocation';
 
     public const STATUS_PENDING   = 'pending';
     public const STATUS_CONFIRMED = 'confirmed';
@@ -46,13 +46,17 @@ class PluginAuchanassettrackerAllocation extends CommonDBTM
 
     public static function canView(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canAllocate()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return PluginAuchanassettrackerRighthelper::canAllocate();
     }
 
     public static function canCreate(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canAllocate();
+        return Session::haveRight(self::$rightname, CREATE);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
     public function canCreateItem(): bool
@@ -829,30 +833,54 @@ JS);
     {
         global $DB;
 
-        if (!$DB->tableExists(PluginAuchanassettrackerProfile::getTable())
-            || !$DB->tableExists('glpi_profiles_users')) {
+        if (!$DB->tableExists('glpi_profiles_users')) {
             return [];
         }
 
-        $profile_ids = [];
-        foreach ($DB->request([
-            'FROM'  => PluginAuchanassettrackerProfile::getTable(),
-            'WHERE' => [
-                'role' => [
-                    PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN,
-                    PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER,
-                ],
-            ],
-        ]) as $row) {
-            $role = (string) ($row['role'] ?? '');
-            $loc  = (int) ($row['locations_id'] ?? 0);
-            if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
-                $profile_ids[(int) $row['profiles_id']] = true;
-                continue;
+        // Profiles that can manage stock / see allocation alerts (equipment UPDATE or CREATE).
+        $profile_ids = PluginAuchanassettrackerProfile::getProfileIdsWithRights(
+            [PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT],
+            UPDATE
+        );
+        $create_ids = PluginAuchanassettrackerProfile::getProfileIdsWithRights(
+            [PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT],
+            CREATE
+        );
+        $profile_ids = array_values(array_unique(array_merge($profile_ids, $create_ids)));
+
+        if ($profile_ids === []) {
+            return [];
+        }
+
+        // Optional location filter via plugin mapping table.
+        if ($locations_id !== null
+            && $DB->tableExists(PluginAuchanassettrackerProfile::getTable())) {
+            $scoped = [];
+            foreach ($DB->request([
+                'FROM'  => PluginAuchanassettrackerProfile::getTable(),
+                'WHERE' => ['profiles_id' => $profile_ids],
+            ]) as $row) {
+                $pid = (int) ($row['profiles_id'] ?? 0);
+                $loc = (int) ($row['locations_id'] ?? 0);
+                if ($loc === 0 || $loc === $locations_id) {
+                    $scoped[$pid] = true;
+                }
             }
-            if ($locations_id === null || $loc === 0 || $loc === $locations_id) {
-                $profile_ids[(int) $row['profiles_id']] = true;
+            // Profiles with rights but no mapping row: treat as all locations.
+            foreach ($profile_ids as $pid) {
+                $has_map = false;
+                foreach ($DB->request([
+                    'FROM'  => PluginAuchanassettrackerProfile::getTable(),
+                    'WHERE' => ['profiles_id' => $pid],
+                    'LIMIT' => 1,
+                ]) as $_) {
+                    $has_map = true;
+                }
+                if (!$has_map) {
+                    $scoped[$pid] = true;
+                }
             }
+            $profile_ids = array_keys($scoped);
         }
 
         if ($profile_ids === []) {
@@ -863,7 +891,7 @@ JS);
         foreach ($DB->request([
             'SELECT' => ['users_id'],
             'FROM'   => 'glpi_profiles_users',
-            'WHERE'  => ['profiles_id' => array_keys($profile_ids)],
+            'WHERE'  => ['profiles_id' => $profile_ids],
         ]) as $row) {
             $uid = (int) ($row['users_id'] ?? 0);
             if ($uid > 0) {

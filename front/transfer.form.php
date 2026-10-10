@@ -3,8 +3,7 @@
 include_once __DIR__ . '/_bootstrap.php';
 plugin_auchanassettracker_front_bootstrap();
 
-if (!PluginAuchanassettrackerRighthelper::canTransfer()
-    && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+if (!PluginAuchanassettrackerRighthelper::canTransfer()) {
     Html::header(
         __('Transfer', 'auchanassettracker'),
         $_SERVER['PHP_SELF'],

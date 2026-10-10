@@ -5,7 +5,7 @@ plugin_auchanassettracker_front_bootstrap();
 
 $item = new PluginAuchanassettrackerConfig();
 
-if (!PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+if (!PluginAuchanassettrackerRighthelper::canConfigure()) {
     Html::displayRightError();
     exit;
 }

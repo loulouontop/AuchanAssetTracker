@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.3.0 (Sprint 3)  
+**Version:** 0.3.1 (Sprint 3)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -31,12 +31,18 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 - Write-off / Lost / Stolen (reason required; only Central Admin can reintroduce)
 - Alert thresholds: allocation / transfer / service days
 
+## Profile rights (GLPI-style)
+
+Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix (same columns as GLPI assets: View all, Update all, Create, Delete, Purge, notes, assigned, owned).  
+Unchecked rights **hide** the matching menu tab / add button — users never open a page only to see “no permission”.  
+Location scope (optional) is still saved under the matrix.
+
 ## Upgrade from Sprint 2
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.3.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds transfer tables and `final_*` / `service_*` columns), then updates `glpi_plugins.version`.
+2. Version becomes **0.3.1**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds transfer tables and `final_*` / `service_*` columns), migrates legacy roles into ProfileRights, then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
-4. Clear browser cache / GLPI cache if the menu does not refresh.
+4. Clear browser cache / GLPI cache if the menu does not refresh. Re-login (or switch profile) so session rights refresh.
 
 ## Requirements
 

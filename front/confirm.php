@@ -3,6 +3,11 @@
 include_once __DIR__ . '/_bootstrap.php';
 plugin_auchanassettracker_front_bootstrap();
 
+if (!PluginAuchanassettrackerRighthelper::canConfirm()) {
+    Html::displayRightError();
+    exit;
+}
+
 $item = new PluginAuchanassettrackerConfirm();
 $base = plugin_auchanassettracker_web_dir();
 

@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerTransfer extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_transfer';
 
     public const STATUS_IN_TRANSIT = 'in_transit';
     public const STATUS_COMPLETED  = 'completed';
@@ -39,6 +39,27 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
     public static function getFormURL($full = true): string
     {
         return plugin_auchanassettracker_web_dir($full) . '/front/transfer.form.php';
+    }
+
+    public static function canView(): bool
+    {
+        return PluginAuchanassettrackerRighthelper::canTransfer();
+    }
+
+    public static function canCreate(): bool
+    {
+        return Session::haveRight(self::$rightname, CREATE);
+    }
+
+    public static function canUpdate(): bool
+    {
+        return Session::haveRight(self::$rightname, UPDATE)
+            || Session::haveRight(self::$rightname, CREATE);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
     /**

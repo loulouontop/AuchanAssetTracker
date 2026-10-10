@@ -7,7 +7,7 @@
  */
 class PluginAuchanassettrackerBulk extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_bulk';
 
     public static function getTypeName($nb = 0): string
     {
@@ -121,34 +121,39 @@ class PluginAuchanassettrackerBulk extends CommonDBTM
 
     public function canCreateItem(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canManageStock()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return self::canCreate();
     }
 
     public static function canCreate(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return Session::haveRight(self::$rightname, CREATE);
     }
 
     public static function canView(): bool
     {
-        return (bool) Session::getLoginUserID();
+        return PluginAuchanassettrackerRighthelper::haveAnyRight(self::$rightname, [
+            READ, CREATE, UPDATE,
+        ]);
     }
 
     public static function canUpdate(): bool
     {
-        return self::canCreate();
+        return Session::haveRight(self::$rightname, UPDATE)
+            || Session::haveRight(self::$rightname, CREATE);
     }
 
     public function canUpdateItem(): bool
     {
-        return $this->canCreateItem();
+        return self::canUpdate();
     }
 
     public function canViewItem(): bool
     {
-        return true;
+        return self::canView();
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 }

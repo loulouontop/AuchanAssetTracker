@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerContainer extends CommonDropdown
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_container';
 
     public static function getTypeName($nb = 0): string
     {
@@ -658,36 +658,29 @@ JS
 
     public function canCreateItem(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canManageStock()
-            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return self::canCreate();
     }
 
     public static function canCreate(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return Session::haveRight(self::$rightname, CREATE);
     }
 
     public static function canView(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::canAllocate()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return PluginAuchanassettrackerRighthelper::canSeeContainers();
     }
 
     public static function canUpdate(): bool
     {
-        return (bool) Session::getLoginUserID()
-            && (PluginAuchanassettrackerRighthelper::canManageStock()
-                || PluginAuchanassettrackerRighthelper::isCentralAdmin());
+        return PluginAuchanassettrackerRighthelper::haveAnyRight(self::$rightname, [
+            UPDATE, UPDATE_ASSIGNED, UPDATE_OWNED,
+        ]);
     }
 
     public function canUpdateItem(): bool
     {
-        if (!PluginAuchanassettrackerRighthelper::canManageStock()
-            && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+        if (!self::canUpdate()) {
             return false;
         }
         $loc = (int) ($this->fields['locations_id'] ?? 0);
@@ -696,18 +689,29 @@ JS
 
     public function canPurgeItem(): bool
     {
-        return $this->canUpdateItem();
+        return Session::haveRight(self::$rightname, PURGE)
+            && PluginAuchanassettrackerRighthelper::canAccessLocation(
+                (int) ($this->fields['locations_id'] ?? 0)
+            );
     }
 
     public static function canPurge(): bool
     {
-        return self::canUpdate();
+        return Session::haveRight(self::$rightname, PURGE);
     }
 
     public function canViewItem(): bool
     {
+        if (!self::canView()) {
+            return false;
+        }
         $loc = (int) ($this->fields['locations_id'] ?? 0);
         return PluginAuchanassettrackerRighthelper::canAccessLocation($loc);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
     /**

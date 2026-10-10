@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerConfig extends CommonDBTM
 {
-    public static $rightname = 'config';
+    public static $rightname = 'plugin_auchanassettracker_config';
 
     public const KEY_ALLOC_DAYS    = 'allocation_confirm_days';
     public const KEY_TRANSFER_DAYS = 'transfer_validate_days';
@@ -49,17 +49,18 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
 
     public static function canView(): bool
     {
-        return PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        return PluginAuchanassettrackerRighthelper::canConfigure();
     }
 
     public static function canCreate(): bool
     {
-        return self::canView();
+        return Session::haveRight(self::$rightname, UPDATE)
+            || Session::haveRight(self::$rightname, CREATE);
     }
 
     public static function canUpdate(): bool
     {
-        return self::canView();
+        return Session::haveRight(self::$rightname, UPDATE);
     }
 
     public function canCreateItem(): bool

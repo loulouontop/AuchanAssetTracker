@@ -5,7 +5,7 @@
  */
 class PluginAuchanassettrackerConfirm extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_confirm';
 
     public static function getTypeName($nb = 0): string
     {
@@ -41,12 +41,18 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
 
     public static function canView(): bool
     {
-        return (bool) Session::getLoginUserID();
+        return PluginAuchanassettrackerRighthelper::canConfirm();
     }
 
     public static function canCreate(): bool
     {
-        return self::canView();
+        return Session::haveRight(self::$rightname, UPDATE)
+            || Session::haveRight(self::$rightname, CREATE);
+    }
+
+    public function getRights($interface = 'central')
+    {
+        return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
     public function canCreateItem(): bool

@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.3.0');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.3.1');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -127,6 +127,11 @@ function plugin_init_auchanassettracker(): void
         PluginAuchanassettrackerConfig::seedDefaults();
     }
 
+    // Register / migrate GLPI ProfileRight rows (idempotent; missing rows only).
+    if ($DB->tableExists('glpi_profilerights')) {
+        PluginAuchanassettrackerProfile::initProfile();
+    }
+
     // Top-level “Auchan Asset Tracker” menu (not under Assets).
     $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
     $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
@@ -167,7 +172,7 @@ function plugin_init_auchanassettracker(): void
         'postTicketUpdate',
     ];
 
-    if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+    if (PluginAuchanassettrackerRighthelper::canConfigure()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
 }

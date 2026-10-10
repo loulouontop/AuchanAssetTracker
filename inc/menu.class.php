@@ -2,7 +2,7 @@
 
 class PluginAuchanassettrackerMenu extends CommonGLPI
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_equipment';
 
     /** Top-level menu sector (not under Assets). */
     public const SECTOR = 'auchanassettracker';
@@ -78,34 +78,42 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         }
 
         $base = plugin_auchanassettracker_web_dir(true);
-        $can_stock = PluginAuchanassettrackerRighthelper::canManageStock();
-        $can_alloc = PluginAuchanassettrackerRighthelper::canAllocate();
-        $is_admin  = PluginAuchanassettrackerRighthelper::isCentralAdmin();
-
         $content = [];
 
-        if ($can_stock || $can_alloc || $is_admin) {
-            $content[self::MENU_EQUIPMENT] = [
+        // Hide tabs entirely when the profile has no related right (no "click then denied").
+        if (PluginAuchanassettrackerRighthelper::canSeeEquipment()) {
+            $eq = [
                 'title' => PluginAuchanassettrackerEquipment::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/equipment.php",
                 'icon'  => PluginAuchanassettrackerEquipment::getIcon(),
                 'links' => [
                     'search' => "$base/front/equipment.php",
-                    'add'    => "$base/front/equipment.form.php",
                 ],
             ];
-            $content[self::MENU_CONTAINER] = [
+            if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, CREATE)) {
+                $eq['links']['add'] = "$base/front/equipment.form.php";
+            }
+            $content[self::MENU_EQUIPMENT] = $eq;
+        }
+
+        if (PluginAuchanassettrackerRighthelper::canSeeContainers()) {
+            $ct = [
                 'title' => PluginAuchanassettrackerContainer::getTypeName(Session::getPluralNumber()),
                 'page'  => "$base/front/container.php",
                 'icon'  => PluginAuchanassettrackerContainer::getIcon(),
                 'links' => [
                     'search' => "$base/front/container.php",
-                    'add'    => "$base/front/container.form.php",
                 ],
             ];
+            if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONTAINER, CREATE)) {
+                $ct['links']['add'] = "$base/front/container.form.php";
+            }
+            $content[self::MENU_CONTAINER] = $ct;
         }
 
-        if ($can_stock) {
+        if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, READ)
+        ) {
             $content[self::MENU_BULK] = [
                 'title' => PluginAuchanassettrackerBulk::getTypeName(1),
                 'page'  => "$base/front/equipment.bulk.php",
@@ -113,7 +121,7 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             ];
         }
 
-        if ($can_alloc) {
+        if (PluginAuchanassettrackerRighthelper::canAllocate()) {
             $content[self::MENU_ALLOCATION] = [
                 'title' => __('New allocation', 'auchanassettracker'),
                 'page'  => "$base/front/allocation.form.php",
@@ -122,24 +130,29 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
         }
 
         if (PluginAuchanassettrackerRighthelper::canTransfer()) {
-            $content[self::MENU_TRANSFER] = [
+            $tr = [
                 'title' => __('Transfers', 'auchanassettracker'),
                 'page'  => "$base/front/transfer.php",
                 'icon'  => PluginAuchanassettrackerTransfer::getIcon(),
                 'links' => [
                     'search' => "$base/front/transfer.php",
-                    'add'    => "$base/front/transfer.form.php",
                 ],
+            ];
+            if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_TRANSFER, CREATE)) {
+                $tr['links']['add'] = "$base/front/transfer.form.php";
+            }
+            $content[self::MENU_TRANSFER] = $tr;
+        }
+
+        if (PluginAuchanassettrackerRighthelper::canConfirm()) {
+            $content[self::MENU_CONFIRM] = [
+                'title' => __('Confirm receipt', 'auchanassettracker'),
+                'page'  => "$base/front/confirm.php",
+                'icon'  => 'ti ti-check',
             ];
         }
 
-        $content[self::MENU_CONFIRM] = [
-            'title' => __('Confirm receipt', 'auchanassettracker'),
-            'page'  => "$base/front/confirm.php",
-            'icon'  => 'ti ti-check',
-        ];
-
-        if ($is_admin) {
+        if (PluginAuchanassettrackerRighthelper::canConfigure()) {
             $content[self::MENU_CONFIG] = [
                 'title' => __('Configuration', 'auchanassettracker'),
                 'page'  => "$base/front/config.form.php",
@@ -151,11 +164,13 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             return false;
         }
 
-        $default = "$base/front/confirm.php";
-        if ($can_alloc) {
-            $default = "$base/front/allocation.form.php";
-        } elseif ($can_stock) {
-            $default = "$base/front/equipment.php";
+        $default = reset($content)['page'] ?? "$base/front/confirm.php";
+        if (isset($content[self::MENU_EQUIPMENT])) {
+            $default = $content[self::MENU_EQUIPMENT]['page'];
+        } elseif (isset($content[self::MENU_ALLOCATION])) {
+            $default = $content[self::MENU_ALLOCATION]['page'];
+        } elseif (isset($content[self::MENU_CONFIRM])) {
+            $default = $content[self::MENU_CONFIRM]['page'];
         }
 
         return [

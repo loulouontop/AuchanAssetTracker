@@ -2,7 +2,7 @@
 
 class PluginAuchanassettrackerTransferitem extends CommonDBTM
 {
-    public static $rightname = 'plugin_auchanassettracker';
+    public static $rightname = 'plugin_auchanassettracker_transfer';
 
     public static function getTypeName($nb = 0): string
     {

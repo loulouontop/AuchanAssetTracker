@@ -1,13 +1,14 @@
 <?php
 
 /**
- * Role helpers: central_admin | location_manager | support_tech | user
+ * Rights + location scope helpers.
  *
- * When a GLPI profile is mapped in the plugin tab, that role wins —
- * including for Super-Admin mapped as End user.
+ * Capabilities come from GLPI ProfileRight bits (Session::haveRight).
+ * Optional location scope still lives in glpi_plugin_auchanassettracker_profiles.
  */
 class PluginAuchanassettrackerRighthelper
 {
+    /** @deprecated kept for locale / migration labels only */
     public const ROLE_CENTRAL_ADMIN     = 'central_admin';
     public const ROLE_LOCATION_MANAGER  = 'location_manager';
     public const ROLE_SUPPORT_TECH      = 'support_tech';
@@ -23,80 +24,140 @@ class PluginAuchanassettrackerRighthelper
         ];
     }
 
-    public static function getCurrentRole(): string
+    /**
+     * Any of the given rights bits on a module.
+     *
+     * @param list<int> $bits
+     */
+    public static function haveAnyRight(string $module, array $bits): bool
     {
-        $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
-        if ($mapping !== null) {
-            $role = (string) ($mapping['role'] ?? self::ROLE_USER);
-            if (isset(self::getRoles()[$role])) {
-                return $role;
+        foreach ($bits as $bit) {
+            if (Session::haveRight($module, $bit)) {
+                return true;
             }
-            return self::ROLE_USER;
         }
-
-        // No mapping: Super-Admin / config editors act as central admin.
-        if (Session::haveRight('config', UPDATE)) {
-            return self::ROLE_CENTRAL_ADMIN;
-        }
-
-        return self::ROLE_USER;
+        return false;
     }
 
-    public static function hasPluginProfileRow(): bool
+    public static function canSeeEquipment(): bool
     {
-        return PluginAuchanassettrackerProfile::getForCurrentProfile() !== null;
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, [
+            READ, READ_ASSIGNED, READ_OWNED,
+        ]);
     }
 
-    public static function isCentralAdmin(): bool
+    public static function canSeeContainers(): bool
     {
-        return self::getCurrentRole() === self::ROLE_CENTRAL_ADMIN;
-    }
-
-    public static function isLocationManager(): bool
-    {
-        $role = self::getCurrentRole();
-        return in_array($role, [self::ROLE_LOCATION_MANAGER, self::ROLE_CENTRAL_ADMIN], true);
-    }
-
-    public static function isSupportTech(): bool
-    {
-        $role = self::getCurrentRole();
-        return in_array($role, [
-            self::ROLE_SUPPORT_TECH,
-            self::ROLE_LOCATION_MANAGER,
-            self::ROLE_CENTRAL_ADMIN,
-        ], true);
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONTAINER, [
+            READ, READ_ASSIGNED, READ_OWNED,
+        ]);
     }
 
     public static function canManageStock(): bool
     {
-        return self::isLocationManager() || self::isCentralAdmin();
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, CREATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE);
     }
 
     public static function canAllocate(): bool
     {
-        return self::isSupportTech();
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_ALLOCATION, [
+            READ, CREATE, UPDATE,
+        ]);
     }
 
     public static function canTransfer(): bool
     {
-        return self::isSupportTech();
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_TRANSFER, [
+            READ, CREATE, UPDATE,
+        ]);
+    }
+
+    public static function canConfirm(): bool
+    {
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONFIRM, [
+            READ, UPDATE, READ_OWNED, UPDATE_OWNED,
+        ]);
     }
 
     public static function canWriteOff(): bool
     {
-        return self::isLocationManager() || self::isCentralAdmin();
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_OWNED)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_ASSIGNED);
     }
 
     public static function canChangeFinalStatus(): bool
     {
-        return self::isCentralAdmin();
+        // Reintroduce: require Update all (not only owned/assigned).
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE);
+    }
+
+    public static function canConfigure(): bool
+    {
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, READ)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, UPDATE);
+    }
+
+    /**
+     * @deprecated use Session::haveRight on specific modules
+     */
+    public static function isCentralAdmin(): bool
+    {
+        return self::canConfigure()
+            || Session::haveRight('config', UPDATE);
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function isLocationManager(): bool
+    {
+        return self::canManageStock() || self::canWriteOff();
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function isSupportTech(): bool
+    {
+        return self::canAllocate() || self::canTransfer() || self::canManageStock();
+    }
+
+    /**
+     * @deprecated
+     */
+    public static function getCurrentRole(): string
+    {
+        $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
+        if ($mapping !== null) {
+            $role = (string) ($mapping['role'] ?? '');
+            if ($role !== '' && isset(self::getRoles()[$role])) {
+                return $role;
+            }
+        }
+        if (self::canConfigure()) {
+            return self::ROLE_CENTRAL_ADMIN;
+        }
+        if (self::canManageStock()) {
+            return self::ROLE_LOCATION_MANAGER;
+        }
+        if (self::canAllocate() || self::canTransfer()) {
+            return self::ROLE_SUPPORT_TECH;
+        }
+        return self::ROLE_USER;
+    }
+
+    public static function hasPluginProfileMap(): bool
+    {
+        return PluginAuchanassettrackerProfile::getForCurrentProfile() !== null;
     }
 
     /**
      * Location scope for current user.
-     * null = all locations (central admin with no location mapped).
-     * int  = only that location — including central admin when a location is set.
+     * null = all locations.
+     * int  = only that location (0 = none / blocked).
      */
     public static function getScopedLocationId(): ?int
     {
@@ -106,15 +167,20 @@ class PluginAuchanassettrackerRighthelper
             if ($loc > 0) {
                 return $loc;
             }
-            // Mapped role with empty location: central admin sees all; others see nothing.
-            if (self::isCentralAdmin()) {
-                return null;
-            }
-            return 0;
+            // Mapped with empty location → all locations.
+            return null;
         }
 
-        // No mapping: Super-Admin / config editors act as central admin (all locations).
-        if (self::isCentralAdmin()) {
+        // No mapping: unrestricted if they have any plugin "view all" / config right.
+        if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, READ)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, UPDATE)
+            || Session::haveRight('config', UPDATE)
+        ) {
+            return null;
+        }
+
+        // Owned-only / confirm-only users: no location filter needed.
+        if (self::canSeeEquipment() || self::canConfirm()) {
             return null;
         }
 
@@ -131,8 +197,6 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
-     * User IDs assigned to a GLPI profile that has this plugin Location mapping.
-     *
      * @return list<int>
      */
     public static function getUserIdsWithPluginLocation(int $locations_id): array
@@ -174,10 +238,6 @@ class PluginAuchanassettrackerRighthelper
         return array_map('intval', array_keys($uids));
     }
 
-    /**
-     * Whether a user belongs to a location via GLPI default location
-     * and/or the Auchan Asset Tracker location on one of their GLPI profiles.
-     */
     public static function userMatchesRecipientLocation(int $users_id, int $locations_id): bool
     {
         if ($users_id <= 0 || $locations_id <= 0) {
@@ -193,10 +253,6 @@ class PluginAuchanassettrackerRighthelper
         return in_array($users_id, self::getUserIdsWithPluginLocation($locations_id), true);
     }
 
-    /**
-     * Whether the current role may pick this GLPI user as allocation recipient.
-     * Scoped roles: GLPI user location OR plugin profile location must match.
-     */
     public static function canAccessRecipientUser(int $users_id): bool
     {
         if ($users_id <= 0) {
@@ -305,6 +361,15 @@ class PluginAuchanassettrackerRighthelper
         $realname = trim((string) ($row['realname'] ?? ''));
         $firstname = trim((string) ($row['firstname'] ?? ''));
 
+        // Prefer GLPI login name; append real name when useful.
+        if ($login !== '') {
+            $parts = array_filter([$firstname, $realname], static fn ($p) => $p !== '');
+            if ($parts !== []) {
+                return $login . ' — ' . implode(' ', $parts);
+            }
+            return $login;
+        }
+
         if (function_exists('formatUserName')) {
             $label = trim(strip_tags((string) formatUserName($id, $login, $realname, $firstname)));
             if ($label !== '') {
@@ -312,17 +377,7 @@ class PluginAuchanassettrackerRighthelper
             }
         }
 
-        $parts = array_filter([$realname, $firstname], static fn ($p) => $p !== '');
-        if ($parts !== []) {
-            $label = implode(' ', $parts);
-            return $login !== '' ? $label . ' (' . $login . ')' : $label;
-        }
-
-        if ($login !== '') {
-            return $login;
-        }
-
-        return $id > 0 ? ('#' . $id) : Dropdown::EMPTY_VALUE;
+        return $id > 0 ? (string) $id : Dropdown::EMPTY_VALUE;
     }
 
     /**

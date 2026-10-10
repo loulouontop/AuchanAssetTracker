@@ -5,8 +5,8 @@ plugin_auchanassettracker_front_bootstrap();
 
 $item = new PluginAuchanassettrackerBulk();
 
-if (!PluginAuchanassettrackerRighthelper::canManageStock()
-    && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+if (!PluginAuchanassettrackerBulk::canView()
+    && !PluginAuchanassettrackerBulk::canCreate()) {
     Html::header(
         PluginAuchanassettrackerBulk::getTypeName(1),
         $_SERVER['PHP_SELF'],
