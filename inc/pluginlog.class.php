@@ -21,13 +21,11 @@ class PluginAuchanassettrackerPluginlog
 
     public static function log(string $message, string $level = 'INFO'): void
     {
-        $actor_id = (int) Session::getLoginUserID();
-        $actor = $actor_id > 0 ? self::userRef($actor_id) : '-';
+        // No actor prefix — login names belong in the message body only.
         $line = sprintf(
-            "[%s] [%s] [%s] %s\n",
+            "[%s] [%s] %s\n",
             date('Y-m-d H:i:s'),
             strtoupper($level),
-            $actor,
             $message
         );
         Toolbox::logInFile(self::LOG_FILE, $line);
