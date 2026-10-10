@@ -215,7 +215,7 @@ select.aat-recipient-user.aat-recipient-pending {
   font-weight: 600;
 }
 
-/* Profile tab — rights matrix + Role/Location grey bars, one Save */
+/* Profile tab — Role/Location: one fs-4 title, left dropdowns, i/+ stuck to field */
 .aat-profile-wrap {
   padding: 1.5rem 1.25rem 2.5rem;
 }
@@ -225,23 +225,62 @@ select.aat-recipient-user.aat-recipient-pending {
   width: 100%;
 }
 
-.aat-profile-wrap .aat-profile-meta-label {
-  width: 30%;
-  vertical-align: middle;
+.aat-profile-wrap .aat-profile-meta-table th {
+  text-align: left;
 }
 
-.aat-profile-wrap .aat-profile-meta-value {
+.aat-profile-wrap .aat-profile-meta-cell {
+  text-align: left !important;
   vertical-align: middle;
+  padding: 0.75rem 1rem;
 }
 
-.aat-profile-wrap .aat-profile-meta-value .select2-container {
+.aat-profile-wrap .aat-profile-field {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  gap: 0.25rem;
   max-width: 100%;
+  vertical-align: middle;
 }
 
-.aat-profile-wrap .aat-profile-meta-value .btn-group,
-.aat-profile-wrap .aat-profile-meta-value .btn,
-.aat-profile-wrap .aat-profile-meta-value a.btn {
-  margin-left: 0.25rem !important;
+.aat-profile-wrap .aat-profile-field > span,
+.aat-profile-wrap .aat-profile-field > .btn-group,
+.aat-profile-wrap .aat-profile-field > .d-flex,
+.aat-profile-wrap .aat-profile-location-field > span {
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  gap: 0.25rem;
+  max-width: 100%;
+  width: auto !important;
+}
+
+.aat-profile-wrap .aat-profile-field .select2-container {
+  width: 320px !important;
+  max-width: min(320px, 100%);
+  flex: 0 1 auto !important;
+}
+
+.aat-profile-wrap .aat-profile-field .btn-group,
+.aat-profile-wrap .aat-profile-field .btn,
+.aat-profile-wrap .aat-profile-field a.btn,
+.aat-profile-wrap .aat-profile-field a.dropdown_tooltip {
+  position: static !important;
+  float: none !important;
+  top: auto !important;
+  right: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  align-self: center;
+}
+
+.aat-profile-wrap .aat-profile-meta-cell .form-text {
+  text-align: left;
+  max-width: 36rem;
 }
 
 /*

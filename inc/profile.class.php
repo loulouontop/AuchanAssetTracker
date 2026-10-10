@@ -382,7 +382,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Rights matrix + Role + Location (grey title bars), single Save.
+     * Rights matrix + Role + Location (same fs-4 grey title as matrix), single Save.
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -421,49 +421,44 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             ]);
         }
 
-        // Role — same grey title bar as the rights matrix.
+        // Role + Location: title only once (same grey fs-4 bar as matrix), dropdowns left-aligned.
         echo "<table class='tab_cadre_fixe aat-profile-meta-table'>";
-        echo "<tr><th colspan='2'>"
+
+        echo "<tr class='border-top'><th colspan='1'>"
+            . "<span class='fs-4'>"
             . Html::entities_deep(__('Role', 'auchanassettracker'))
-            . "</th></tr>";
-        echo "<tr class='tab_bg_2'>";
-        echo "<td class='aat-profile-meta-label'>"
-            . Html::entities_deep(__('Role', 'auchanassettracker'))
-            . "</td>";
-        echo "<td class='aat-profile-meta-value'>";
+            . "</span></th></tr>";
+        echo "<tr class='tab_bg_1'><td class='aat-profile-meta-cell'>";
+        echo "<div class='aat-profile-field'>";
         if ($canedit) {
             Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
                 'value' => $role,
-                'width' => '100%',
+                'width' => '320px',
             ]);
         } else {
             $roles = PluginAuchanassettrackerRighthelper::getRoles();
             echo Html::entities_deep($roles[$role] ?? $role);
         }
-        echo "</td></tr>";
-        echo "</table>";
+        echo "</div></td></tr>";
 
-        // Location — same grey title bar as the rights matrix.
-        echo "<table class='tab_cadre_fixe aat-profile-meta-table'>";
-        echo "<tr><th colspan='2'>"
+        echo "<tr class='border-top'><th colspan='1'>"
+            . "<span class='fs-4'>"
             . Html::entities_deep(__('Location', 'auchanassettracker'))
-            . "</th></tr>";
-        echo "<tr class='tab_bg_2'>";
-        echo "<td class='aat-profile-meta-label'>"
-            . Html::entities_deep(__('Location'))
-            . "</td>";
-        echo "<td class='aat-profile-meta-value'>";
+            . "</span></th></tr>";
+        echo "<tr class='tab_bg_1'><td class='aat-profile-meta-cell'>";
+        echo "<div class='aat-profile-field aat-profile-location-field'>";
         if ($canedit) {
             Location::dropdown([
-                'name'  => 'locations_id',
-                'value' => $locations_id,
-                'width' => '100%',
+                'name'   => 'locations_id',
+                'value'  => $locations_id,
+                'width'  => '320px',
             ]);
         } elseif ($locations_id > 0) {
             echo Html::entities_deep(Dropdown::getDropdownName('glpi_locations', $locations_id));
         } else {
             echo Html::entities_deep(__('All locations', 'auchanassettracker'));
         }
+        echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
                 'Optional. When set, Equipment / containers / stock actions are limited to this location. Leave empty to allow all locations for this profile.',
@@ -471,6 +466,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             ))
             . "</div>";
         echo "</td></tr>";
+
         echo "</table>";
 
         if ($canedit) {

@@ -60,8 +60,9 @@ class PluginAuchanassettrackerMailhelper
             }
             $email = $user->getDefaultEmail();
             if (!$email) {
+                $login = PluginAuchanassettrackerPluginlog::userRef($users_id);
                 PluginAuchanassettrackerPluginlog::info(
-                    "No email for user $users_id — in-app notice stored. Subject: $subject"
+                    "No email for user $login — in-app notice stored. Subject: $subject"
                 );
                 return;
             }
