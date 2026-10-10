@@ -17,6 +17,24 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
         return 'glpi_plugin_auchanassettracker_auditlogs';
     }
 
+    /**
+     * GLPI login name (User.name), never bare numeric id.
+     */
+    public static function userLogin(int $users_id): string
+    {
+        if ($users_id <= 0) {
+            return '';
+        }
+        $user = new User();
+        if ($user->getFromDB($users_id)) {
+            $login = trim((string) ($user->fields['name'] ?? ''));
+            if ($login !== '') {
+                return $login;
+            }
+        }
+        return '';
+    }
+
     public static function record(
         string $action,
         string $itemtype,
@@ -42,23 +60,22 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
     /**
      * @return list<array<string, mixed>>
      */
-    public static function getRecent(int $limit = 15, ?int $locations_id = null): array
+    public static function getRecent(int $limit = 15): array
     {
         global $DB;
-
         if (!$DB->tableExists(self::getTable())) {
             return [];
         }
-
         $rows = [];
         foreach ($DB->request([
             'FROM'  => self::getTable(),
             'ORDER' => 'date_creation DESC',
-            'LIMIT' => $limit,
+            'LIMIT' => max(1, $limit),
         ]) as $row) {
+            $uid = (int) ($row['users_id'] ?? 0);
+            $row['user_login'] = self::userLogin($uid);
             $rows[] = $row;
         }
-
         return $rows;
     }
 }

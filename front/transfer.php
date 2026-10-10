@@ -5,6 +5,12 @@ plugin_auchanassettracker_front_bootstrap();
 
 if (!PluginAuchanassettrackerRighthelper::canTransfer()
     && !PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+    Html::header(
+        __('Transfers', 'auchanassettracker'),
+        $_SERVER['PHP_SELF'],
+        PluginAuchanassettrackerMenu::SECTOR,
+        PluginAuchanassettrackerMenu::MENU_TRANSFER
+    );
     Html::displayRightError();
     exit;
 }
@@ -12,14 +18,15 @@ if (!PluginAuchanassettrackerRighthelper::canTransfer()
 Html::header(
     __('Transfers', 'auchanassettracker'),
     $_SERVER['PHP_SELF'],
-    'assets',
-    'PluginAuchanassettrackerMenu'
+    PluginAuchanassettrackerMenu::SECTOR,
+    PluginAuchanassettrackerMenu::MENU_TRANSFER
 );
 
-$base = Plugin::getWebDir(plugin_auchanassettracker_dir());
+$base = plugin_auchanassettracker_web_dir();
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
-echo "<p><a class='btn btn-primary' href='" . $base . "/front/transfer.form.php'>"
+echo "<div class='aat-workspace'>";
+echo "<p><a class='btn btn-primary' href='" . Html::entities_deep($base . '/front/transfer.form.php') . "'>"
     . __('New transfer', 'auchanassettracker') . "</a></p>";
 
 if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
@@ -27,14 +34,12 @@ if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
 } else {
     $list = array_merge(
         PluginAuchanassettrackerTransfer::getPendingForLocation((int) $scope),
-        // also show initiated from this location
         array_filter(
             PluginAuchanassettrackerTransfer::getAll(PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT),
             static fn($t) => (int) $t['locations_id_source'] === (int) $scope
                 || (int) $t['locations_id_dest'] === (int) $scope
         )
     );
-    // unique by id
     $uniq = [];
     foreach ($list as $t) {
         $uniq[(int) $t['id']] = $t;
@@ -48,23 +53,33 @@ $status_labels = [
     PluginAuchanassettrackerTransfer::STATUS_CANCELLED  => __('Cancelled'),
 ];
 
-echo "<div class='card'><div class='card-body'>";
-echo "<table class='table table-hover card-table'><thead><tr><th>" . __('ID') . "</th><th>"
+PluginAuchanassettrackerMenu::beginNativeFormCard(
+    __('Transfers', 'auchanassettracker'),
+    PluginAuchanassettrackerTransfer::getIcon()
+);
+
+echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
+echo "<thead><tr><th>" . __('ID') . "</th><th>"
     . __('Source') . "</th><th>" . __('Destination') . "</th><th>"
     . __('Status') . "</th><th>" . __('Date') . "</th><th></th></tr></thead><tbody>";
 
 foreach ($list as $t) {
     $st = (string) ($t['transfer_status'] ?? '');
-    $st_label = $status_labels[$st] ?? $st;
     echo "<tr><td>" . (int) $t['id']
-        . "</td><td>" . Html::entities_deep(Dropdown::getDropdownName('glpi_locations', (int) $t['locations_id_source']))
-        . "</td><td>" . Html::entities_deep(Dropdown::getDropdownName('glpi_locations', (int) $t['locations_id_dest']))
-        . "</td><td>" . Html::entities_deep($st_label)
+        . "</td><td>" . PluginAuchanassettrackerAllocation::locationNameLink((int) $t['locations_id_source'])
+        . "</td><td>" . PluginAuchanassettrackerAllocation::locationNameLink((int) $t['locations_id_dest'])
+        . "</td><td>" . Html::entities_deep($status_labels[$st] ?? $st)
         . "</td><td>" . Html::entities_deep($t['date_initiated'] ?? '')
         . "</td><td><a class='btn btn-sm btn-secondary' href='"
-        . $base . "/front/transfer.form.php?id=" . (int) $t['id'] . "'>"
+        . Html::entities_deep($base . '/front/transfer.form.php?id=' . (int) $t['id']) . "'>"
         . __('Open') . "</a></td></tr>";
 }
-echo "</tbody></table></div></div>";
+if ($list === []) {
+    echo "<tr><td colspan='6' class='text-muted'>" . __('None.', 'auchanassettracker') . "</td></tr>";
+}
+echo "</tbody></table></div>";
+
+PluginAuchanassettrackerMenu::endNativeFormCard();
+echo "</div>";
 
 Html::footer();

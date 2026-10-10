@@ -26,6 +26,21 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
         return 'ti ti-truck';
     }
 
+    public static function getSectorizedDetails(): array
+    {
+        return [PluginAuchanassettrackerMenu::SECTOR, PluginAuchanassettrackerMenu::MENU_TRANSFER];
+    }
+
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/transfer.php';
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/transfer.form.php';
+    }
+
     /**
      * @param list<int> $equipment_ids
      */

@@ -24,7 +24,7 @@ function plugin_auchanassettracker_find_plugin_rows(): array
 }
 
 /**
- * Keep a single glpi_plugins row and force directory = real folder name.
+ * Keep a single glpi_plugins row and force directory = exact disk folder name.
  *
  * @return array{id: int, version: string, state: int}|null
  */
@@ -37,8 +37,10 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
         return null;
     }
 
+    // Exact on-disk folder (e.g. AuchanAssetTracker). Never invent another casing.
     $canonical = plugin_auchanassettracker_dir();
 
+    // Prefer a row that already matches the disk name; otherwise rewrite the first.
     $keep = null;
     foreach ($rows as $row) {
         if ((string) $row['directory'] === $canonical) {
@@ -61,13 +63,25 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
 
     $DB->update('glpi_plugins', [
         'directory' => $canonical,
-        'name'      => 'Auchan Asset Tracker',
+        'name'      => 'AuchanAssetTracker',
     ], ['id' => $keepId]);
+
+    // Re-read state/version after update in case another heal changed them.
+    $version = (string) ($keep['version'] ?? '');
+    $state = (int) ($keep['state'] ?? 2);
+    foreach ($DB->request([
+        'FROM'  => 'glpi_plugins',
+        'WHERE' => ['id' => $keepId],
+        'LIMIT' => 1,
+    ]) as $fresh) {
+        $version = (string) ($fresh['version'] ?? $version);
+        $state = (int) ($fresh['state'] ?? $state);
+    }
 
     return [
         'id'      => $keepId,
-        'version' => (string) ($keep['version'] ?? ''),
-        'state'   => (int) ($keep['state'] ?? 2),
+        'version' => $version,
+        'state'   => $state,
     ];
 }
 
@@ -75,9 +89,9 @@ function plugin_auchanassettracker_sync_plugin_directory(): ?array
  * Heal directory/version drift as soon as setup.php is loaded.
  *
  * GLPI compares folder name vs glpi_plugins.directory with PHP (case-sensitive).
- * If they differ (or the file version differs), it logs "version changed", sets
- * NOTUPDATED, and Event::log() then warns about $_SESSION during early boot.
- * Running this during setup include fixes the row before that comparison.
+ * A wrong casing creates a ghost DB row ("unable to load") plus a real folder
+ * marked "version changed". This heal collapses rows to the disk name and
+ * finishes the upgrade so the plugin stays usable.
  */
 function plugin_auchanassettracker_self_heal_on_load(): void
 {
@@ -88,6 +102,11 @@ function plugin_auchanassettracker_self_heal_on_load(): void
         return;
     }
     $done = true;
+
+    // Never interfere while GLPI is uninstalling/disabling this plugin.
+    if (!empty($GLOBALS['plugin_auchanassettracker_maintenance'])) {
+        return;
+    }
 
     if (!isset($DB) || !is_object($DB) || !method_exists($DB, 'tableExists')) {
         return;
@@ -108,8 +127,16 @@ function plugin_auchanassettracker_self_heal_on_load(): void
 
     $canonical = plugin_auchanassettracker_dir();
     $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
-    // GLPI Plugin::NOTUPDATED = 6
-    $wasPendingUpdate = ($info['state'] === 6);
+    // GLPI: ACTIVATED=1, NOTACTIVATED=2, TOBECONFIGURED=3, NOTINSTALLED=4, NOTUPDATED=6
+    $state = (int) $info['state'];
+
+    // Respect explicit uninstall / disable — only sync the directory name.
+    if ($state === 4 || $state === 2) {
+        return;
+    }
+
+    $wasPendingUpdate = ($state === 6);
+    $wasActive = ($state === 1);
 
     if (!$needsVersion && !$wasPendingUpdate) {
         return;
@@ -122,21 +149,17 @@ function plugin_auchanassettracker_self_heal_on_load(): void
     $upgrading = true;
 
     try {
-        if ($needsVersion && function_exists('plugin_auchanassettracker_upgrade')) {
+        if (($needsVersion || $wasPendingUpdate) && function_exists('plugin_auchanassettracker_upgrade')) {
             plugin_auchanassettracker_upgrade($info['version']);
         }
 
-        // After a successful heal, leave the plugin enabled if it was active
-        // or only marked "to update"; otherwise keep NOTACTIVATED.
-        $newState = $info['state'];
-        if ($wasPendingUpdate || $info['state'] === 1) {
-            $newState = 1; // ACTIVATED
-        }
+        // Only auto-activate when updating from ACTIVATED or NOTUPDATED.
+        $newState = ($wasActive || $wasPendingUpdate) ? 1 : $state;
 
         $DB->update('glpi_plugins', [
             'directory' => $canonical,
             'version'   => PLUGIN_AUCHANASSETTRACKER_VERSION,
-            'name'      => 'Auchan Asset Tracker',
+            'name'      => 'AuchanAssetTracker',
             'state'     => $newState,
         ], ['id' => $info['id']]);
     } catch (Throwable) {
@@ -160,11 +183,10 @@ function plugin_auchanassettracker_install(array $params = []): bool
         }
     }
 
+    plugin_auchanassettracker_ensure_schema();
+
     plugin_auchanassettracker_bootstrap();
 
-    if (class_exists('PluginAuchanassettrackerConfig', false)) {
-        PluginAuchanassettrackerConfig::seedDefaults();
-    }
     if (class_exists('PluginAuchanassettrackerEquipmenttype', false)) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }
@@ -201,11 +223,10 @@ function plugin_auchanassettracker_upgrade($version): bool
         }
     }
 
+    plugin_auchanassettracker_ensure_schema();
+
     plugin_auchanassettracker_bootstrap();
 
-    if (class_exists('PluginAuchanassettrackerConfig', false)) {
-        PluginAuchanassettrackerConfig::seedDefaults();
-    }
     if (class_exists('PluginAuchanassettrackerEquipmenttype', false)) {
         PluginAuchanassettrackerEquipmenttype::seedDefaults();
     }
@@ -244,14 +265,209 @@ function plugin_auchanassettracker_clear_translation_cache(): void
 
 function plugin_auchanassettracker_uninstall(): bool
 {
-    // Keep tables so reinstall preserves data (same approach as first plugin).
-    plugin_auchanassettracker_clear_translation_cache();
+    // Soft uninstall: keep tables/data so a later install can reuse them.
+    // Flag blocks self-heal from fighting GLPI's uninstall state change.
+    $GLOBALS['plugin_auchanassettracker_maintenance'] = true;
+
+    try {
+        plugin_auchanassettracker_clear_translation_cache();
+    } catch (Throwable) {
+        // Still allow GLPI to mark the plugin uninstalled.
+    }
+
     return true;
 }
 
 function plugin_auchanassettracker_getDatabaseRelations(): array
 {
     return [];
+}
+
+/**
+ * Add columns introduced after first install (CREATE TABLE IF NOT EXISTS won't alter).
+ * Also heal leftover UNIQUE qr_token from older installs (empty '' collides).
+ */
+function plugin_auchanassettracker_ensure_schema(): void
+{
+    global $DB;
+
+    $table = 'glpi_plugin_auchanassettracker_equipments';
+    if ($DB->tableExists($table)) {
+        $columns = [
+            'itemtype'             => "VARCHAR(100) NOT NULL DEFAULT 'Computer'",
+            'items_id'             => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'manufacturers_id'     => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'models_id'            => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'users_id'             => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'is_recursive'         => 'TINYINT(1) NOT NULL DEFAULT 0',
+            'final_reason'         => 'TEXT DEFAULT NULL',
+            'final_document'       => 'VARCHAR(255) DEFAULT NULL',
+            'final_users_id'       => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'final_date'           => 'TIMESTAMP NULL DEFAULT NULL',
+            'service_tickets_id'   => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'service_since'        => 'TIMESTAMP NULL DEFAULT NULL',
+        ];
+
+        foreach ($columns as $name => $definition) {
+            if ($DB->fieldExists($table, $name)) {
+                continue;
+            }
+            try {
+                $DB->doQuery("ALTER TABLE `$table` ADD `$name` $definition");
+            } catch (Throwable $e) {
+                // Race / stale field cache: column already exists (MySQL 1060).
+                $msg = $e->getMessage();
+                if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    $containers = 'glpi_plugin_auchanassettracker_containers';
+    if ($DB->tableExists($containers) && !$DB->fieldExists($containers, 'is_recursive')) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$containers` ADD `is_recursive` TINYINT(1) NOT NULL DEFAULT 0"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
+    }
+
+    $alloc = 'glpi_plugin_auchanassettracker_allocations';
+    if ($DB->tableExists($alloc)
+        && !$DB->fieldExists($alloc, 'plugin_auchanassettracker_containers_id_previous')) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$alloc`
+                 ADD `plugin_auchanassettracker_containers_id_previous` INT UNSIGNED NOT NULL DEFAULT 0"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
+    }
+
+    // Sprint 2/3 tables (CREATE IF NOT EXISTS is safe on every load).
+    if (is_readable(__DIR__ . '/install/install.sql')) {
+        foreach (explode(';', (string) file_get_contents(__DIR__ . '/install/install.sql')) as $query) {
+            $query = trim($query);
+            if ($query !== '' && (
+                str_contains($query, 'glpi_plugin_auchanassettracker_configs')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_allocations')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_notices')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_transfers')
+                || str_contains($query, 'glpi_plugin_auchanassettracker_transferitems')
+            )) {
+                $DB->doQuery($query);
+            }
+        }
+    }
+
+    // Older full-plugin installs kept UNIQUE qr_token DEFAULT ''.
+    // Backfill empties so new inserts no longer hit duplicate-key 1062.
+    $containers = 'glpi_plugin_auchanassettracker_containers';
+    if ($DB->tableExists($containers) && $DB->fieldExists($containers, 'qr_token')) {
+        foreach ($DB->request([
+            'SELECT' => ['id', 'qr_token'],
+            'FROM'   => $containers,
+        ]) as $row) {
+            $token = trim((string) ($row['qr_token'] ?? ''));
+            if ($token !== '') {
+                continue;
+            }
+            $DB->update($containers, [
+                'qr_token' => bin2hex(random_bytes(16)),
+            ], ['id' => (int) $row['id']]);
+        }
+    }
+
+    plugin_auchanassettracker_ensure_equipment_displayprefs();
+}
+
+/**
+ * Seed default Equipment search columns once (users_id = 0 only).
+ * Never re-add columns after the user removes them via “Select items to show”.
+ */
+function plugin_auchanassettracker_ensure_equipment_displayprefs(): void
+{
+    global $DB;
+
+    if (!$DB->tableExists('glpi_displaypreferences')) {
+        return;
+    }
+
+    $itemtype = 'PluginAuchanassettrackerEquipment';
+    $existing = 0;
+    foreach ($DB->request([
+        'COUNT' => 'cpt',
+        'FROM'  => 'glpi_displaypreferences',
+        'WHERE' => [
+            'itemtype' => $itemtype,
+            'users_id' => 0,
+        ],
+    ]) as $row) {
+        $existing = (int) ($row['cpt'] ?? 0);
+    }
+    if ($existing > 0) {
+        return;
+    }
+
+    $default_nums = [1, 8, 2, 4, 5, 7, 11, 12, 13];
+    $rank = 1;
+    foreach ($default_nums as $num) {
+        try {
+            $DB->insert('glpi_displaypreferences', [
+                'itemtype' => $itemtype,
+                'num'      => $num,
+                'rank'     => $rank,
+                'users_id' => 0,
+            ]);
+            $rank++;
+        } catch (Throwable $e) {
+            // Duplicate / race — ignore.
+        }
+    }
+}
+
+/**
+ * Register Auchan Asset Tracker as its own top-level menu sector.
+ *
+ * @param array<string, mixed> $menu
+ * @return array<string, mixed>
+ */
+function plugin_auchanassettracker_redefine_menus(array $menu): array
+{
+    // Remove any leftover entries under Assets from older versions.
+    if (isset($menu['assets']['content']) && is_array($menu['assets']['content'])) {
+        foreach ($menu['assets']['content'] as $key => $_) {
+            $key_s = (string) $key;
+            if (stripos($key_s, 'auchanassettracker') !== false || str_starts_with($key_s, 'aat_')) {
+                unset($menu['assets']['content'][$key]);
+            }
+        }
+    }
+
+    $ours = PluginAuchanassettrackerMenu::getMenuContent();
+    if ($ours === false) {
+        unset($menu[PluginAuchanassettrackerMenu::SECTOR]);
+        return $menu;
+    }
+
+    $menu[PluginAuchanassettrackerMenu::SECTOR] = [
+        'title'   => $ours['title'],
+        'default' => $ours['page'],
+        'icon'    => $ours['icon'],
+        'content' => $ours['content'],
+    ];
+
+    return $menu;
 }
 
 // When GLPI includes setup.php during plugin state checks, heal DB drift first.
