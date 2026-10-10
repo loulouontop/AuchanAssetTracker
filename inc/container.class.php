@@ -111,13 +111,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                 ],
             ],
         ];
-        if (class_exists(\Glpi\Search\SearchEngine::class)
-            && method_exists(\Glpi\Search\SearchEngine::class, 'showList')
-        ) {
-            \Glpi\Search\SearchEngine::showList(self::class, $params);
-        } else {
-            Search::showList(self::class, $params);
-        }
+        Search::showList(self::class, $params);
         echo '</div>';
         return true;
     }

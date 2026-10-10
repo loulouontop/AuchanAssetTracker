@@ -14,6 +14,17 @@ class PluginAuchanassettrackerEquipmenttype extends CommonDropdown
         return 'glpi_plugin_auchanassettracker_equipmenttypes';
     }
 
+    /** Legacy dropdown — send any leftover links to Equipment list. */
+    public static function getSearchURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.php';
+    }
+
+    public static function getFormURL($full = true): string
+    {
+        return plugin_auchanassettracker_web_dir($full) . '/front/equipment.php';
+    }
+
     public function getAdditionalFields()
     {
         return [
