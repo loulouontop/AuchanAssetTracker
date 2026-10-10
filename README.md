@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers, and allocation with user confirmation.
 
-**Version:** 0.2.2 (Sprint 2)  
+**Version:** 0.2.1 (Sprint 2)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
