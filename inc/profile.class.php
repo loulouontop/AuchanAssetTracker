@@ -382,7 +382,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Rights matrix + location scope in one GLPI table form (single Save).
+     * Rights matrix + Role + Location (grey title bars), single Save.
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -395,8 +395,13 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         }
 
         $current = self::getForProfileId($profiles_id) ?? [
+            'role'         => PluginAuchanassettrackerRighthelper::ROLE_USER,
             'locations_id' => 0,
         ];
+        $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
+        if (!isset(PluginAuchanassettrackerRighthelper::getRoles()[$role])) {
+            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
+        }
         $locations_id = (int) ($current['locations_id'] ?? 0);
         $action = plugin_auchanassettracker_web_dir() . '/front/profile.form.php';
 
@@ -416,16 +421,38 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             ]);
         }
 
-        // Location scope — same tab_cadre_fixe table UI as the rights matrix.
-        echo "<table class='tab_cadre_fixe aat-profile-location-table'>";
+        // Role — same grey title bar as the rights matrix.
+        echo "<table class='tab_cadre_fixe aat-profile-meta-table'>";
         echo "<tr><th colspan='2'>"
-            . Html::entities_deep(__('Location scope', 'auchanassettracker'))
+            . Html::entities_deep(__('Role', 'auchanassettracker'))
             . "</th></tr>";
         echo "<tr class='tab_bg_2'>";
-        echo "<td class='aat-profile-location-label'>"
+        echo "<td class='aat-profile-meta-label'>"
+            . Html::entities_deep(__('Role', 'auchanassettracker'))
+            . "</td>";
+        echo "<td class='aat-profile-meta-value'>";
+        if ($canedit) {
+            Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
+                'value' => $role,
+                'width' => '100%',
+            ]);
+        } else {
+            $roles = PluginAuchanassettrackerRighthelper::getRoles();
+            echo Html::entities_deep($roles[$role] ?? $role);
+        }
+        echo "</td></tr>";
+        echo "</table>";
+
+        // Location — same grey title bar as the rights matrix.
+        echo "<table class='tab_cadre_fixe aat-profile-meta-table'>";
+        echo "<tr><th colspan='2'>"
+            . Html::entities_deep(__('Location', 'auchanassettracker'))
+            . "</th></tr>";
+        echo "<tr class='tab_bg_2'>";
+        echo "<td class='aat-profile-meta-label'>"
             . Html::entities_deep(__('Location'))
             . "</td>";
-        echo "<td class='aat-profile-location-value'>";
+        echo "<td class='aat-profile-meta-value'>";
         if ($canedit) {
             Location::dropdown([
                 'name'  => 'locations_id',
@@ -453,7 +480,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'class' => 'btn btn-primary',
             ]);
             echo "</div>";
-            Html::closeForm();
+            // Do not Html::closeForm() on Profile tabs — wrong CSRF token on nested forms.
+            echo "</form>";
         }
 
         echo "</div>";
@@ -520,11 +548,21 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Upsert location scope (and keep role column for history/migration).
+     * Upsert role + location scope from the profile tab.
      *
      * @return 'created'|'updated'|'unchanged'|'error'
      */
     public static function saveLocationFromPost(array $post): string
+    {
+        return self::saveFromPost($post);
+    }
+
+    /**
+     * Upsert role + location scope from the profile tab.
+     *
+     * @return 'created'|'updated'|'unchanged'|'error'
+     */
+    public static function saveFromPost(array $post): string
     {
         global $DB;
 
@@ -537,32 +575,35 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             return 'error';
         }
 
+        $roles = array_keys(PluginAuchanassettrackerRighthelper::getRoles());
+        $role = (string) ($post['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
+        if (!in_array($role, $roles, true)) {
+            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
+        }
+
         $locations_id = (int) ($post['locations_id'] ?? 0);
-        $role = (string) ($post['role'] ?? '');
         $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         $existing = self::getForProfileId($profiles_id);
 
         if ($existing !== null) {
-            $sameLoc = (int) ($existing['locations_id'] ?? 0) === $locations_id;
-            $update = [
-                'locations_id' => $locations_id,
-                'date_mod'     => $now,
-            ];
-            // Only touch role when explicitly provided (migration / Super-Admin seed).
-            if ($role !== '' && $role !== (string) ($existing['role'] ?? '')) {
-                $update['role'] = $role;
-                $sameLoc = false;
-            } elseif ($sameLoc) {
+            $sameRole = (string) ($existing['role'] ?? '') === $role;
+            $sameLoc  = (int) ($existing['locations_id'] ?? 0) === $locations_id;
+            if ($sameRole && $sameLoc) {
                 return 'unchanged';
             }
 
-            $ok = $DB->update(self::getTable(), $update, ['id' => (int) $existing['id']]);
+            $ok = $DB->update(self::getTable(), [
+                'role'         => $role,
+                'locations_id' => $locations_id,
+                'date_mod'     => $now,
+            ], ['id' => (int) $existing['id']]);
+
             return $ok !== false ? 'updated' : 'error';
         }
 
         $ok = $DB->insert(self::getTable(), [
             'profiles_id'   => $profiles_id,
-            'role'          => $role !== '' ? $role : 'user',
+            'role'          => $role,
             'locations_id'  => $locations_id,
             'date_creation' => $now,
             'date_mod'      => $now,
@@ -571,10 +612,49 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         return $ok ? 'created' : 'error';
     }
 
-    /** @deprecated use saveLocationFromPost */
-    public static function saveFromPost(array $post): string
+    /**
+     * Whether the posted role differs from the stored mapping.
+     */
+    public static function roleChangedInPost(array $post): bool
     {
-        return self::saveLocationFromPost($post);
+        $profiles_id = (int) ($post['profiles_id'] ?? 0);
+        if ($profiles_id <= 0 || !isset($post['role'])) {
+            return false;
+        }
+        $roles = array_keys(PluginAuchanassettrackerRighthelper::getRoles());
+        $role = (string) $post['role'];
+        if (!in_array($role, $roles, true)) {
+            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
+        }
+        $existing = self::getForProfileId($profiles_id);
+        if ($existing === null) {
+            return true;
+        }
+        return (string) ($existing['role'] ?? '') !== $role;
+    }
+
+    /**
+     * Apply rights matrix presets for a role (when the role dropdown changes).
+     */
+    public static function applyRightsForRole(int $profiles_id, string $role): void
+    {
+        if ($profiles_id <= 0) {
+            return;
+        }
+        $rights = self::rightsFromLegacyRole($role);
+        self::addDefaultProfileInfos($profiles_id, $rights, true);
+        ProfileRight::updateProfileRights($profiles_id, $rights);
+        if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+            foreach ($rights as $name => $value) {
+                $_SESSION['glpiactiveprofile'][$name] = (int) $value;
+            }
+        }
+        // Legacy aggregate right.
+        $legacy = (int) ($rights[self::RIGHT_EQUIPMENT] ?? 0);
+        ProfileRight::updateProfileRights($profiles_id, [self::LEGACY_RIGHT => $legacy]);
+        if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+            $_SESSION['glpiactiveprofile'][self::LEGACY_RIGHT] = $legacy;
+        }
     }
 
     /**

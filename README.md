@@ -33,8 +33,8 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 
 ## Profile rights (GLPI-style)
 
-Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix (same columns as GLPI assets: View all, Update all, Create, Delete, Purge, notes, assigned, owned) plus Location scope in the same table UI.  
-One **Save** updates rights and location together. Unchecked rights **hide** the matching menu tab / add button.
+Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix plus **Role** and **Location** sections (same grey title bars as the matrix).  
+One **Save** updates rights, role, and location. Changing the role applies a rights preset; tweaking checkboxes without changing role keeps those edits. Unchecked rights **hide** the matching menu tab / add button.
 
 ## Upgrade from Sprint 2
 
