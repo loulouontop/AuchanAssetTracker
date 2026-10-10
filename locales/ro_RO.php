@@ -88,6 +88,7 @@ return [
     'Location is required for a container.' => 'Locația este obligatorie pentru un container.',
     'Location is required.' => 'Locația este obligatorie.',
     'Location manager' => 'Manager locație',
+    'All locations' => 'Toate locațiile',
     'Location scope' => 'Domeniu locație',
     'Location scope saved.' => 'Domeniul de locație a fost salvat.',
     'Unable to save location scope.' => 'Nu s-a putut salva domeniul de locație.',
