@@ -19,8 +19,9 @@ if (isset($_POST['add'])) {
     $item->update($_POST);
     Html::back();
 } elseif (isset($_POST['mark_final'])) {
-    $item->check((int) $_POST['id'], UPDATE);
-    if ($item->getFromDB((int) $_POST['id'])) {
+    $id = (int) ($_POST['id'] ?? 0);
+    $item->check($id, UPDATE);
+    if ($item->getFromDB($id)) {
         $doc_label = '';
         // Prefer first uploaded filename for the summary field.
         if (!empty($_POST['_filename'][0])) {
@@ -36,22 +37,34 @@ if (isset($_POST['add'])) {
             $doc_label
         );
         if ($ok) {
-            $names = $item->attachUploadedDocuments($_POST);
-            if ($names !== []) {
-                $item->update([
-                    'id'             => (int) $item->getID(),
-                    'final_document' => implode(', ', array_slice($names, 0, 3)),
-                ]);
+            try {
+                $names = $item->attachUploadedDocuments($_POST);
+                if ($names !== []) {
+                    $item->update([
+                        'id'             => $id,
+                        'final_document' => implode(', ', array_slice($names, 0, 3)),
+                    ]);
+                }
+            } catch (Throwable $e) {
+                PluginAuchanassettrackerPluginlog::exception($e, 'mark_final_attach_documents');
             }
         }
     }
-    Html::back();
+    // Stay on this equipment form (avoid Html::back() landing on legacy fronts).
+    Html::redirect(
+        $item->getFormURL() . '?id=' . $id
+        . '&forcetab=PluginAuchanassettrackerEquipment$1'
+    );
 } elseif (isset($_POST['reintroduce'])) {
-    $item->check((int) $_POST['id'], UPDATE);
-    if ($item->getFromDB((int) $_POST['id'])) {
+    $id = (int) ($_POST['id'] ?? 0);
+    $item->check($id, UPDATE);
+    if ($item->getFromDB($id)) {
         $item->reintroduceToStock((int) ($_POST['plugin_auchanassettracker_containers_id'] ?? 0));
     }
-    Html::back();
+    Html::redirect(
+        $item->getFormURL() . '?id=' . $id
+        . '&forcetab=PluginAuchanassettrackerEquipment$1'
+    );
 } elseif (isset($_POST['purge'])) {
     $item->check($_POST['id'], PURGE);
     $item->delete($_POST, 1);

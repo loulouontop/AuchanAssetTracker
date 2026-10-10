@@ -24,6 +24,7 @@ if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, READ)
     PluginAuchanassettrackerEquipment::syncVisibleGlpiAssets($scope);
 }
 
-\Glpi\Search\SearchEngine::show(PluginAuchanassettrackerEquipment::class);
+// Use Search facade (has proper use Glpi\Search\SearchEngine) — never bare SearchEngine::.
+Search::show(PluginAuchanassettrackerEquipment::class);
 
 Html::footer();

@@ -10,6 +10,7 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_CONTAINER
 );
 
-\Glpi\Search\SearchEngine::show(PluginAuchanassettrackerContainer::class);
+// Use Search facade (has proper use Glpi\Search\SearchEngine) — never bare SearchEngine::.
+Search::show(PluginAuchanassettrackerContainer::class);
 
 Html::footer();
