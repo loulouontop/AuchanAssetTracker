@@ -152,7 +152,12 @@ if ($id > 0) {
     echo "<form method='post' action=''>";
     echo "<div class='mb-3'><label class='form-label'>"
         . __('Destination location', 'auchanassettracker') . " *</label>";
-    Location::dropdown(['name' => 'locations_id_dest']);
+    // Scoped profiles (location manager / location set): hide own location from destination.
+    $dest_opts = ['name' => 'locations_id_dest'];
+    if ($scope !== null && (int) $scope > 0) {
+        $dest_opts['used'] = [(int) $scope];
+    }
+    Location::dropdown($dest_opts);
     echo "</div>";
     echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
     echo "<textarea name='notes' class='form-control' rows='2'></textarea></div>";
