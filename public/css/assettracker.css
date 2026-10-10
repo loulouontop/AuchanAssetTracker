@@ -215,56 +215,33 @@ select.aat-recipient-user.aat-recipient-pending {
   font-weight: 600;
 }
 
-/* Profile tab */
+/* Profile tab — rights matrix + location table, one Save */
 .aat-profile-wrap {
   padding: 1.5rem 1.25rem 2.5rem;
 }
 
-.aat-profile-form {
-  max-width: 560px;
-  margin: 0 auto;
+.aat-profile-wrap .aat-profile-location-table {
+  margin-top: 1rem;
+  width: 100%;
 }
 
-.aat-profile-form .aat-profile-card-header {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  padding: 0.9rem 1.25rem;
+.aat-profile-wrap .aat-profile-location-label {
+  width: 30%;
+  vertical-align: middle;
 }
 
-.aat-profile-form .aat-profile-card-body {
-  padding: 1.25rem 1.25rem 0.5rem;
+.aat-profile-wrap .aat-profile-location-value {
+  vertical-align: middle;
 }
 
-.aat-profile-form .aat-field-control {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.aat-profile-form .aat-role-control .select2-container,
-.aat-profile-form .aat-role-control > select,
-.aat-profile-form .aat-location-control .select2-container {
-  width: 320px !important;
+.aat-profile-wrap .aat-profile-location-value .select2-container {
   max-width: 100%;
-  flex: 0 1 auto;
 }
 
-.aat-profile-form .aat-role-control .select2-container .select2-selection,
-.aat-profile-form .aat-location-control .select2-container .select2-selection {
-  min-height: 38px;
-}
-
-.aat-profile-form .aat-location-control .btn-group,
-.aat-profile-form .aat-location-control .btn,
-.aat-profile-form .aat-location-control a.btn {
-  flex: 0 0 auto;
-  margin-left: 0 !important;
-}
-
-.aat-profile-form .card-footer {
-  background: transparent;
-  padding: 0.85rem 1.25rem 1rem;
+.aat-profile-wrap .aat-profile-location-value .btn-group,
+.aat-profile-wrap .aat-profile-location-value .btn,
+.aat-profile-wrap .aat-profile-location-value a.btn {
+  margin-left: 0.25rem !important;
 }
 
 /*

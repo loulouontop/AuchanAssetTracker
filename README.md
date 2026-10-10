@@ -33,9 +33,8 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 
 ## Profile rights (GLPI-style)
 
-Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix (same columns as GLPI assets: View all, Update all, Create, Delete, Purge, notes, assigned, owned).  
-Unchecked rights **hide** the matching menu tab / add button — users never open a page only to see “no permission”.  
-Location scope (optional) is still saved under the matrix.
+Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix (same columns as GLPI assets: View all, Update all, Create, Delete, Purge, notes, assigned, owned) plus Location scope in the same table UI.  
+One **Save** updates rights and location together. Unchecked rights **hide** the matching menu tab / add button.
 
 ## Upgrade from Sprint 2
 
@@ -53,7 +52,7 @@ Location scope (optional) is still saved under the matrix.
 
 1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name).
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
-3. Map roles under **Administration → Profiles → Auchan Asset Tracker**.
+3. Set rights and location scope under **Administration → Profiles → Auchan Asset Tracker**.
 4. Create locations and containers before receiving stock.
 
 ## Locale

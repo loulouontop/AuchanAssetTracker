@@ -382,7 +382,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Rights matrix (saved by core Profile form) + location scope form.
+     * Rights matrix + location scope in one GLPI table form (single Save).
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -394,83 +394,128 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             return false;
         }
 
-        // Reload profile fields so matrix checkboxes see current profilerights.
-        $profile->getFromDB($profiles_id);
-
-        echo "<div class='aat-profile-wrap firstbloc'>";
-
-        if (($profile->fields['interface'] ?? '') === 'central') {
-            if ($canedit) {
-                echo "<form method='post' action='" . Html::entities_deep($profile->getFormURL()) . "'>";
-            }
-
-            $profile->displayRightsChoiceMatrix(self::getAllRights(), [
-                'canedit'       => $canedit,
-                'default_class' => 'tab_bg_2',
-                'title'         => __('Auchan Asset Tracker', 'auchanassettracker'),
-            ]);
-
-            if ($canedit) {
-                echo "<div class='center my-2'>";
-                echo Html::hidden('id', ['value' => $profiles_id]);
-                echo Html::submit(_sx('button', 'Save'), [
-                    'name'  => 'update',
-                    'class' => 'btn btn-primary',
-                ]);
-                echo "</div>";
-                Html::closeForm();
-            }
-        }
-
-        // Location scope (plugin mapping table) — separate form.
         $current = self::getForProfileId($profiles_id) ?? [
             'locations_id' => 0,
-            'role'         => 'user',
         ];
         $locations_id = (int) ($current['locations_id'] ?? 0);
         $action = plugin_auchanassettracker_web_dir() . '/front/profile.form.php';
 
-        echo "<div class='aat-profile-form mx-auto mt-3'>";
+        echo "<div class='aat-profile-wrap firstbloc'>";
+
         if ($canedit) {
             echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
         }
 
-        echo "<div class='card'>";
-        echo "<div class='card-header'>"
+        if (($profile->fields['interface'] ?? '') === 'central') {
+            $profile->displayRightsChoiceMatrix(self::getAllRights(), [
+                'canedit'       => $canedit,
+                'default_class' => 'tab_bg_2',
+                'title'         => __('Auchan Asset Tracker', 'auchanassettracker'),
+            ]);
+        }
+
+        // Location scope — same tab_cadre_fixe table UI as the rights matrix.
+        echo "<table class='tab_cadre_fixe aat-profile-location-table'>";
+        echo "<tr><th colspan='2'>"
             . Html::entities_deep(__('Location scope', 'auchanassettracker'))
-            . "</div>";
-        echo "<div class='card-body'>";
-        echo "<div class='mb-3'>";
-        echo "<label class='form-label'>" . Html::entities_deep(__('Location')) . "</label>";
-        echo "<div class='aat-field-control aat-location-control'>";
-        Location::dropdown([
-            'name'  => 'locations_id',
-            'value' => $locations_id,
-            'width' => '320px',
-        ]);
-        echo "</div>";
-        echo "<div class='form-text'>"
+            . "</th></tr>";
+        echo "<tr class='tab_bg_2'>";
+        echo "<td class='aat-profile-location-label'>"
+            . Html::entities_deep(__('Location'))
+            . "</td>";
+        echo "<td class='aat-profile-location-value'>";
+        if ($canedit) {
+            Location::dropdown([
+                'name'  => 'locations_id',
+                'value' => $locations_id,
+                'width' => '100%',
+            ]);
+        } elseif ($locations_id > 0) {
+            echo Html::entities_deep(Dropdown::getDropdownName('glpi_locations', $locations_id));
+        } else {
+            echo Html::entities_deep(__('All locations', 'auchanassettracker'));
+        }
+        echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
                 'Optional. When set, Equipment / containers / stock actions are limited to this location. Leave empty to allow all locations for this profile.',
                 'auchanassettracker'
             ))
-            . "</div></div>";
-        echo "</div>";
+            . "</div>";
+        echo "</td></tr>";
+        echo "</table>";
 
         if ($canedit) {
-            echo "<div class='card-footer mx-n2 mb-n2 d-flex flex-row-reverse align-items-center flex-wrap gap-2'>";
+            echo "<div class='center my-2'>";
             echo Html::submit(_sx('button', 'Save'), [
-                'name'  => 'update_aat_location',
+                'name'  => 'update',
                 'class' => 'btn btn-primary',
             ]);
             echo "</div>";
-            echo "</form>";
+            Html::closeForm();
         }
-        echo "</div></div>";
 
         echo "</div>";
+        return true;
+    }
+
+    /**
+     * Apply rights matrix POST fields (same shape as Profile::prepareInputForUpdate).
+     *
+     * @return bool true if any right value was processed
+     */
+    public static function saveRightsFromPost(array $post): bool
+    {
+        global $DB;
+
+        $profiles_id = (int) ($post['profiles_id'] ?? $post['id'] ?? 0);
+        if ($profiles_id <= 0 || !$DB->tableExists('glpi_profilerights')) {
+            return false;
+        }
+
+        $changed = [];
+        foreach (self::getRightNames() as $right) {
+            $key = '_' . $right;
+            if (!isset($post[$key])) {
+                continue;
+            }
+            $raw = $post[$key];
+            if (!is_array($raw)) {
+                $raw = ['1' => $raw];
+            }
+            $newvalue = 0;
+            foreach ($raw as $value => $valid) {
+                if (!$valid) {
+                    continue;
+                }
+                if (($underscore_pos = strpos((string) $value, '_')) !== false) {
+                    $value = substr((string) $value, 0, $underscore_pos);
+                }
+                $newvalue += (int) $value;
+            }
+            $changed[$right] = $newvalue;
+            if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+                $_SESSION['glpiactiveprofile'][$right] = $newvalue;
+            }
+        }
+
+        if ($changed === []) {
+            return false;
+        }
+
+        ProfileRight::updateProfileRights($profiles_id, $changed);
+
+        // Keep legacy aggregate right roughly in sync with equipment.
+        if (isset($changed[self::RIGHT_EQUIPMENT])) {
+            ProfileRight::updateProfileRights($profiles_id, [
+                self::LEGACY_RIGHT => (int) $changed[self::RIGHT_EQUIPMENT],
+            ]);
+            if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+                $_SESSION['glpiactiveprofile'][self::LEGACY_RIGHT] = (int) $changed[self::RIGHT_EQUIPMENT];
+            }
+        }
+
         return true;
     }
 
