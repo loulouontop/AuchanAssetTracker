@@ -1,45 +1,25 @@
 <?php
 /**
- * AuchanAssetTracker — GLPI 11 plugin (Sprint 2).
+ * Auchan Asset Tracker — GLPI 11 plugin.
  *
- * Stock, containers, allocation with user confirm/reject, alerts, audit. RO + EN.
+ * Equipment tracking: stock, containers, allocation, transfers, service, write-off.
  *
  * @author    Lokmane Benaziza
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.2.1');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.3.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
-/**
- * Exact plugins/ folder name on disk (case-sensitive on Linux).
- * Must match glpi_plugins.directory — never hardcode a different casing.
- */
+/** Actual plugins/ folder name on disk (case-sensitive on Linux). */
 define('PLUGIN_AUCHANASSETTRACKER_DIR', basename(__DIR__));
 
 /**
- * Single plugin directory key for hooks, menus, DB row, and every URL.
+ * Plugin directory key used by GLPI (must match the folder under plugins/).
  */
 function plugin_auchanassettracker_dir(): string
 {
     return PLUGIN_AUCHANASSETTRACKER_DIR;
-}
-
-/**
- * Web base path for this plugin.
- * Avoid Plugin::getWebDir() (deprecated in GLPI 11; can return false and break menus).
- */
-function plugin_auchanassettracker_web_dir(bool $full = true): string
-{
-    global $CFG_GLPI;
-
-    $path = 'plugins/' . plugin_auchanassettracker_dir();
-    if (!$full) {
-        return $path;
-    }
-
-    $root = rtrim((string) ($CFG_GLPI['root_doc'] ?? ''), '/');
-    return ($root !== '' ? $root : '') . '/' . $path;
 }
 
 function plugin_auchanassettracker_bootstrap(): void
@@ -59,11 +39,10 @@ function plugin_auchanassettracker_bootstrap(): void
         'manufacturer',
         'container',
         'equipment',
-        'assetform',
-        'bulk',
         'allocation',
-        'confirm',
-        'notice',
+        'transfer',
+        'transferitem',
+        'tickethook',
         'menu',
         'mailhelper',
     ] as $file) {
@@ -86,15 +65,9 @@ function plugin_auchanassettracker_load_translations(): void
     }
 
     if (isset($TRANSLATE) && !str_starts_with($lang, 'en')) {
-        foreach (array_unique([$lang, substr($lang, 0, 2)]) as $candidate) {
-            if ($candidate === '') {
-                continue;
-            }
-            $phpfile = __DIR__ . '/locales/' . $candidate . '.php';
-            if (is_readable($phpfile)) {
-                $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
-                break;
-            }
+        $phpfile = __DIR__ . '/locales/' . $lang . '.php';
+        if (is_readable($phpfile)) {
+            $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
         }
     }
 }
@@ -115,99 +88,54 @@ function plugin_init_auchanassettracker(): void
 
     plugin_auchanassettracker_bootstrap();
 
-    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipments')
-        || $DB->tableExists('glpi_plugin_auchanassettracker_containers')) {
-        plugin_auchanassettracker_ensure_schema();
-    }
-
     if ($DB->tableExists('glpi_plugin_auchanassettracker_configs')) {
         PluginAuchanassettrackerConfig::seedDefaults();
     }
-
-    // Top-level “Auchan Asset Tracker” menu (not under Assets).
-    $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
-    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_equipmenttypes')) {
+        PluginAuchanassettrackerEquipmenttype::seedDefaults();
+    }
+    if ($DB->tableExists('glpi_plugin_auchanassettracker_manufacturers')) {
+        PluginAuchanassettrackerManufacturer::seedDefaults();
+    }
 
     if (!Session::getLoginUserID()) {
         return;
     }
 
+    Plugin::registerClass('PluginAuchanassettrackerEquipmenttype');
+    Plugin::registerClass('PluginAuchanassettrackerManufacturer');
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');
-    Plugin::registerClass('PluginAuchanassettrackerBulk');
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
-    Plugin::registerClass('PluginAuchanassettrackerConfirm');
+    Plugin::registerClass('PluginAuchanassettrackerTransfer');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
 
-    // Physical container on native GLPI asset forms + location-scoped search.
-    $PLUGIN_HOOKS['post_item_form'][$plug] = 'plugin_auchanassettracker_post_item_form';
+    $PLUGIN_HOOKS['menu_toadd'][$plug] = [
+        'assets' => 'PluginAuchanassettrackerMenu',
+    ];
 
-    foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $asset_type) {
-        $PLUGIN_HOOKS['item_add'][$plug][$asset_type] = 'plugin_auchanassettracker_item_add_asset';
-        $PLUGIN_HOOKS['item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_item_update_asset';
-    }
-
-    if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+    if (Session::haveRight('config', UPDATE)
+        || PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
-}
 
-/**
- * @param array{item?: CommonDBTM} $params
- */
-function plugin_auchanassettracker_post_item_form(array $params): void
-{
-    PluginAuchanassettrackerAssetform::postItemForm($params);
-}
+    $PLUGIN_HOOKS['item_add'][$plug] = [
+        'Ticket'      => ['PluginAuchanassettrackerTickethook', 'postTicketAdd'],
+        'Item_Ticket' => ['PluginAuchanassettrackerTickethook', 'postItemTicketAdd'],
+    ];
+    $PLUGIN_HOOKS['item_update'][$plug] = [
+        'Ticket' => ['PluginAuchanassettrackerTickethook', 'postTicketUpdate'],
+    ];
 
-function plugin_auchanassettracker_item_add_asset(CommonDBTM $item): void
-{
-    PluginAuchanassettrackerAssetform::onItemAdd($item);
-}
-
-function plugin_auchanassettracker_item_update_asset(CommonDBTM $item): void
-{
-    PluginAuchanassettrackerAssetform::onItemUpdate($item);
-}
-
-/**
- * Restrict Equipment / Container search lists to the user’s location scope.
- * (GLPI naming-convention hook.)
- */
-function plugin_auchanassettracker_addDefaultWhere($itemtype): string
-{
-    $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-    if ($scope === null) {
-        return '';
-    }
-
-    if ($itemtype === PluginAuchanassettrackerEquipment::class
-        || $itemtype === 'PluginAuchanassettrackerEquipment') {
-        $table = PluginAuchanassettrackerEquipment::getTable();
-        if ($scope <= 0) {
-            return "`$table`.`id` = 0";
-        }
-        return "`$table`.`locations_id` = " . (int) $scope;
-    }
-
-    if ($itemtype === PluginAuchanassettrackerContainer::class
-        || $itemtype === 'PluginAuchanassettrackerContainer') {
-        $table = PluginAuchanassettrackerContainer::getTable();
-        if ($scope <= 0) {
-            return "`$table`.`id` = 0";
-        }
-        return "`$table`.`locations_id` = " . (int) $scope;
-    }
-
-    return '';
+    $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
 }
 
 function plugin_version_auchanassettracker(): array
 {
     return [
-        'name'           => 'AuchanAssetTracker',
+        'name'           => 'Auchan Asset Tracker',
         'version'        => PLUGIN_AUCHANASSETTRACKER_VERSION,
         'author'         => 'Lokmane BENAZIZA',
         'license'        => 'Auchan RO',

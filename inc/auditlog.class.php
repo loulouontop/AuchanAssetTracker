@@ -38,4 +38,27 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
             'date_creation' => $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s'),
         ]);
     }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public static function getRecent(int $limit = 15, ?int $locations_id = null): array
+    {
+        global $DB;
+
+        if (!$DB->tableExists(self::getTable())) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'ORDER' => 'date_creation DESC',
+            'LIMIT' => $limit,
+        ]) as $row) {
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
 }

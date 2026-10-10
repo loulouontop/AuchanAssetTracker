@@ -1,8 +1,8 @@
-# AuchanAssetTracker — Sprint 2
+# Auchan Asset Tracker — Sprint 3
 
-GLPI plugin for IT equipment stock, physical containers, and allocation with user confirmation.
+GLPI plugin for IT equipment stock, physical containers, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.2.1 (Sprint 2)  
+**Version:** 0.3.0 (Sprint 3)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -17,23 +17,18 @@ GLPI plugin for IT equipment stock, physical containers, and allocation with use
 
 ## Sprint 2 scope
 
-- Stock + containers (Sprint 1)
 - Allocate Available → Awaiting validation (container cleared)
 - User Confirm / Did not receive
-- Overdue confirmation alerts (configurable **calendar days**, default 5)
-- Allocation history + email / in-app event notices
+- Overdue confirmation alerts (configurable days, default 5)
+- Allocation history + email / in-app notices
 
-## Rejection flow (Did not receive)
+## Sprint 3 scope
 
-1. End user opens **Confirm receipt** and chooses **Did not receive**.
-2. Allocation status → **rejected**.
-3. Equipment status → **Available**; plugin restores the **previous physical container** when it still exists and belongs to the location.
-4. Linked GLPI asset owner is cleared.
-5. Allocator gets **one event notice** (email if configured, otherwise in-app):
-   - If the shelf was restored → stock is fine; no Active alert.
-   - If the previous shelf is missing/inactive → item stays Available **without** container and appears once under **Active alerts → Needs a container**.
-6. **Active alerts** = live operational list (late confirmations + needs container).  
-   **Notices** = one-shot events (reject / pending mail). They are not duplicated for the same overdue list.
+- Transfers: source → **In transit** → destination validates with mandatory container
+- Block allocate/transfer while In transit or In service
+- Service hook: ticket on tracked gear → **In service**; solved/closed → **Allocated**
+- Write-off / Lost / Stolen (reason required; only Central Admin can reintroduce)
+- Alert thresholds config: allocation / transfer / service days
 
 ## Requirements
 
@@ -42,17 +37,11 @@ GLPI plugin for IT equipment stock, physical containers, and allocation with use
 
 ## Install
 
-1. Copy this folder to `plugins/` and keep **one** name only (recommended: `AuchanAssetTracker`).
-   - On Linux the folder name is case-sensitive. Do **not** keep both `auchanassettracker` and `AuchanAssetTracker`.
-   - The plugin syncs `glpi_plugins.directory` to the exact folder name on disk so menus and links stay aligned.
-2. **Setup → Plugins** → Install → Enable (or open the page once after an update — self-heal finishes the upgrade).
-3. Map roles under **Administration → Profiles → AuchanAssetTracker**.
+1. Copy this folder to `plugins/auchanassettracker` (include `public/`).
+2. **Setup → Plugins** → Install → Enable.
+3. Map roles under **Administration → Profiles → Auchan Asset Tracker**.
 4. Create locations and containers before receiving stock.
 
-## Menu
+## Locale
 
-Top-level **Auchan Asset Tracker** (not under Assets), with sub-pages by role.
-
-## Acceptance check
-
-Manager creates a shelf, adds a laptop, allocates to a user; user confirms (or marks did not receive).
+Romanian translations: `locales/ro_RO.php` (loaded when GLPI language is `ro_RO`).

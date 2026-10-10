@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT="${1:-$ROOT/auchanassettracker-0.1.0.tar.gz}"
+OUT="${1:-$ROOT/auchanassettracker-0.3.0.tar.gz}"
 STAGE="$(mktemp -d)"
 mkdir -p "$STAGE/auchanassettracker"
 tar -C "$ROOT" \
