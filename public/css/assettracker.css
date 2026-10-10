@@ -215,24 +215,18 @@ select.aat-recipient-user.aat-recipient-pending {
   font-weight: 600;
 }
 
-/* Profile tab — Role/Location: one fs-4 title, left dropdowns, i/+ stuck to field */
+/* Profile tab — Role/Location share matrix card-table title styling; dropdown layout only */
 .aat-profile-wrap {
   padding: 1.5rem 1.25rem 2.5rem;
 }
 
-.aat-profile-wrap .aat-profile-meta-table {
-  margin-top: 1rem;
-  width: 100%;
-}
-
-.aat-profile-wrap .aat-profile-meta-table th {
-  text-align: left;
+.aat-profile-wrap .aat-profile-meta {
+  margin-top: 0;
 }
 
 .aat-profile-wrap .aat-profile-meta-cell {
   text-align: left !important;
   vertical-align: middle;
-  padding: 0.75rem 1rem;
 }
 
 .aat-profile-wrap .aat-profile-field {
