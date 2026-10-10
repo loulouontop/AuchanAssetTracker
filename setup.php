@@ -60,6 +60,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'container',
         'equipment',
         'assetform',
+        'locationtab',
         'bulk',
         'allocation',
         'confirm',
@@ -109,7 +110,7 @@ function plugin_auchanassettracker_post_init(): void
 
 function plugin_init_auchanassettracker(): void
 {
-    global $PLUGIN_HOOKS, $DB;
+    global $PLUGIN_HOOKS, $DB, $CFG_GLPI;
 
     $plug = plugin_auchanassettracker_dir();
 
@@ -149,12 +150,26 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);
+    Plugin::registerClass('PluginAuchanassettrackerLocationtab', [
+        'addtabon' => ['Location'],
+    ]);
+
+    // Allow Documents tab / uploads on plugin equipment & containers.
+    foreach ([
+        PluginAuchanassettrackerEquipment::class,
+        PluginAuchanassettrackerContainer::class,
+    ] as $doc_type) {
+        if (!in_array($doc_type, $CFG_GLPI['document_types'] ?? [], true)) {
+            $CFG_GLPI['document_types'][] = $doc_type;
+        }
+    }
 
     // Physical container on native GLPI asset forms + location-scoped search.
     $PLUGIN_HOOKS['post_item_form'][$plug] = 'plugin_auchanassettracker_post_item_form';
 
     foreach (PluginAuchanassettrackerEquipment::getAllowedAssetTypes() as $asset_type) {
         $PLUGIN_HOOKS['item_add'][$plug][$asset_type] = 'plugin_auchanassettracker_item_add_asset';
+        $PLUGIN_HOOKS['pre_item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_pre_item_update_asset';
         $PLUGIN_HOOKS['item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_item_update_asset';
     }
 
@@ -188,6 +203,11 @@ function plugin_auchanassettracker_post_item_form(array $params): void
 function plugin_auchanassettracker_item_add_asset(CommonDBTM $item): void
 {
     PluginAuchanassettrackerAssetform::onItemAdd($item);
+}
+
+function plugin_auchanassettracker_pre_item_update_asset(CommonDBTM $item): bool
+{
+    return PluginAuchanassettrackerAssetform::preItemUpdate($item);
 }
 
 function plugin_auchanassettracker_item_update_asset(CommonDBTM $item): void

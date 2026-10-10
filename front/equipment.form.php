@@ -21,11 +21,29 @@ if (isset($_POST['add'])) {
 } elseif (isset($_POST['mark_final'])) {
     $item->check((int) $_POST['id'], UPDATE);
     if ($item->getFromDB((int) $_POST['id'])) {
-        $item->markFinal(
+        $doc_label = '';
+        // Prefer first uploaded filename for the summary field.
+        if (!empty($_POST['_filename'][0])) {
+            $doc_label = (string) $_POST['_filename'][0];
+            // Strip upload prefix if present.
+            if (!empty($_POST['_prefix_filename'][0])) {
+                $doc_label = str_replace((string) $_POST['_prefix_filename'][0], '', $doc_label);
+            }
+        }
+        $ok = $item->markFinal(
             (string) ($_POST['final_status'] ?? ''),
             (string) ($_POST['final_reason'] ?? ''),
-            (string) ($_POST['final_document'] ?? '')
+            $doc_label
         );
+        if ($ok) {
+            $names = $item->attachUploadedDocuments($_POST);
+            if ($names !== []) {
+                $item->update([
+                    'id'             => (int) $item->getID(),
+                    'final_document' => implode(', ', array_slice($names, 0, 3)),
+                ]);
+            }
+        }
     }
     Html::back();
 } elseif (isset($_POST['reintroduce'])) {

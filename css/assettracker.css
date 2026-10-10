@@ -320,3 +320,25 @@ body:has(.aat-modal-shell) {
   top: calc(-1 * var(--tblr-ribbon-margin, 0.5rem)) !important;
   z-index: 2;
 }
+
+/*
+ * Auchan Asset Tracker top-menu submenu: grey hover bar only (no text color flip).
+ * Matches native GLPI Assets / Admin submenu hover behavior.
+ */
+.navbar .dropdown-menu a.dropdown-item[href*="auchanassettracker"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="AuchanAssetTracker"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="equipment"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="container"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="transfer"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="allocation"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="confirm"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="/plugins/"][href*="config"]:hover,
+.navbar .dropdown-menu a.dropdown-item[href*="equipment.bulk"]:hover {
+  color: inherit !important;
+  background-color: var(--tblr-dropdown-link-hover-bg, rgba(98, 105, 118, 0.08)) !important;
+}
+
+.navbar .dropdown-menu a.dropdown-item[href*="auchanassettracker"]:focus,
+.navbar .dropdown-menu a.dropdown-item[href*="AuchanAssetTracker"]:focus {
+  color: inherit !important;
+}

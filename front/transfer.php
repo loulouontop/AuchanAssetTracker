@@ -25,8 +25,6 @@ $base = plugin_auchanassettracker_web_dir();
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
 echo "<div class='aat-workspace'>";
-echo "<p><a class='btn btn-primary' href='" . Html::entities_deep($base . '/front/transfer.form.php') . "'>"
-    . __('New transfer', 'auchanassettracker') . "</a></p>";
 
 if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
     $list = PluginAuchanassettrackerTransfer::getAll();

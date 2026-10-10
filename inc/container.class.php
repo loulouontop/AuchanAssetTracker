@@ -7,6 +7,9 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
 {
     public static $rightname = 'plugin_auchanassettracker_container';
 
+    /** Enable GLPI History (Log) tab. */
+    public $dohistory = true;
+
     public static function getTypeName($nb = 0): string
     {
         if ((int) $nb === 1) {
@@ -76,7 +79,47 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         $this->addDefaultFormTab($ong);
         // GLPI search table of equipment currently stored in this container.
         $this->addStandardTab('PluginAuchanassettrackerEquipment', $ong, $options);
+        $this->addStandardTab(Document_Item::class, $ong, $options);
+        $this->addStandardTab(Log::class, $ong, $options);
         return $ong;
+    }
+
+    /**
+     * Physical containers at a GLPI Location (search list).
+     */
+    public static function showForLocation(Location $location): bool
+    {
+        $id = (int) $location->getID();
+        if ($id <= 0) {
+            return false;
+        }
+
+        echo "<div class='spaced aat-location-containers'>";
+        $params = [
+            'reset'              => 'reset',
+            'usesession'         => false,
+            'is_deleted'         => 0,
+            'sort'               => 1,
+            'order'              => 'ASC',
+            'showmassiveactions' => true,
+            'criteria'           => [
+                [
+                    'link'       => 'AND',
+                    'field'      => 3, // Location
+                    'searchtype' => 'equals',
+                    'value'      => $id,
+                ],
+            ],
+        ];
+        if (class_exists(\Glpi\Search\SearchEngine::class)
+            && method_exists(\Glpi\Search\SearchEngine::class, 'showList')
+        ) {
+            \Glpi\Search\SearchEngine::showList(self::class, $params);
+        } else {
+            Search::showList(self::class, $params);
+        }
+        echo '</div>';
+        return true;
     }
 
     public function rawSearchOptions()
