@@ -472,11 +472,13 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</table></div>";
 
         if ($canedit) {
-            echo "<div class='center my-2'>";
-            echo Html::submit(_sx('button', 'Save'), [
-                'name'  => 'update',
-                'class' => 'btn btn-primary',
-            ]);
+            // Same footer as GLPI components/form/buttons.html.twig (Save on the right).
+            echo "<div class='form-button-separator card-body mx-n2 mb-n2 border-top"
+                . " d-flex flex-row-reverse align-items-center flex-wrap gap-2'>";
+            echo "<button class='btn btn-primary me-2' type='submit' name='update' value='1'>";
+            echo "<i class='ti ti-device-floppy'></i> ";
+            echo "<span>" . Html::entities_deep(_sx('button', 'Save')) . "</span>";
+            echo "</button>";
             echo "</div>";
             // Do not Html::closeForm() on Profile tabs — wrong CSRF token on nested forms.
             echo "</form>";
