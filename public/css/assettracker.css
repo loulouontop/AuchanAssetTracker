@@ -215,32 +215,32 @@ select.aat-recipient-user.aat-recipient-pending {
   font-weight: 600;
 }
 
-/* Profile tab — rights matrix + location table, one Save */
+/* Profile tab — rights matrix + Role/Location grey bars, one Save */
 .aat-profile-wrap {
   padding: 1.5rem 1.25rem 2.5rem;
 }
 
-.aat-profile-wrap .aat-profile-location-table {
+.aat-profile-wrap .aat-profile-meta-table {
   margin-top: 1rem;
   width: 100%;
 }
 
-.aat-profile-wrap .aat-profile-location-label {
+.aat-profile-wrap .aat-profile-meta-label {
   width: 30%;
   vertical-align: middle;
 }
 
-.aat-profile-wrap .aat-profile-location-value {
+.aat-profile-wrap .aat-profile-meta-value {
   vertical-align: middle;
 }
 
-.aat-profile-wrap .aat-profile-location-value .select2-container {
+.aat-profile-wrap .aat-profile-meta-value .select2-container {
   max-width: 100%;
 }
 
-.aat-profile-wrap .aat-profile-location-value .btn-group,
-.aat-profile-wrap .aat-profile-location-value .btn,
-.aat-profile-wrap .aat-profile-location-value a.btn {
+.aat-profile-wrap .aat-profile-meta-value .btn-group,
+.aat-profile-wrap .aat-profile-meta-value .btn,
+.aat-profile-wrap .aat-profile-meta-value a.btn {
   margin-left: 0.25rem !important;
 }
 
