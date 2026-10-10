@@ -206,6 +206,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             echo "<form method='post' enctype='multipart/form-data' action='"
                 . Html::entities_deep($base . '/front/equipment.form.php') . "'>";
             echo Html::hidden('id', ['value' => $id]);
+            // Explicit token: this tab form must not rely on Html::closeForm() (nested Profile-style stack).
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
             echo "<div class='mb-3'><label class='form-label'>" . __('Action') . $req . "</label>";
             Dropdown::showFromArray('final_status', [
                 self::STATUS_WRITTEN_OFF => __('Written off', 'auchanassettracker'),
@@ -243,6 +245,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             );
             echo "<form method='post' action='" . Html::entities_deep($base . '/front/equipment.form.php') . "'>";
             echo Html::hidden('id', ['value' => $id]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
             echo "<div class='mb-3'><label class='form-label'>"
                 . __('Container', 'auchanassettracker') . $req . "</label>";
             echo "<span class='aat-container-field' data-aat-width='220px'>";
