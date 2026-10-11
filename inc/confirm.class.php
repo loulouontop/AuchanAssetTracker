@@ -128,27 +128,41 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
                     . "</td><td>" . Html::entities_deep($type_label)
                     . "</td><td>" . Html::entities_deep((string) ($eq->fields['serial'] ?? ''))
                     . "</td><td>" . Html::entities_deep((string) ($a['allocation_date'] ?? ''))
-                    . "</td><td><form method='post' action='' class='d-inline'>";
-                echo Html::hidden('allocation_id', ['value' => $aid]);
-                echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+                    . "</td><td>";
                 $can_act = ((int) ($a['users_id_recipient'] ?? 0) === $uid)
                     || PluginAuchanassettrackerRighthelper::isCentralAdmin();
                 if ($can_act) {
+                    echo "<form method='post' action='' class='d-inline-block mb-2'>";
+                    echo Html::hidden('allocation_id', ['value' => $aid]);
+                    echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
                     echo Html::submit(__('Confirm receipt', 'auchanassettracker'), [
                         'name'  => 'confirm',
                         'class' => 'btn btn-success btn-sm',
                     ]);
-                    echo " ";
+                    Html::closeForm();
+
+                    echo "<form method='post' action='' class='aat-reject-form'>";
+                    echo Html::hidden('allocation_id', ['value' => $aid]);
+                    echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+                    echo "<label class='form-label mb-1'>"
+                        . Html::entities_deep(__('Comment'))
+                        . " <span class='aat-required'>*</span></label>";
+                    echo "<textarea name='reject_comment' class='form-control form-control-sm' rows='2'"
+                        . " required placeholder='"
+                        . Html::entities_deep(__('Required when rejecting receipt', 'auchanassettracker'))
+                        . "'></textarea>";
+                    echo "<div class='mt-1'>";
                     echo Html::submit(__('Did not receive', 'auchanassettracker'), [
                         'name'  => 'reject',
                         'class' => 'btn btn-outline-danger btn-sm',
                     ]);
+                    echo "</div>";
+                    Html::closeForm();
                 } else {
                     echo "<span class='text-muted'>"
                         . __('Waiting for the recipient to confirm.', 'auchanassettracker')
                         . "</span>";
                 }
-                Html::closeForm();
                 echo "</td></tr>";
             }
             echo "</tbody></table></div>";

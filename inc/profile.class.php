@@ -382,7 +382,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Rights matrix + Role + Location (same fs-4 grey title as matrix), single Save.
+     * Role + Location only (rights come from the role). Single Save.
+     * Location is kept in sync with each user’s GLPI profile location.
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -411,14 +412,6 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
-        }
-
-        if (($profile->fields['interface'] ?? '') === 'central') {
-            $profile->displayRightsChoiceMatrix(self::getAllRights(), [
-                'canedit'       => $canedit,
-                'default_class' => 'tab_bg_2',
-                'title'         => __('Auchan Asset Tracker', 'auchanassettracker'),
-            ]);
         }
 
         // Same wrapper/title markup as components/checkbox_matrix.html.twig.
@@ -464,7 +457,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
-                'Optional. When set, Equipment / containers / stock actions are limited to this location. Leave empty to allow all locations for this profile.',
+                'Same as the Location field on each user’s GLPI profile. When set, stock actions are limited to this location and users with this profile get the same location on their user profile. Leave empty to allow all locations.',
                 'auchanassettracker'
             ))
             . "</div>";
@@ -486,6 +479,49 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         echo "</div>";
         return true;
+    }
+
+    /**
+     * Push plugin profile location onto glpi_users.locations_id for users of this profile.
+     * Only when a concrete location is set (empty = all locations — leave user locations alone).
+     */
+    public static function syncUsersLocationForProfile(int $profiles_id, int $locations_id): void
+    {
+        global $DB;
+
+        if ($profiles_id <= 0
+            || $locations_id <= 0
+            || !$DB->tableExists('glpi_profiles_users')
+            || !$DB->tableExists('glpi_users')
+            || !$DB->fieldExists('glpi_users', 'locations_id')
+        ) {
+            return;
+        }
+
+        $uids = [];
+        foreach ($DB->request([
+            'SELECT' => ['users_id'],
+            'FROM'   => 'glpi_profiles_users',
+            'WHERE'  => ['profiles_id' => $profiles_id],
+        ]) as $row) {
+            $uid = (int) ($row['users_id'] ?? 0);
+            if ($uid > 0) {
+                $uids[$uid] = true;
+            }
+        }
+        if ($uids === []) {
+            return;
+        }
+
+        try {
+            $DB->update('glpi_users', [
+                'locations_id' => max(0, $locations_id),
+            ], [
+                'id' => array_keys($uids),
+            ]);
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'syncUsersLocationForProfile');
+        }
     }
 
     /**
@@ -589,6 +625,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $sameRole = (string) ($existing['role'] ?? '') === $role;
             $sameLoc  = (int) ($existing['locations_id'] ?? 0) === $locations_id;
             if ($sameRole && $sameLoc) {
+                // Still re-sync user locations so plugin and GLPI user profile stay aligned.
+                self::syncUsersLocationForProfile($profiles_id, $locations_id);
                 return 'unchanged';
             }
 
@@ -598,7 +636,11 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'date_mod'     => $now,
             ], ['id' => (int) $existing['id']]);
 
-            return $ok !== false ? 'updated' : 'error';
+            if ($ok !== false) {
+                self::syncUsersLocationForProfile($profiles_id, $locations_id);
+                return 'updated';
+            }
+            return 'error';
         }
 
         $ok = $DB->insert(self::getTable(), [
@@ -609,7 +651,11 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             'date_mod'      => $now,
         ]);
 
-        return $ok ? 'created' : 'error';
+        if ($ok) {
+            self::syncUsersLocationForProfile($profiles_id, $locations_id);
+            return 'created';
+        }
+        return 'error';
     }
 
     /**

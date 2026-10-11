@@ -13,15 +13,11 @@ $profiles_id = (int) ($_POST['profiles_id'] ?? $_POST['id'] ?? 0);
 if (isset($_POST['update']) && $profiles_id > 0) {
     PluginAuchanassettrackerProfile::ensureRightsRowsForProfile($profiles_id);
 
-    $role_changed = PluginAuchanassettrackerProfile::roleChangedInPost($_POST);
     $result = PluginAuchanassettrackerProfile::saveFromPost($_POST);
 
-    if ($role_changed) {
-        $role = (string) ($_POST['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
-        PluginAuchanassettrackerProfile::applyRightsForRole($profiles_id, $role);
-    } else {
-        PluginAuchanassettrackerProfile::saveRightsFromPost($_POST);
-    }
+    // Rights matrix removed — always derive ProfileRight bits from the role.
+    $role = (string) ($_POST['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
+    PluginAuchanassettrackerProfile::applyRightsForRole($profiles_id, $role);
 
     if ($result === 'error') {
         Session::addMessageAfterRedirect(

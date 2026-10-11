@@ -17,12 +17,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         PluginAuchanassettrackerAllocation::confirm($aid);
         Session::addMessageAfterRedirect(__('Receipt confirmed.', 'auchanassettracker'), true, INFO);
     } elseif (isset($_POST['reject'])) {
-        PluginAuchanassettrackerAllocation::reject($aid);
-        Session::addMessageAfterRedirect(
-            __('Marked as not received. Item returned to its previous container.', 'auchanassettracker'),
-            true,
-            WARNING
-        );
+        $comment = (string) ($_POST['reject_comment'] ?? '');
+        if (PluginAuchanassettrackerAllocation::reject($aid, 0, $comment)) {
+            Session::addMessageAfterRedirect(
+                __('Marked as not received. Item returned to its previous container.', 'auchanassettracker'),
+                true,
+                WARNING
+            );
+        }
     }
     Html::redirect($base . '/front/confirm.php');
     exit;

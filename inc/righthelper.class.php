@@ -156,11 +156,24 @@ class PluginAuchanassettrackerRighthelper
 
     /**
      * Location scope for current user.
+     * Prefer GLPI user profile location (same as plugin location).
      * null = all locations.
      * int  = only that location (0 = none / blocked).
      */
     public static function getScopedLocationId(): ?int
     {
+        // Align with the Location field on the user’s GLPI profile.
+        $uid = (int) Session::getLoginUserID();
+        if ($uid > 0) {
+            $user = new User();
+            if ($user->getFromDB($uid)) {
+                $user_loc = (int) ($user->fields['locations_id'] ?? 0);
+                if ($user_loc > 0) {
+                    return $user_loc;
+                }
+            }
+        }
+
         $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
         if ($mapping !== null) {
             $loc = (int) ($mapping['locations_id'] ?? 0);

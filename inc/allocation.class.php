@@ -287,7 +287,7 @@ JS);
             echo "<th>" . __('Recipient user', 'auchanassettracker') . "</th>";
             echo "<th>" . __('Technician', 'auchanassettracker') . "</th>";
             echo "<th>" . __('Allocated on', 'auchanassettracker') . "</th>";
-            echo "<th>" . __('Status') . "</th><th></th></tr></thead><tbody>";
+            echo "<th>" . __('Status') . "</th><th>" . __('Comment') . "</th><th></th></tr></thead><tbody>";
             foreach ($history as $row) {
                 $aid = (int) ($row['id'] ?? 0);
                 $st = (string) ($row['allocation_status'] ?? '');
@@ -299,6 +299,10 @@ JS);
                     'source' => 'plugin',
                 ];
                 $confirm_href = $base . '/front/confirm.php?allocation_id=' . $aid;
+                $reject_comment = trim((string) ($row['reject_comment'] ?? $row['notes'] ?? ''));
+                if ($st !== self::STATUS_REJECTED) {
+                    $reject_comment = '';
+                }
                 echo "<tr><td>" . self::equipmentNameLink($eq_row)
                     . "</td><td>" . Html::entities_deep($type_label)
                     . "</td><td>" . Html::entities_deep((string) ($row['serial'] ?? ''))
@@ -306,6 +310,7 @@ JS);
                     . "</td><td>" . self::userNameLink((int) ($row['users_id_allocator'] ?? 0))
                     . "</td><td>" . Html::entities_deep((string) ($row['allocation_date'] ?? ''))
                     . "</td><td>" . Html::entities_deep(self::getStatusLabel($st))
+                    . "</td><td>" . Html::entities_deep($reject_comment)
                     . "</td><td>";
                 if ($st === self::STATUS_PENDING && $aid > 0) {
                     echo "<a class='btn btn-sm btn-primary' href='"
@@ -499,8 +504,9 @@ JS);
 
     /**
      * Did not receive → Available and restore previous container.
+     * Reject comment is mandatory.
      */
-    public static function reject(int $allocation_id, int $container_id = 0): bool
+    public static function reject(int $allocation_id, int $container_id = 0, string $comment = ''): bool
     {
         $alloc = new self();
         if (!$alloc->getFromDB($allocation_id)) {
@@ -515,6 +521,16 @@ JS);
         }
 
         if (($alloc->fields['allocation_status'] ?? '') !== self::STATUS_PENDING) {
+            return false;
+        }
+
+        $comment = trim($comment);
+        if ($comment === '') {
+            Session::addMessageAfterRedirect(
+                __('A comment is mandatory when rejecting receipt.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
             return false;
         }
 
@@ -560,12 +576,18 @@ JS);
             return false;
         }
 
-        $alloc->update([
+        $alloc_patch = [
             'id'                => $allocation_id,
             'allocation_status' => self::STATUS_REJECTED,
             'confirmation_date' => $now,
+            'notes'             => $comment,
             'date_mod'          => $now,
-        ]);
+        ];
+        global $DB;
+        if ($DB->fieldExists(self::getTable(), 'reject_comment')) {
+            $alloc_patch['reject_comment'] = $comment;
+        }
+        $alloc->update($alloc_patch);
 
         if ($eq->getFromDB($eq_id)) {
             PluginAuchanassettrackerEquipment::syncGlpiAssetOwner($eq->fields, 0);
@@ -575,13 +597,18 @@ JS);
             'allocation_reject',
             self::class,
             $allocation_id,
-            'equipment=' . $eq_id
+            'equipment=' . $eq_id . ' comment=' . mb_substr($comment, 0, 200)
         );
 
         $allocator = (int) ($alloc->fields['users_id_allocator'] ?? 0);
         if ($allocator > 0) {
             $restored = (int) ($fields['plugin_auchanassettracker_containers_id'] ?? 0) > 0;
-            PluginAuchanassettrackerMailhelper::notifyAllocationRejected($allocator, $eq_id, $restored);
+            PluginAuchanassettrackerMailhelper::notifyAllocationRejected(
+                $allocator,
+                $eq_id,
+                $restored,
+                $comment
+            );
         }
 
         return true;

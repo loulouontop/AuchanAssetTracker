@@ -19,8 +19,12 @@ class PluginAuchanassettrackerMailhelper
     /**
      * One event notice for the allocator (not duplicated in Active alerts when shelf restored).
      */
-    public static function notifyAllocationRejected(int $users_id, int $equipment_id, bool $container_restored = true): void
-    {
+    public static function notifyAllocationRejected(
+        int $users_id,
+        int $equipment_id,
+        bool $container_restored = true,
+        string $comment = ''
+    ): void {
         $eq = new PluginAuchanassettrackerEquipment();
         $eq->getFromDB($equipment_id);
         $subject = __('Allocation rejected by user', 'auchanassettracker');
@@ -36,7 +40,26 @@ class PluginAuchanassettrackerMailhelper
                 $name
             );
         }
+        $comment = trim($comment);
+        if ($comment !== '') {
+            $body .= "\n" . __('Comment') . ': ' . $comment;
+        }
         $link = plugin_auchanassettracker_web_dir() . '/front/equipment.form.php?id=' . $equipment_id;
+        self::send($users_id, $subject, $body, $link);
+    }
+
+    public static function notifyTransferRejected(int $users_id, int $transfer_id, string $comment = ''): void
+    {
+        $subject = __('Transfer rejected', 'auchanassettracker');
+        $body = sprintf(
+            __('Transfer #%d was rejected by the destination location.', 'auchanassettracker'),
+            $transfer_id
+        );
+        $comment = trim($comment);
+        if ($comment !== '') {
+            $body .= "\n" . __('Comment') . ': ' . $comment;
+        }
+        $link = plugin_auchanassettracker_web_dir() . '/front/transfer.form.php?id=' . $transfer_id;
         self::send($users_id, $subject, $body, $link);
     }
 

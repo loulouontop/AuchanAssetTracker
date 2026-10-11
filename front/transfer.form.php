@@ -24,6 +24,8 @@ Html::header(
 $base = plugin_auchanassettracker_web_dir();
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+$edit_mode = isset($_GET['edit']) || isset($_POST['update_transfer']);
+$req = " <span class='aat-required'>*</span>";
 
 if ($id > 0 && isset($_POST['validate_transfer'])) {
     $map = [];
@@ -32,6 +34,42 @@ if ($id > 0 && isset($_POST['validate_transfer'])) {
     }
     if (PluginAuchanassettrackerTransfer::validate($id, $map)) {
         Session::addMessageAfterRedirect(__('Transfer validated.', 'auchanassettracker'), true, INFO);
+        Html::redirect($base . '/front/transfer.php');
+        exit;
+    }
+}
+
+if ($id > 0 && isset($_POST['reject_transfer'])) {
+    $comment = (string) ($_POST['reject_comment'] ?? '');
+    if (PluginAuchanassettrackerTransfer::rejectByRecipient($id, $comment)) {
+        Session::addMessageAfterRedirect(
+            __('Transfer rejected. Equipment restored at source.', 'auchanassettracker'),
+            true,
+            WARNING
+        );
+        Html::redirect($base . '/front/transfer.php');
+        exit;
+    }
+}
+
+if ($id > 0 && isset($_POST['update_transfer'])) {
+    $dest = (int) ($_POST['locations_id_dest'] ?? 0);
+    $notes = (string) ($_POST['notes'] ?? '');
+    if (PluginAuchanassettrackerTransfer::updateInTransit($id, $dest, $notes)) {
+        Session::addMessageAfterRedirect(__('Item successfully updated'), true, INFO);
+        Html::redirect($base . '/front/transfer.form.php?id=' . $id);
+        exit;
+    }
+    $edit_mode = true;
+}
+
+if ($id > 0 && isset($_POST['delete_transfer'])) {
+    if (PluginAuchanassettrackerTransfer::cancelBySender($id)) {
+        Session::addMessageAfterRedirect(
+            __('Transfer cancelled. Equipment restored at source.', 'auchanassettracker'),
+            true,
+            INFO
+        );
         Html::redirect($base . '/front/transfer.php');
         exit;
     }
@@ -63,6 +101,8 @@ if ($id > 0) {
         PluginAuchanassettrackerTransfer::STATUS_CANCELLED  => __('Cancelled'),
     ];
     $st = (string) ($tr->fields['transfer_status'] ?? '');
+    $is_in_transit = $st === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT;
+    $can_sender = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
 
     PluginAuchanassettrackerMenu::beginNativeFormCard(
         sprintf(__('Transfer #%d', 'auchanassettracker'), $id),
@@ -77,9 +117,67 @@ if ($id > 0) {
     echo "<p><strong>" . __('Status') . ":</strong> "
         . Html::entities_deep($status_labels[$st] ?? $st) . "</p>";
 
+    if (trim((string) ($tr->fields['notes'] ?? '')) !== '') {
+        echo "<p><strong>" . __('Notes') . ":</strong> "
+            . nl2br(Html::entities_deep((string) $tr->fields['notes'])) . "</p>";
+    }
+    if (trim((string) ($tr->fields['reject_comment'] ?? '')) !== '') {
+        echo "<p><strong>" . __('Reject comment', 'auchanassettracker') . ":</strong> "
+            . nl2br(Html::entities_deep((string) $tr->fields['reject_comment'])) . "</p>";
+    }
+
+    // Sender edit while in transit.
+    if ($can_sender && $edit_mode) {
+        echo "<form method='post' action='' class='mb-4'>";
+        echo Html::hidden('id', ['value' => $id]);
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+        echo "<div class='mb-3'><label class='form-label'>"
+            . __('Destination location', 'auchanassettracker') . $req . "</label>";
+        $dest_opts = [
+            'name'  => 'locations_id_dest',
+            'value' => (int) $tr->fields['locations_id_dest'],
+        ];
+        $source = (int) $tr->fields['locations_id_source'];
+        if ($source > 0) {
+            $dest_opts['used'] = [$source];
+        }
+        Location::dropdown($dest_opts);
+        echo "</div>";
+        echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
+        echo "<textarea name='notes' class='form-control' rows='2'>"
+            . Html::entities_deep((string) ($tr->fields['notes'] ?? ''))
+            . "</textarea></div>";
+        echo "<div class='d-flex gap-2'>";
+        echo Html::submit(_x('button', 'Save'), [
+            'name'  => 'update_transfer',
+            'class' => 'btn btn-primary',
+        ]);
+        echo "<a class='btn btn-outline-secondary' href='"
+            . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id) . "'>"
+            . Html::entities_deep(__('Cancel')) . "</a>";
+        echo "</div>";
+        Html::closeForm();
+    } elseif ($can_sender) {
+        echo "<div class='mb-3 d-flex gap-2 flex-wrap'>";
+        echo "<a class='btn btn-sm btn-outline-secondary' href='"
+            . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id . '&edit=1') . "'>"
+            . "<i class='ti ti-edit'></i> " . Html::entities_deep(_x('button', 'Edit')) . "</a>";
+        $confirm_js = json_encode(
+            __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+        );
+        echo "<form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
+        echo Html::hidden('id', ['value' => $id]);
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+        echo "<button type='submit' name='delete_transfer' value='1' class='btn btn-sm btn-outline-danger'>"
+            . "<i class='ti ti-trash'></i> " . Html::entities_deep(_x('button', 'Delete')) . "</button>";
+        Html::closeForm();
+        echo "</div>";
+    }
+
     $items = PluginAuchanassettrackerTransfer::getItems($id);
     $dest = (int) $tr->fields['locations_id_dest'];
-    $can_validate = ($tr->fields['transfer_status'] === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT)
+    $can_validate = $is_in_transit
         && (PluginAuchanassettrackerRighthelper::canAccessLocation($dest)
             || PluginAuchanassettrackerRighthelper::isCentralAdmin());
 
@@ -94,9 +192,11 @@ if ($id > 0) {
     if ($can_validate && PluginAuchanassettrackerContainer::countAtLocation($dest) > 0) {
         echo "<form method='post' action=''>";
         echo Html::hidden('id', ['value' => $id]);
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
         echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
         echo "<thead><tr><th>" . __('Equipment') . "</th><th>"
-            . __('Serial number') . "</th><th>" . __('Container', 'auchanassettracker') . " *</th></tr></thead><tbody>";
+            . __('Serial number') . "</th><th>"
+            . __('Container', 'auchanassettracker') . $req . "</th></tr></thead><tbody>";
         foreach ($items as $it) {
             $eq = new PluginAuchanassettrackerEquipment();
             $eq->getFromDB((int) $it['plugin_auchanassettracker_equipments_id']);
@@ -124,6 +224,23 @@ if ($id > 0) {
         ]);
         echo "</div>";
         Html::closeForm();
+
+        // Recipient reject with mandatory comment (separate form).
+        echo "<hr class='my-4'>";
+        echo "<form method='post' action='' class='aat-reject-form'>";
+        echo Html::hidden('id', ['value' => $id]);
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+        echo "<div class='mb-2'><label class='form-label'>"
+            . Html::entities_deep(__('Comment')) . $req . "</label>";
+        echo "<textarea name='reject_comment' class='form-control' rows='2' required"
+            . " placeholder='"
+            . Html::entities_deep(__('Required when rejecting a transfer', 'auchanassettracker'))
+            . "'></textarea></div>";
+        echo Html::submit(__('Reject transfer', 'auchanassettracker'), [
+            'name'  => 'reject_transfer',
+            'class' => 'btn btn-outline-danger',
+        ]);
+        Html::closeForm();
     } else {
         echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
         echo "<thead><tr><th>" . __('Equipment') . "</th><th>"
@@ -135,6 +252,25 @@ if ($id > 0) {
                 . "</td><td>" . Html::entities_deep($eq->fields['serial'] ?? '') . "</td></tr>";
         }
         echo "</tbody></table></div>";
+
+        // Destination with no containers yet can still reject.
+        if ($can_validate) {
+            echo "<hr class='my-4'>";
+            echo "<form method='post' action='' class='aat-reject-form'>";
+            echo Html::hidden('id', ['value' => $id]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+            echo "<div class='mb-2'><label class='form-label'>"
+                . Html::entities_deep(__('Comment')) . $req . "</label>";
+            echo "<textarea name='reject_comment' class='form-control' rows='2' required"
+                . " placeholder='"
+                . Html::entities_deep(__('Required when rejecting a transfer', 'auchanassettracker'))
+                . "'></textarea></div>";
+            echo Html::submit(__('Reject transfer', 'auchanassettracker'), [
+                'name'  => 'reject_transfer',
+                'class' => 'btn btn-outline-danger',
+            ]);
+            Html::closeForm();
+        }
     }
 
     PluginAuchanassettrackerMenu::endNativeFormCard();
@@ -150,8 +286,9 @@ if ($id > 0) {
     );
 
     echo "<form method='post' action=''>";
+    echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
     echo "<div class='mb-3'><label class='form-label'>"
-        . __('Destination location', 'auchanassettracker') . " *</label>";
+        . __('Destination location', 'auchanassettracker') . $req . "</label>";
     // Scoped profiles (location manager / location set): hide own location from destination.
     $dest_opts = ['name' => 'locations_id_dest'];
     if ($scope !== null && (int) $scope > 0) {

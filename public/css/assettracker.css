@@ -6,6 +6,15 @@
   margin-left: 0.15rem;
 }
 
+/* Transfer list: GLPI-style compact action icons */
+.aat-transfer-actions .btn-icon {
+  padding: 0.25rem 0.4rem;
+  vertical-align: middle;
+}
+.aat-transfer-actions form {
+  display: inline;
+}
+
 .aat-input-sm {
   max-width: 220px !important;
   width: 220px !important;
