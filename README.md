@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.3.1 (Sprint 3)  
+**Version:** 0.3.0 (Sprint 3)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -18,7 +18,7 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 ## Sprint 2 scope
 
 - Allocate Available → Awaiting validation (container cleared)
-- User Confirm / Did not receive
+- User Confirm / Did not receive (mandatory comment on reject)
 - Overdue confirmation alerts (configurable **calendar days**, default 5)
 - Allocation history + email / in-app event notices
 - Top-level **Auchan Asset Tracker** GLPI menu (native UI chrome)
@@ -26,20 +26,22 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 ## Sprint 3 scope
 
 - Transfers: source → **In transit** → destination validates with mandatory container
+- Sender can edit (destination / notes / equipment) or delete while in transit; destination can reject with comment
 - Block allocate/transfer while In transit or In service
-- Service hook: ticket on tracked gear → **In service**; solved/closed → **Allocated**
-- Write-off / Lost / Stolen (reason required; only Central Admin can reintroduce)
+- Service hook: ticket on tracked gear → **In service** (GLPI asset Status aligned); solved/closed → **Allocated**
+- Write-off / Lost / Stolen (reason + document; only manager can reintroduce)
+- History / Documents tabs; Location physical containers + contents
 - Alert thresholds: allocation / transfer / service days
 
-## Profile rights (GLPI-style)
+## Profile role
 
-Administration → Profiles → **Auchan Asset Tracker** tab shows a rights matrix plus **Role** and **Location** sections (same grey title bars as the matrix).  
-One **Save** updates rights, role, and location. Changing the role applies a rights preset; tweaking checkboxes without changing role keeps those edits. Unchecked rights **hide** the matching menu tab / add button.
+Administration → Profiles → **Auchan Asset Tracker** → set **Role** (rights come from the role).  
+Location scope for location managers / support techs uses the user’s native GLPI **User → Location**. Central admin has no location limit.
 
 ## Upgrade from Sprint 2
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.3.1**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds transfer tables and `final_*` / `service_*` columns), migrates legacy roles into ProfileRights, then updates `glpi_plugins.version`.
+2. Version becomes **0.3.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds transfer tables and `final_*` / `service_*` columns), migrates legacy roles into ProfileRights, then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
 4. Clear browser cache / GLPI cache if the menu does not refresh. Re-login (or switch profile) so session rights refresh.
 
@@ -52,7 +54,7 @@ One **Save** updates rights, role, and location. Changing the role applies a rig
 
 1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name).
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
-3. Set rights and location scope under **Administration → Profiles → Auchan Asset Tracker**.
+3. Set the plugin **Role** under **Administration → Profiles → Auchan Asset Tracker**, and set each user’s **Location** on the GLPI user form when they need location scope.
 4. Create locations and containers before receiving stock.
 
 ## Locale
