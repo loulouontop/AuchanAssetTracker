@@ -19,7 +19,7 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 
 - Allocate Available → Awaiting validation (container cleared)
 - User Confirm / Did not receive (mandatory comment on reject)
-- Overdue confirmation alerts (configurable **calendar days**, default 5)
+- Overdue confirmation alerts (configurable days, default 5)
 - Allocation history + email / in-app event notices
 - Top-level **Auchan Asset Tracker** GLPI menu (native UI chrome)
 

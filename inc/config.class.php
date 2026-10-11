@@ -86,7 +86,7 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
         echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
 
         echo "<div class='mb-3'><label class='form-label'>"
-            . __('Allocation confirmation (calendar days)', 'auchanassettracker') . "</label>";
+            . __('Allocation confirmation (days)', 'auchanassettracker') . "</label>";
         echo Html::input('allocation_confirm_days', [
             'type'  => 'number',
             'min'   => 1,
@@ -94,7 +94,7 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
             'value' => self::getAllocationConfirmDays(),
         ]);
         echo "<div class='form-text'>"
-            . __('Default 5 calendar days. Late pending allocations appear under Active alerts on New allocation.', 'auchanassettracker')
+            . __('Default 5 days. Late pending allocations appear under Active alerts on New allocation.', 'auchanassettracker')
             . "</div></div>";
 
         echo "<div class='mb-3'><label class='form-label'>"
