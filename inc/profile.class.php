@@ -457,7 +457,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
-                'Same as the Location field on each user’s GLPI profile. When set, stock actions are limited to this location and users with this profile get the same location on their user profile. Leave empty to allow all locations.',
+                'Copied to each user’s GLPI Location when you Save here, and again when this profile is assigned to a user. Stock scope follows that user Location. Leave empty to allow all locations.',
                 'auchanassettracker'
             ))
             . "</div>";
@@ -513,14 +513,76 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             return;
         }
 
+        foreach (array_keys($uids) as $uid) {
+            self::applyLocationToUser((int) $uid, $locations_id);
+        }
+    }
+
+    /**
+     * Set one user’s GLPI locations_id (silent DB write).
+     */
+    public static function applyLocationToUser(int $users_id, int $locations_id): void
+    {
+        global $DB;
+
+        if ($users_id <= 0
+            || $locations_id <= 0
+            || !$DB->tableExists('glpi_users')
+            || !$DB->fieldExists('glpi_users', 'locations_id')
+        ) {
+            return;
+        }
+
         try {
             $DB->update('glpi_users', [
-                'locations_id' => max(0, $locations_id),
+                'locations_id' => $locations_id,
             ], [
-                'id' => array_keys($uids),
+                'id' => $users_id,
             ]);
         } catch (Throwable $e) {
-            PluginAuchanassettrackerPluginlog::exception($e, 'syncUsersLocationForProfile');
+            PluginAuchanassettrackerPluginlog::exception($e, 'applyLocationToUser');
+        }
+    }
+
+    /**
+     * When a GLPI Profile is assigned to a user, copy plugin Location → user.locations_id.
+     * Also safe to call on login / profile switch for the active profile.
+     */
+    public static function syncLocationForUser(int $users_id, ?int $profiles_id = null): void
+    {
+        if ($users_id <= 0) {
+            return;
+        }
+
+        if ($profiles_id === null || $profiles_id <= 0) {
+            $profiles_id = (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0);
+        }
+        if ($profiles_id <= 0) {
+            // Fall back: any assigned profile that has a plugin location.
+            global $DB;
+            if (!$DB->tableExists('glpi_profiles_users')) {
+                return;
+            }
+            foreach ($DB->request([
+                'SELECT' => ['profiles_id'],
+                'FROM'   => 'glpi_profiles_users',
+                'WHERE'  => ['users_id' => $users_id],
+            ]) as $row) {
+                $pid = (int) ($row['profiles_id'] ?? 0);
+                $mapping = self::getForProfileId($pid);
+                $loc = (int) ($mapping['locations_id'] ?? 0);
+                if ($loc > 0) {
+                    self::applyLocationToUser($users_id, $loc);
+                    return;
+                }
+            }
+            return;
+        }
+
+        $mapping = self::getForProfileId($profiles_id);
+        $loc = (int) ($mapping['locations_id'] ?? 0);
+        if ($loc > 0) {
+            self::applyLocationToUser($users_id, $loc);
         }
     }
 

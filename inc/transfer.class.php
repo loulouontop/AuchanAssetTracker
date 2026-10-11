@@ -277,10 +277,16 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
     }
 
     /**
-     * Sender may edit destination / notes while the transfer is still in transit.
+     * Sender may edit destination, notes, and equipment while still in transit.
+     *
+     * @param list<int>|null $equipment_ids null = keep current items; otherwise replace set
      */
-    public static function updateInTransit(int $transfer_id, int $locations_id_dest, string $notes = ''): bool
-    {
+    public static function updateInTransit(
+        int $transfer_id,
+        int $locations_id_dest,
+        string $notes = '',
+        ?array $equipment_ids = null
+    ): bool {
         $tr = new self();
         if (!$tr->getFromDB($transfer_id)) {
             return false;
@@ -315,15 +321,189 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
             'notes'             => $notes,
             'date_mod'          => $now,
         ]);
-        if ($ok) {
-            PluginAuchanassettrackerAuditlog::record(
-                'transfer_update',
-                self::class,
-                $transfer_id,
-                'dest=' . $locations_id_dest
-            );
+        if (!$ok) {
+            return false;
         }
-        return $ok;
+
+        if ($equipment_ids !== null) {
+            if (!self::syncEquipmentSet($transfer_id, $source, $equipment_ids)) {
+                return false;
+            }
+        }
+
+        PluginAuchanassettrackerAuditlog::record(
+            'transfer_update',
+            self::class,
+            $transfer_id,
+            'dest=' . $locations_id_dest
+            . ($equipment_ids !== null ? ' items=' . implode(',', $equipment_ids) : '')
+        );
+
+        return true;
+    }
+
+    /**
+     * Replace in-transit equipment set: restore removed items, pull in newly selected stock.
+     *
+     * @param list<int> $equipment_ids
+     */
+    public static function syncEquipmentSet(int $transfer_id, int $source, array $equipment_ids): bool
+    {
+        global $DB;
+
+        $equipment_ids = array_values(array_unique(array_filter(array_map('intval', $equipment_ids))));
+        if ($equipment_ids === []) {
+            Session::addMessageAfterRedirect(
+                __('Select destination and at least one equipment item.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        $current = self::getItems($transfer_id);
+        $current_by_eq = [];
+        foreach ($current as $row) {
+            $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+            if ($eid > 0) {
+                $current_by_eq[$eid] = $row;
+            }
+        }
+
+        $wanted = array_fill_keys($equipment_ids, true);
+
+        // Remove unchecked items → Available at source again.
+        foreach ($current_by_eq as $eid => $row) {
+            if (isset($wanted[$eid])) {
+                continue;
+            }
+            $prev = (int) ($row['plugin_auchanassettracker_containers_id_previous'] ?? 0);
+            $fields = [
+                'status'       => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
+                'locations_id' => $source,
+                'users_id'     => 0,
+            ];
+            if ($prev > 0
+                && PluginAuchanassettrackerEquipment::containerBelongsToLocation($prev, $source)
+            ) {
+                $fields['plugin_auchanassettracker_containers_id'] = $prev;
+            } else {
+                $fields['plugin_auchanassettracker_containers_id'] = 0;
+            }
+            if (!PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, $fields)) {
+                Session::addMessageAfterRedirect(
+                    __('Unable to restore equipment after transfer cancel.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+            $ti_id = (int) ($row['id'] ?? 0);
+            if ($ti_id > 0) {
+                $DB->delete(PluginAuchanassettrackerTransferitem::getTable(), ['id' => $ti_id]);
+            }
+        }
+
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+
+        // Keep or add selected items.
+        foreach ($equipment_ids as $eid) {
+            if (isset($current_by_eq[$eid])) {
+                continue;
+            }
+
+            $eq = new PluginAuchanassettrackerEquipment();
+            if (!$eq->getFromDB($eid)) {
+                Session::addMessageAfterRedirect(__('Unable to load item'), false, ERROR);
+                return false;
+            }
+            if ((int) ($eq->fields['locations_id'] ?? 0) !== $source) {
+                Session::addMessageAfterRedirect(
+                    __('All equipment must belong to the source location.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+            if (($eq->fields['status'] ?? '') !== PluginAuchanassettrackerEquipment::STATUS_AVAILABLE) {
+                Session::addMessageAfterRedirect(
+                    __('Only available equipment can be transferred.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+            $prev_container = (int) ($eq->fields['plugin_auchanassettracker_containers_id'] ?? 0);
+            if ($prev_container <= 0) {
+                Session::addMessageAfterRedirect(
+                    __('A physical container is mandatory for equipment in stock.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+
+            $item = new PluginAuchanassettrackerTransferitem();
+            $item->add([
+                'plugin_auchanassettracker_transfers_id'           => $transfer_id,
+                'plugin_auchanassettracker_equipments_id'          => $eid,
+                'plugin_auchanassettracker_containers_id_previous' => $prev_container,
+                'date_creation'                                   => $now,
+            ]);
+
+            PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
+                'status'                                  => PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT,
+                'plugin_auchanassettracker_containers_id' => 0,
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Equipment eligible for an in-transit edit: currently on the transfer + Available at source.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function getEditableEquipmentRows(int $transfer_id, int $source): array
+    {
+        $rows = [];
+        $seen = [];
+
+        foreach (self::getItems($transfer_id) as $it) {
+            $eid = (int) ($it['plugin_auchanassettracker_equipments_id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+            $eq = new PluginAuchanassettrackerEquipment();
+            if (!$eq->getFromDB($eid)) {
+                continue;
+            }
+            $fields = $eq->fields;
+            $fields['id'] = $eid;
+            $fields['_on_transfer'] = true;
+            $fields['_prev_container'] = (int) ($it['plugin_auchanassettracker_containers_id_previous'] ?? 0);
+            $rows[] = $fields;
+            $seen[$eid] = true;
+        }
+
+        foreach (PluginAuchanassettrackerEquipment::findByStatus(
+            PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
+            $source
+        ) as $e) {
+            $eid = (int) ($e['id'] ?? 0);
+            if ($eid <= 0 || isset($seen[$eid])) {
+                continue;
+            }
+            if ((int) ($e['plugin_auchanassettracker_containers_id'] ?? 0) <= 0) {
+                continue;
+            }
+            $e['_on_transfer'] = false;
+            $rows[] = $e;
+            $seen[$eid] = true;
+        }
+
+        return $rows;
     }
 
     /**

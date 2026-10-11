@@ -187,9 +187,60 @@ function plugin_init_auchanassettracker(): void
         'postTicketUpdate',
     ];
 
+    // Assigning a GLPI profile to a user → copy plugin Location onto user.locations_id.
+    $PLUGIN_HOOKS['item_add'][$plug]['Profile_User'] = 'plugin_auchanassettracker_profile_user_sync';
+    $PLUGIN_HOOKS['item_update'][$plug]['Profile_User'] = 'plugin_auchanassettracker_profile_user_sync';
+
+    // Keep active session user aligned after profile switch / login.
+    $PLUGIN_HOOKS['change_profile'][$plug] = 'plugin_auchanassettracker_change_profile_sync';
+
+    // Backfill: if the logged-in user’s GLPI Location is empty but their active
+    // plugin profile has one, copy it (does not overwrite a set location).
+    $uid = (int) Session::getLoginUserID();
+    if ($uid > 0) {
+        $user = new User();
+        if ($user->getFromDB($uid) && (int) ($user->fields['locations_id'] ?? 0) <= 0) {
+            PluginAuchanassettrackerProfile::syncLocationForUser(
+                $uid,
+                (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0)
+            );
+        }
+    }
+
     if (PluginAuchanassettrackerRighthelper::canConfigure()) {
         $PLUGIN_HOOKS['config_page'][$plug] = 'front/config.form.php';
     }
+}
+
+/**
+ * Profile_User add/update → sync plugin location to that user.
+ */
+function plugin_auchanassettracker_profile_user_sync(CommonDBTM $item): void
+{
+    if (!($item instanceof Profile_User) && $item->getType() !== 'Profile_User') {
+        return;
+    }
+    $users_id = (int) ($item->fields['users_id'] ?? $item->input['users_id'] ?? 0);
+    $profiles_id = (int) ($item->fields['profiles_id'] ?? $item->input['profiles_id'] ?? 0);
+    if ($users_id <= 0) {
+        return;
+    }
+    PluginAuchanassettrackerProfile::syncLocationForUser($users_id, $profiles_id > 0 ? $profiles_id : null);
+}
+
+/**
+ * After the user switches active profile, re-apply plugin location to their GLPI user.
+ */
+function plugin_auchanassettracker_change_profile_sync(): void
+{
+    $uid = (int) Session::getLoginUserID();
+    if ($uid <= 0) {
+        return;
+    }
+    PluginAuchanassettrackerProfile::syncLocationForUser(
+        $uid,
+        (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0)
+    );
 }
 
 /**

@@ -55,7 +55,8 @@ if ($id > 0 && isset($_POST['reject_transfer'])) {
 if ($id > 0 && isset($_POST['update_transfer'])) {
     $dest = (int) ($_POST['locations_id_dest'] ?? 0);
     $notes = (string) ($_POST['notes'] ?? '');
-    if (PluginAuchanassettrackerTransfer::updateInTransit($id, $dest, $notes)) {
+    $eids = array_map('intval', (array) ($_POST['equipment_ids'] ?? []));
+    if (PluginAuchanassettrackerTransfer::updateInTransit($id, $dest, $notes, $eids)) {
         Session::addMessageAfterRedirect(__('Item successfully updated'), true, INFO);
         Html::redirect($base . '/front/transfer.form.php?id=' . $id);
         exit;
@@ -126,8 +127,11 @@ if ($id > 0) {
             . nl2br(Html::entities_deep((string) $tr->fields['reject_comment'])) . "</p>";
     }
 
-    // Sender edit while in transit.
+    // Sender edit while in transit (destination, notes, equipment).
     if ($can_sender && $edit_mode) {
+        $source = (int) $tr->fields['locations_id_source'];
+        $edit_rows = PluginAuchanassettrackerTransfer::getEditableEquipmentRows($id, $source);
+
         echo "<form method='post' action='' class='mb-4'>";
         echo Html::hidden('id', ['value' => $id]);
         echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
@@ -137,7 +141,6 @@ if ($id > 0) {
             'name'  => 'locations_id_dest',
             'value' => (int) $tr->fields['locations_id_dest'],
         ];
-        $source = (int) $tr->fields['locations_id_source'];
         if ($source > 0) {
             $dest_opts['used'] = [$source];
         }
@@ -147,6 +150,34 @@ if ($id > 0) {
         echo "<textarea name='notes' class='form-control' rows='2'>"
             . Html::entities_deep((string) ($tr->fields['notes'] ?? ''))
             . "</textarea></div>";
+
+        echo "<div class='mb-3'><label class='form-label'>"
+            . __('Equipment') . $req . "</label>";
+        echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
+        echo "<thead><tr><th></th><th>" . __('Name') . "</th><th>" . __('Serial number') . "</th><th>"
+            . __('Container', 'auchanassettracker') . "</th></tr></thead><tbody>";
+        $shown = 0;
+        foreach ($edit_rows as $e) {
+            $shown++;
+            $eid = (int) ($e['id'] ?? 0);
+            $on = !empty($e['_on_transfer']);
+            $cid = $on
+                ? (int) ($e['_prev_container'] ?? 0)
+                : (int) ($e['plugin_auchanassettracker_containers_id'] ?? 0);
+            $cname = $cid > 0
+                ? Dropdown::getDropdownName(PluginAuchanassettrackerContainer::getTable(), $cid)
+                : ($on ? __('In transit', 'auchanassettracker') : '');
+            echo "<tr><td><input type='checkbox' name='equipment_ids[]' value='"
+                . $eid . "'" . ($on ? " checked" : '') . "></td><td>"
+                . Html::entities_deep((string) ($e['name'] ?? '')) . "</td><td>"
+                . Html::entities_deep((string) ($e['serial'] ?? '')) . "</td><td>"
+                . Html::entities_deep((string) $cname) . "</td></tr>";
+        }
+        if ($shown === 0) {
+            echo "<tr><td colspan='4' class='text-muted'>" . __('None.', 'auchanassettracker') . "</td></tr>";
+        }
+        echo "</tbody></table></div></div>";
+
         echo "<div class='d-flex gap-2'>";
         echo Html::submit(_x('button', 'Save'), [
             'name'  => 'update_transfer',
@@ -157,6 +188,10 @@ if ($id > 0) {
             . Html::entities_deep(__('Cancel')) . "</a>";
         echo "</div>";
         Html::closeForm();
+        PluginAuchanassettrackerMenu::endNativeFormCard();
+        echo "</div>";
+        Html::footer();
+        exit;
     } elseif ($can_sender) {
         echo "<div class='mb-3 d-flex gap-2 flex-wrap'>";
         echo "<a class='btn btn-sm btn-outline-secondary' href='"
