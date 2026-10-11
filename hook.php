@@ -425,6 +425,18 @@ function plugin_auchanassettracker_ensure_schema(): void
         }
     }
 
+    // Location scope moved to native GLPI User.locations_id — clear legacy plugin values.
+    $profiles = 'glpi_plugin_auchanassettracker_profiles';
+    if ($DB->tableExists($profiles) && $DB->fieldExists($profiles, 'locations_id')) {
+        try {
+            $DB->update($profiles, ['locations_id' => 0], [
+                'locations_id' => ['>', 0],
+            ]);
+        } catch (Throwable) {
+            // Ignore — column may already be unused / empty.
+        }
+    }
+
     plugin_auchanassettracker_ensure_equipment_displayprefs();
 }
 
