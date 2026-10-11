@@ -910,7 +910,7 @@ JS);
     /**
      * Render Active alerts (operational state only — not duplicated as notices).
      *
-     * - Late confirmations: pending longer than the calendar-day threshold
+     * - Late confirmations: pending longer than the day threshold
      * - Needs a container: Did not receive and previous shelf could not be restored
      */
     public static function displayActiveAlerts(?int $locations_id = null): void
@@ -926,7 +926,7 @@ JS);
         echo "<div class='aat-alert-title'>" . __('Active alerts', 'auchanassettracker') . "</div>";
         if ($overdue !== []) {
             echo "<p class='mb-1 fw-semibold'>"
-                . __('Late confirmations (calendar days)', 'auchanassettracker') . "</p>";
+                . __('Late confirmations (days)', 'auchanassettracker') . "</p>";
             echo "<ul>";
             foreach ($overdue as $row) {
                 $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
