@@ -14,6 +14,21 @@ if (!PluginAuchanassettrackerRighthelper::canTransfer()) {
     exit;
 }
 
+$base = plugin_auchanassettracker_web_dir();
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_transfer'])) {
+    $tid = (int) ($_POST['id'] ?? 0);
+    if ($tid > 0 && PluginAuchanassettrackerTransfer::cancelBySender($tid)) {
+        Session::addMessageAfterRedirect(
+            __('Transfer cancelled. Equipment restored at source.', 'auchanassettracker'),
+            true,
+            INFO
+        );
+    }
+    Html::redirect($base . '/front/transfer.php');
+    exit;
+}
+
 Html::header(
     __('Transfers', 'auchanassettracker'),
     $_SERVER['PHP_SELF'],
@@ -21,27 +36,15 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_TRANSFER
 );
 
-$base = plugin_auchanassettracker_web_dir();
 $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
 
 echo "<div class='aat-workspace'>";
 
+// Location managers see full history (all statuses) for their location — not only in-transit.
 if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
     $list = PluginAuchanassettrackerTransfer::getAll();
 } else {
-    $list = array_merge(
-        PluginAuchanassettrackerTransfer::getPendingForLocation((int) $scope),
-        array_filter(
-            PluginAuchanassettrackerTransfer::getAll(PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT),
-            static fn($t) => (int) $t['locations_id_source'] === (int) $scope
-                || (int) $t['locations_id_dest'] === (int) $scope
-        )
-    );
-    $uniq = [];
-    foreach ($list as $t) {
-        $uniq[(int) $t['id']] = $t;
-    }
-    $list = array_values($uniq);
+    $list = PluginAuchanassettrackerTransfer::getForLocationScope($scope);
 }
 
 $status_labels = [
@@ -58,18 +61,51 @@ PluginAuchanassettrackerMenu::beginNativeFormCard(
 echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
 echo "<thead><tr><th>" . __('ID') . "</th><th>"
     . __('Source') . "</th><th>" . __('Destination') . "</th><th>"
-    . __('Status') . "</th><th>" . __('Date') . "</th><th></th></tr></thead><tbody>";
+    . __('Status') . "</th><th>" . __('Date') . "</th><th>"
+    . __('Actions') . "</th></tr></thead><tbody>";
 
 foreach ($list as $t) {
+    $tid = (int) ($t['id'] ?? 0);
     $st = (string) ($t['transfer_status'] ?? '');
-    echo "<tr><td>" . (int) $t['id']
+    $tr = new PluginAuchanassettrackerTransfer();
+    $tr->fields = $t;
+    $is_in_transit = $st === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT;
+    $can_sender = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
+
+    echo "<tr><td>" . $tid
         . "</td><td>" . PluginAuchanassettrackerAllocation::locationNameLink((int) $t['locations_id_source'])
         . "</td><td>" . PluginAuchanassettrackerAllocation::locationNameLink((int) $t['locations_id_dest'])
         . "</td><td>" . Html::entities_deep($status_labels[$st] ?? $st)
         . "</td><td>" . Html::entities_deep($t['date_initiated'] ?? '')
-        . "</td><td><a class='btn btn-sm btn-secondary' href='"
-        . Html::entities_deep($base . '/front/transfer.form.php?id=' . (int) $t['id']) . "'>"
-        . __('Open') . "</a></td></tr>";
+        . "</td><td class='aat-transfer-actions text-nowrap'>";
+
+    // GLPI-style open / edit / delete (edit+delete only for sender while in transit).
+    echo "<a class='btn btn-sm btn-icon btn-ghost-secondary' title='"
+        . Html::entities_deep(__('Open')) . "' href='"
+        . Html::entities_deep($base . '/front/transfer.form.php?id=' . $tid) . "'>"
+        . "<i class='ti ti-eye'></i></a>";
+
+    if ($can_sender) {
+        echo " <a class='btn btn-sm btn-icon btn-ghost-secondary' title='"
+            . Html::entities_deep(_x('button', 'Edit')) . "' href='"
+            . Html::entities_deep($base . '/front/transfer.form.php?id=' . $tid . '&edit=1') . "'>"
+            . "<i class='ti ti-edit'></i></a>";
+
+        $confirm_js = json_encode(
+            __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
+            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+        );
+        echo " <form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
+        echo Html::hidden('id', ['value' => $tid]);
+        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+        echo "<button type='submit' name='delete_transfer' value='1'"
+            . " class='btn btn-sm btn-icon btn-ghost-danger' title='"
+            . Html::entities_deep(_x('button', 'Delete')) . "'>"
+            . "<i class='ti ti-trash'></i></button>";
+        Html::closeForm();
+    }
+
+    echo "</td></tr>";
 }
 if ($list === []) {
     echo "<tr><td colspan='6' class='text-muted'>" . __('None.', 'auchanassettracker') . "</td></tr>";

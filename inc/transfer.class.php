@@ -146,16 +146,19 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
         }
 
         foreach ($equipment_ids as $eid) {
+            $eq = new PluginAuchanassettrackerEquipment();
+            $eq->getFromDB($eid);
+            $prev_container = (int) ($eq->fields['plugin_auchanassettracker_containers_id'] ?? 0);
+
             $item = new PluginAuchanassettrackerTransferitem();
             $item->add([
-                'plugin_auchanassettracker_transfers_id'  => (int) $tid,
-                'plugin_auchanassettracker_equipments_id' => $eid,
+                'plugin_auchanassettracker_transfers_id'              => (int) $tid,
+                'plugin_auchanassettracker_equipments_id'             => $eid,
+                'plugin_auchanassettracker_containers_id_previous'    => $prev_container,
                 'date_creation' => $now,
             ]);
 
-            $eq = new PluginAuchanassettrackerEquipment();
-            $eq->update([
-                'id'     => $eid,
+            PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
                 'status' => PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT,
                 'plugin_auchanassettracker_containers_id' => 0,
             ]);
@@ -271,6 +274,249 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
         );
 
         return true;
+    }
+
+    /**
+     * Sender may edit destination / notes while the transfer is still in transit.
+     */
+    public static function updateInTransit(int $transfer_id, int $locations_id_dest, string $notes = ''): bool
+    {
+        $tr = new self();
+        if (!$tr->getFromDB($transfer_id)) {
+            return false;
+        }
+        if (($tr->fields['transfer_status'] ?? '') !== self::STATUS_IN_TRANSIT) {
+            Session::addMessageAfterRedirect(
+                __('Only in-transit transfers can be edited.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+        if (!self::isSenderForTransfer($tr)) {
+            Session::addMessageAfterRedirect(__('Insufficient rights.'), false, ERROR);
+            return false;
+        }
+
+        $source = (int) ($tr->fields['locations_id_source'] ?? 0);
+        if ($locations_id_dest <= 0 || $locations_id_dest === $source) {
+            Session::addMessageAfterRedirect(
+                __('Destination must be different from source location.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+        $ok = (bool) $tr->update([
+            'id'                => $transfer_id,
+            'locations_id_dest' => $locations_id_dest,
+            'notes'             => $notes,
+            'date_mod'          => $now,
+        ]);
+        if ($ok) {
+            PluginAuchanassettrackerAuditlog::record(
+                'transfer_update',
+                self::class,
+                $transfer_id,
+                'dest=' . $locations_id_dest
+            );
+        }
+        return $ok;
+    }
+
+    /**
+     * Sender cancels an in-transit transfer and restores stock at source.
+     */
+    public static function cancelBySender(int $transfer_id): bool
+    {
+        $tr = new self();
+        if (!$tr->getFromDB($transfer_id)) {
+            return false;
+        }
+        if (($tr->fields['transfer_status'] ?? '') !== self::STATUS_IN_TRANSIT) {
+            Session::addMessageAfterRedirect(
+                __('Only in-transit transfers can be deleted.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+        if (!self::isSenderForTransfer($tr)) {
+            Session::addMessageAfterRedirect(__('Insufficient rights.'), false, ERROR);
+            return false;
+        }
+
+        if (!self::restoreItemsToSource($transfer_id)) {
+            return false;
+        }
+
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+        $tr->update([
+            'id'              => $transfer_id,
+            'transfer_status' => self::STATUS_CANCELLED,
+            'date_mod'        => $now,
+        ]);
+
+        PluginAuchanassettrackerAuditlog::record(
+            'transfer_cancel',
+            self::class,
+            $transfer_id,
+            'by_sender'
+        );
+
+        return true;
+    }
+
+    /**
+     * Destination recipient rejects an in-transit transfer (mandatory comment).
+     */
+    public static function rejectByRecipient(int $transfer_id, string $comment): bool
+    {
+        $tr = new self();
+        if (!$tr->getFromDB($transfer_id)) {
+            return false;
+        }
+        if (($tr->fields['transfer_status'] ?? '') !== self::STATUS_IN_TRANSIT) {
+            return false;
+        }
+
+        $dest = (int) ($tr->fields['locations_id_dest'] ?? 0);
+        $can_reject = PluginAuchanassettrackerRighthelper::canAccessLocation($dest)
+            || PluginAuchanassettrackerRighthelper::isCentralAdmin();
+        if (!$can_reject) {
+            Session::addMessageAfterRedirect(
+                __('Only the destination location can reject this transfer.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        $comment = trim($comment);
+        if ($comment === '') {
+            Session::addMessageAfterRedirect(
+                __('A comment is mandatory when rejecting a transfer.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        if (!self::restoreItemsToSource($transfer_id)) {
+            return false;
+        }
+
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+        $tr->update([
+            'id'              => $transfer_id,
+            'transfer_status' => self::STATUS_CANCELLED,
+            'reject_comment'  => $comment,
+            'date_mod'        => $now,
+        ]);
+
+        PluginAuchanassettrackerAuditlog::record(
+            'transfer_reject',
+            self::class,
+            $transfer_id,
+            'comment=' . mb_substr($comment, 0, 200)
+        );
+
+        $initiator = (int) ($tr->fields['users_id_initiator'] ?? 0);
+        if ($initiator > 0) {
+            PluginAuchanassettrackerMailhelper::notifyTransferRejected($initiator, $transfer_id, $comment);
+        }
+
+        return true;
+    }
+
+    /**
+     * Current user is the sender (transfer initiator). Central admin can also act.
+     */
+    public static function isSenderForTransfer(self $tr): bool
+    {
+        if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
+            return true;
+        }
+        $uid = (int) Session::getLoginUserID();
+        return $uid > 0 && (int) ($tr->fields['users_id_initiator'] ?? 0) === $uid;
+    }
+
+    /**
+     * Put transferred equipment back to Available at the source location.
+     */
+    public static function restoreItemsToSource(int $transfer_id): bool
+    {
+        $tr = new self();
+        if (!$tr->getFromDB($transfer_id)) {
+            return false;
+        }
+        $source = (int) ($tr->fields['locations_id_source'] ?? 0);
+        $items = self::getItems($transfer_id);
+
+        foreach ($items as $item) {
+            $eid = (int) ($item['plugin_auchanassettracker_equipments_id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+            $prev = (int) ($item['plugin_auchanassettracker_containers_id_previous'] ?? 0);
+            $fields = [
+                'status'       => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
+                'locations_id' => $source,
+                'users_id'     => 0,
+            ];
+            if ($prev > 0
+                && PluginAuchanassettrackerEquipment::containerBelongsToLocation($prev, $source)
+            ) {
+                $fields['plugin_auchanassettracker_containers_id'] = $prev;
+            } else {
+                $fields['plugin_auchanassettracker_containers_id'] = 0;
+            }
+            if (!PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, $fields)) {
+                Session::addMessageAfterRedirect(
+                    __('Unable to restore equipment after transfer cancel.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Transfers visible for the current location scope (all statuses — history).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function getForLocationScope(?int $locations_id): array
+    {
+        global $DB;
+
+        if ($locations_id === null) {
+            return self::getAll();
+        }
+        if ($locations_id <= 0) {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => [
+                'OR' => [
+                    'locations_id_source' => $locations_id,
+                    'locations_id_dest'   => $locations_id,
+                ],
+            ],
+            'ORDER' => 'date_initiated DESC',
+            'LIMIT' => 500,
+        ]) as $row) {
+            $rows[] = $row;
+        }
+        return $rows;
     }
 
     /**

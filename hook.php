@@ -339,11 +339,48 @@ function plugin_auchanassettracker_ensure_schema(): void
     }
 
     $alloc = 'glpi_plugin_auchanassettracker_allocations';
-    if ($DB->tableExists($alloc)
-        && !$DB->fieldExists($alloc, 'plugin_auchanassettracker_containers_id_previous')) {
+    if ($DB->tableExists($alloc)) {
+        $alloc_columns = [
+            'plugin_auchanassettracker_containers_id_previous'
+                => 'INT UNSIGNED NOT NULL DEFAULT 0',
+            'reject_comment' => 'TEXT DEFAULT NULL',
+        ];
+        foreach ($alloc_columns as $name => $definition) {
+            if ($DB->fieldExists($alloc, $name)) {
+                continue;
+            }
+            try {
+                $DB->doQuery("ALTER TABLE `$alloc` ADD `$name` $definition");
+            } catch (Throwable $e) {
+                $msg = $e->getMessage();
+                if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    $transfers = 'glpi_plugin_auchanassettracker_transfers';
+    if ($DB->tableExists($transfers) && !$DB->fieldExists($transfers, 'reject_comment')) {
         try {
             $DB->doQuery(
-                "ALTER TABLE `$alloc`
+                "ALTER TABLE `$transfers` ADD `reject_comment` TEXT DEFAULT NULL"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
+    }
+
+    $titems = 'glpi_plugin_auchanassettracker_transferitems';
+    if ($DB->tableExists($titems)
+        && !$DB->fieldExists($titems, 'plugin_auchanassettracker_containers_id_previous')
+    ) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$titems`
                  ADD `plugin_auchanassettracker_containers_id_previous` INT UNSIGNED NOT NULL DEFAULT 0"
             );
         } catch (Throwable $e) {
