@@ -38,8 +38,6 @@ class PluginAuchanassettrackerTickethook
 
     public static function maybeMarkInServiceFromTicket(int $tickets_id): void
     {
-        global $DB;
-
         // Match by serial in ticket content/name, or by linked Computer serial matching our equipment.
         $ticket = new Ticket();
         if (!$ticket->getFromDB($tickets_id)) {
@@ -47,6 +45,8 @@ class PluginAuchanassettrackerTickethook
         }
 
         $equipment_ids = self::findEquipmentIdsForTicket($ticket);
+        $fallback_link = self::findPrimaryGlpiAssetForTicket($ticket);
+
         foreach ($equipment_ids as $eid) {
             $eq = new PluginAuchanassettrackerEquipment();
             if (!$eq->getFromDB($eid)) {
@@ -61,12 +61,25 @@ class PluginAuchanassettrackerTickethook
             }
 
             $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
-            $eq->update([
-                'id'                  => $eid,
-                'status'              => PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
-                'service_tickets_id'  => $tickets_id,
-                'service_since'       => $now,
-            ]);
+            $patch = [
+                'status'             => PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
+                'service_tickets_id' => $tickets_id,
+                'service_since'      => $now,
+            ];
+
+            // Ensure plugin row is linked to a GLPI asset so states_id can sync.
+            if ((int) ($eq->fields['items_id'] ?? 0) <= 0) {
+                $asset_link = self::findGlpiAssetLinkForEquipment($ticket, $eq->fields)
+                    ?? $fallback_link;
+                if ($asset_link !== null) {
+                    $patch['itemtype'] = $asset_link['itemtype'];
+                    $patch['items_id'] = $asset_link['items_id'];
+                }
+            }
+
+            if (!PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, $patch)) {
+                continue;
+            }
 
             PluginAuchanassettrackerAuditlog::record(
                 'equipment_in_service',
@@ -90,21 +103,105 @@ class PluginAuchanassettrackerTickethook
                 'is_deleted'         => 0,
             ],
         ]) as $row) {
-            $eq = new PluginAuchanassettrackerEquipment();
-            $eq->update([
-                'id'     => (int) $row['id'],
-                'status' => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
-                // Keep users_id; skip stock.
+            $eid = (int) ($row['id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+
+            if (!PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
+                'status'             => PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
+                // Keep users_id; skip stock. Keep ticket id for history.
                 'service_tickets_id' => $tickets_id,
-            ]);
+            ])) {
+                continue;
+            }
 
             PluginAuchanassettrackerAuditlog::record(
                 'equipment_return_service',
                 PluginAuchanassettrackerEquipment::class,
-                (int) $row['id'],
+                $eid,
                 'ticket=' . $tickets_id
             );
         }
+    }
+
+    /**
+     * First linked GLPI asset on the ticket (for plugin items_id linking).
+     *
+     * @return array{itemtype: string, items_id: int}|null
+     */
+    public static function findPrimaryGlpiAssetForTicket(Ticket $ticket): ?array
+    {
+        global $DB;
+
+        foreach ($DB->request([
+            'FROM'  => 'glpi_items_tickets',
+            'WHERE' => ['tickets_id' => (int) $ticket->getID()],
+            'ORDER' => 'id ASC',
+            'LIMIT' => 20,
+        ]) as $link) {
+            $itemtype = (string) ($link['itemtype'] ?? '');
+            $items_id = (int) ($link['items_id'] ?? 0);
+            if ($itemtype === '' || $items_id <= 0) {
+                continue;
+            }
+            if (!PluginAuchanassettrackerEquipment::isAllowedAssetType($itemtype)) {
+                continue;
+            }
+            return ['itemtype' => $itemtype, 'items_id' => $items_id];
+        }
+
+        return null;
+    }
+
+    /**
+     * Prefer the ticket-linked GLPI asset that matches this equipment (serial).
+     *
+     * @param array<string, mixed> $eq_fields
+     * @return array{itemtype: string, items_id: int}|null
+     */
+    public static function findGlpiAssetLinkForEquipment(Ticket $ticket, array $eq_fields): ?array
+    {
+        global $DB;
+
+        $eq_serial = trim((string) ($eq_fields['serial'] ?? ''));
+        $eq_itemtype = (string) ($eq_fields['itemtype'] ?? '');
+
+        foreach ($DB->request([
+            'FROM'  => 'glpi_items_tickets',
+            'WHERE' => ['tickets_id' => (int) $ticket->getID()],
+            'ORDER' => 'id ASC',
+            'LIMIT' => 20,
+        ]) as $link) {
+            $itemtype = (string) ($link['itemtype'] ?? '');
+            $items_id = (int) ($link['items_id'] ?? 0);
+            if ($itemtype === '' || $items_id <= 0) {
+                continue;
+            }
+            if (!PluginAuchanassettrackerEquipment::isAllowedAssetType($itemtype)) {
+                continue;
+            }
+
+            // Prefer same itemtype when equipment already knows it.
+            if ($eq_itemtype !== '' && $eq_itemtype !== $itemtype) {
+                continue;
+            }
+
+            if ($eq_serial === '' || !class_exists($itemtype)) {
+                return ['itemtype' => $itemtype, 'items_id' => $items_id];
+            }
+
+            $asset = getItemForItemtype($itemtype);
+            if (!$asset || !$asset->getFromDB($items_id)) {
+                continue;
+            }
+            $asset_serial = trim((string) ($asset->fields['serial'] ?? ''));
+            if ($asset_serial !== '' && strcasecmp($asset_serial, $eq_serial) === 0) {
+                return ['itemtype' => $itemtype, 'items_id' => $items_id];
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -138,7 +235,7 @@ class PluginAuchanassettrackerTickethook
             }
         }
 
-        // 3) Linked GLPI assets → match by serial.
+        // 3) Linked GLPI assets → match by items_id, then by serial.
         foreach ($DB->request([
             'FROM'  => 'glpi_items_tickets',
             'WHERE' => ['tickets_id' => (int) $ticket->getID()],
@@ -148,6 +245,23 @@ class PluginAuchanassettrackerTickethook
             if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
                 continue;
             }
+            if (!PluginAuchanassettrackerEquipment::isAllowedAssetType($itemtype)) {
+                continue;
+            }
+
+            foreach ($DB->request([
+                'SELECT' => ['id'],
+                'FROM'   => PluginAuchanassettrackerEquipment::getTable(),
+                'WHERE'  => [
+                    'itemtype'   => $itemtype,
+                    'items_id'   => $items_id,
+                    'is_deleted' => 0,
+                ],
+                'LIMIT'  => 1,
+            ]) as $row) {
+                $ids[] = (int) $row['id'];
+            }
+
             $asset = getItemForItemtype($itemtype);
             if (!$asset || !$asset->getFromDB($items_id)) {
                 continue;

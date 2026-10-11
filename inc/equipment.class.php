@@ -1486,28 +1486,54 @@ JS);
             return $cache[$status] = (int) ($row['id'] ?? 0);
         }
 
-        // Create a visible state so stock shows “Available” on native assets.
-        try {
-            $input = ['name' => $name];
-            if ($DB->fieldExists($table, 'states_id')) {
-                $input['states_id'] = 0;
-            }
-            // GLPI State visibility flags (per asset type) — set when columns exist.
-            if (method_exists($DB, 'listFields')) {
-                foreach ($DB->listFields($table) as $fname => $_) {
-                    $fname = (string) $fname;
-                    if (str_starts_with($fname, 'is_visible')) {
-                        $input[$fname] = 1;
-                    }
+        // Create a visible state so stock shows “Available” / “In service” on native assets.
+        $input = ['name' => $name];
+        if ($DB->fieldExists($table, 'states_id')) {
+            $input['states_id'] = 0;
+        }
+        // GLPI State visibility flags (per asset type) — set when columns exist.
+        if (method_exists($DB, 'listFields')) {
+            foreach ($DB->listFields($table) as $fname => $_) {
+                $fname = (string) $fname;
+                if (str_starts_with($fname, 'is_visible')) {
+                    $input[$fname] = 1;
                 }
             }
+        }
+
+        try {
             $state = new State();
             $new_id = $state->add($input);
-            return $cache[$status] = $new_id ? (int) $new_id : 0;
+            if ($new_id) {
+                return $cache[$status] = (int) $new_id;
+            }
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'resolveGlpiStateIdForStatus');
-            return $cache[$status] = 0;
         }
+
+        // Ticket hooks / workflows may run without State CREATE rights — insert directly.
+        try {
+            if ($DB->insert($table, $input)) {
+                $new_id = (int) $DB->insertId();
+                if ($new_id > 0) {
+                    return $cache[$status] = $new_id;
+                }
+            }
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'resolveGlpiStateIdForStatus_db');
+        }
+
+        // Race: another request may have created it.
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => $table,
+            'WHERE'  => ['name' => $name],
+            'LIMIT'  => 1,
+        ]) as $row) {
+            return $cache[$status] = (int) ($row['id'] ?? 0);
+        }
+
+        return $cache[$status] = 0;
     }
 
     /**
@@ -1592,8 +1618,9 @@ JS);
     }
 
     /**
-     * Silent workflow write for allocate / confirm / reject.
+     * Silent workflow write for allocate / confirm / reject / service.
      * Bypasses CommonDBTM rights — caller must already authorize the action.
+     * Always pushes status onto the linked GLPI asset states_id.
      *
      * @param array<string, mixed> $fields
      */
@@ -1610,6 +1637,10 @@ JS);
             'users_id',
             'plugin_auchanassettracker_containers_id',
             'items_id',
+            'itemtype',
+            'service_tickets_id',
+            'service_since',
+            'locations_id',
         ];
         $patch = [];
         foreach ($allowed as $key) {
@@ -1624,11 +1655,20 @@ JS);
         $patch['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
 
         try {
-            return (bool) $DB->update(self::getTable(), $patch, ['id' => $id]);
+            $ok = (bool) $DB->update(self::getTable(), $patch, ['id' => $id]);
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'applyWorkflowFields');
             return false;
         }
+
+        if ($ok) {
+            $eq = new self();
+            if ($eq->getFromDB($id)) {
+                self::syncGlpiAssetFromPlugin($eq->fields);
+            }
+        }
+
+        return $ok;
     }
 
     /**
