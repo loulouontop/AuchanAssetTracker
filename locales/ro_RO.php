@@ -222,7 +222,7 @@ return [
     'Reject transfer' => 'Respinge transferul',
     'Required when rejecting a transfer' => 'Obligatoriu la respingerea unui transfer',
     'Required when rejecting receipt' => 'Obligatoriu la respingerea primirii',
-    'Same as the Location field on each user’s GLPI profile. When set, stock actions are limited to this location and users with this profile get the same location on their user profile. Leave empty to allow all locations.' => 'La fel ca locația din profilul GLPI al utilizatorului. Când este setată, acțiunile pe stoc sunt limitate la această locație, iar utilizatorii cu acest profil primesc aceeași locație pe profilul de utilizator. Lăsați gol pentru toate locațiile.',
+    'Copied to each user’s GLPI Location when you Save here, and again when this profile is assigned to a user. Stock scope follows that user Location. Leave empty to allow all locations.' => 'Se copiază în locația GLPI a fiecărui utilizator la Salvare aici și din nou când acest profil este atribuit unui utilizator. Domeniul stocului urmează locația utilizatorului. Lăsați gol pentru toate locațiile.',
     'Transfer #%d was rejected by the destination location.' => 'Transferul #%d a fost respins de locația destinație.',
     'Transfer cancelled. Equipment restored at source.' => 'Transfer anulat. Echipamentul a fost restaurat la sursă.',
     'Transfer rejected' => 'Transfer respins',
