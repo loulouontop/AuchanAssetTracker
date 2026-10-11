@@ -1,7 +1,8 @@
 <?php
 
 /**
- * GLPI-native rights matrix for Auchan Asset Tracker tabs + optional location scope.
+ * Plugin role mapping for Auchan Asset Tracker (rights from role).
+ * Location scope uses native GLPI User.locations_id — not stored here.
  */
 class PluginAuchanassettrackerProfile extends CommonDBTM
 {
@@ -332,12 +333,11 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 }
             }
 
-            // Location mapping row for Super-Admin if missing.
+            // Role mapping row for Super-Admin if missing.
             if ($isSuper && self::getForProfileId($profiles_id) === null) {
-                self::saveLocationFromPost([
-                    'profiles_id'  => $profiles_id,
-                    'locations_id' => 0,
-                    'role'         => 'central_admin',
+                self::saveFromPost([
+                    'profiles_id' => $profiles_id,
+                    'role'        => 'central_admin',
                 ]);
             }
 
@@ -382,8 +382,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Role + Location only (rights come from the role). Single Save.
-     * Location is kept in sync with each user’s GLPI profile location.
+     * Role only (rights come from the role). Location scope uses GLPI User.locations_id.
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -396,14 +395,12 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         }
 
         $current = self::getForProfileId($profiles_id) ?? [
-            'role'         => PluginAuchanassettrackerRighthelper::ROLE_USER,
-            'locations_id' => 0,
+            'role' => PluginAuchanassettrackerRighthelper::ROLE_USER,
         ];
         $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
         if (!isset(PluginAuchanassettrackerRighthelper::getRoles()[$role])) {
             $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
         }
-        $locations_id = (int) ($current['locations_id'] ?? 0);
         $action = plugin_auchanassettracker_web_dir() . '/front/profile.form.php';
 
         echo "<div class='aat-profile-wrap firstbloc'>";
@@ -432,32 +429,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $roles = PluginAuchanassettrackerRighthelper::getRoles();
             echo Html::entities_deep($roles[$role] ?? $role);
         }
-        echo "</div></td></tr></tbody>";
-        echo "</table></div>";
-
-        echo "<div class='mb-4 table-responsive aat-profile-meta'>";
-        echo "<table class='table table-hover card-table'>";
-        echo "<thead><tr class='border-top'><th colspan='1' class=''>"
-            . "<span class='fs-4'>"
-            . Html::entities_deep(__('Location', 'auchanassettracker'))
-            . "</span></th></tr></thead>";
-        echo "<tbody><tr><td class='aat-profile-meta-cell'>";
-        echo "<div class='aat-profile-field aat-profile-location-field'>";
-        if ($canedit) {
-            Location::dropdown([
-                'name'   => 'locations_id',
-                'value'  => $locations_id,
-                'width'  => '320px',
-            ]);
-        } elseif ($locations_id > 0) {
-            echo Html::entities_deep(Dropdown::getDropdownName('glpi_locations', $locations_id));
-        } else {
-            echo Html::entities_deep(__('All locations', 'auchanassettracker'));
-        }
         echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
-                'Copied to each user’s GLPI Location when you Save here, and again when this profile is assigned to a user. Stock scope follows that user Location. Leave empty to allow all locations.',
+                'Location managers and support technicians are limited to the Location set on each user’s GLPI profile (Administration → Users). Central admin has no location limit.',
                 'auchanassettracker'
             ))
             . "</div>";
@@ -479,111 +454,6 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         echo "</div>";
         return true;
-    }
-
-    /**
-     * Push plugin profile location onto glpi_users.locations_id for users of this profile.
-     * Only when a concrete location is set (empty = all locations — leave user locations alone).
-     */
-    public static function syncUsersLocationForProfile(int $profiles_id, int $locations_id): void
-    {
-        global $DB;
-
-        if ($profiles_id <= 0
-            || $locations_id <= 0
-            || !$DB->tableExists('glpi_profiles_users')
-            || !$DB->tableExists('glpi_users')
-            || !$DB->fieldExists('glpi_users', 'locations_id')
-        ) {
-            return;
-        }
-
-        $uids = [];
-        foreach ($DB->request([
-            'SELECT' => ['users_id'],
-            'FROM'   => 'glpi_profiles_users',
-            'WHERE'  => ['profiles_id' => $profiles_id],
-        ]) as $row) {
-            $uid = (int) ($row['users_id'] ?? 0);
-            if ($uid > 0) {
-                $uids[$uid] = true;
-            }
-        }
-        if ($uids === []) {
-            return;
-        }
-
-        foreach (array_keys($uids) as $uid) {
-            self::applyLocationToUser((int) $uid, $locations_id);
-        }
-    }
-
-    /**
-     * Set one user’s GLPI locations_id (silent DB write).
-     */
-    public static function applyLocationToUser(int $users_id, int $locations_id): void
-    {
-        global $DB;
-
-        if ($users_id <= 0
-            || $locations_id <= 0
-            || !$DB->tableExists('glpi_users')
-            || !$DB->fieldExists('glpi_users', 'locations_id')
-        ) {
-            return;
-        }
-
-        try {
-            $DB->update('glpi_users', [
-                'locations_id' => $locations_id,
-            ], [
-                'id' => $users_id,
-            ]);
-        } catch (Throwable $e) {
-            PluginAuchanassettrackerPluginlog::exception($e, 'applyLocationToUser');
-        }
-    }
-
-    /**
-     * When a GLPI Profile is assigned to a user, copy plugin Location → user.locations_id.
-     * Also safe to call on login / profile switch for the active profile.
-     */
-    public static function syncLocationForUser(int $users_id, ?int $profiles_id = null): void
-    {
-        if ($users_id <= 0) {
-            return;
-        }
-
-        if ($profiles_id === null || $profiles_id <= 0) {
-            $profiles_id = (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0);
-        }
-        if ($profiles_id <= 0) {
-            // Fall back: any assigned profile that has a plugin location.
-            global $DB;
-            if (!$DB->tableExists('glpi_profiles_users')) {
-                return;
-            }
-            foreach ($DB->request([
-                'SELECT' => ['profiles_id'],
-                'FROM'   => 'glpi_profiles_users',
-                'WHERE'  => ['users_id' => $users_id],
-            ]) as $row) {
-                $pid = (int) ($row['profiles_id'] ?? 0);
-                $mapping = self::getForProfileId($pid);
-                $loc = (int) ($mapping['locations_id'] ?? 0);
-                if ($loc > 0) {
-                    self::applyLocationToUser($users_id, $loc);
-                    return;
-                }
-            }
-            return;
-        }
-
-        $mapping = self::getForProfileId($profiles_id);
-        $loc = (int) ($mapping['locations_id'] ?? 0);
-        if ($loc > 0) {
-            self::applyLocationToUser($users_id, $loc);
-        }
     }
 
     /**
@@ -646,7 +516,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Upsert role + location scope from the profile tab.
+     * Upsert role from the profile tab (location is no longer stored here).
      *
      * @return 'created'|'updated'|'unchanged'|'error'
      */
@@ -656,7 +526,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Upsert role + location scope from the profile tab.
+     * Upsert role from the profile tab.
+     * locations_id column is kept for DB compatibility but always stored as 0.
      *
      * @return 'created'|'updated'|'unchanged'|'error'
      */
@@ -679,45 +550,34 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
         }
 
-        $locations_id = (int) ($post['locations_id'] ?? 0);
         $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         $existing = self::getForProfileId($profiles_id);
 
         if ($existing !== null) {
             $sameRole = (string) ($existing['role'] ?? '') === $role;
-            $sameLoc  = (int) ($existing['locations_id'] ?? 0) === $locations_id;
+            $sameLoc  = (int) ($existing['locations_id'] ?? 0) === 0;
             if ($sameRole && $sameLoc) {
-                // Still re-sync user locations so plugin and GLPI user profile stay aligned.
-                self::syncUsersLocationForProfile($profiles_id, $locations_id);
                 return 'unchanged';
             }
 
             $ok = $DB->update(self::getTable(), [
                 'role'         => $role,
-                'locations_id' => $locations_id,
+                'locations_id' => 0,
                 'date_mod'     => $now,
             ], ['id' => (int) $existing['id']]);
 
-            if ($ok !== false) {
-                self::syncUsersLocationForProfile($profiles_id, $locations_id);
-                return 'updated';
-            }
-            return 'error';
+            return $ok !== false ? 'updated' : 'error';
         }
 
         $ok = $DB->insert(self::getTable(), [
             'profiles_id'   => $profiles_id,
             'role'          => $role,
-            'locations_id'  => $locations_id,
+            'locations_id'  => 0,
             'date_creation' => $now,
             'date_mod'      => $now,
         ]);
 
-        if ($ok) {
-            self::syncUsersLocationForProfile($profiles_id, $locations_id);
-            return 'created';
-        }
-        return 'error';
+        return $ok ? 'created' : 'error';
     }
 
     /**

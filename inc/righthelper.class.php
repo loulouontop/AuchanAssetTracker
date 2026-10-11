@@ -4,7 +4,8 @@
  * Rights + location scope helpers.
  *
  * Capabilities come from GLPI ProfileRight bits (Session::haveRight).
- * Optional location scope still lives in glpi_plugin_auchanassettracker_profiles.
+ * Role is stored on the plugin profile mapping; location scope comes from the
+ * user’s native GLPI User.locations_id (not a plugin Location field).
  */
 class PluginAuchanassettrackerRighthelper
 {
@@ -155,49 +156,51 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
+     * Roles that are limited to the user’s GLPI Location.
+     */
+    public static function roleUsesUserLocationScope(string $role): bool
+    {
+        return in_array($role, [
+            self::ROLE_LOCATION_MANAGER,
+            self::ROLE_SUPPORT_TECH,
+        ], true);
+    }
+
+    /**
      * Location scope for current user.
-     * Prefer GLPI user profile location (same as plugin location).
-     * null = all locations.
-     * int  = only that location (0 = none / blocked).
+     * Driven by plugin Role + native GLPI User.locations_id:
+     * - central_admin → all locations (null)
+     * - location_manager / support_tech → User.locations_id (0 if unset = blocked)
+     * - end user → no location filter (null)
+     *
+     * null = all locations; int = only that location (0 = none / blocked).
      */
     public static function getScopedLocationId(): ?int
     {
-        // Align with the Location field on the user’s GLPI profile.
+        $role = self::getCurrentRole();
+
+        if ($role === self::ROLE_CENTRAL_ADMIN || self::canConfigure()) {
+            return null;
+        }
+
+        if (!self::roleUsesUserLocationScope($role)) {
+            // End users / confirm-only: no location filter.
+            return null;
+        }
+
         $uid = (int) Session::getLoginUserID();
-        if ($uid > 0) {
-            $user = new User();
-            if ($user->getFromDB($uid)) {
-                $user_loc = (int) ($user->fields['locations_id'] ?? 0);
-                if ($user_loc > 0) {
-                    return $user_loc;
-                }
-            }
+        if ($uid <= 0) {
+            return 0;
         }
 
-        $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
-        if ($mapping !== null) {
-            $loc = (int) ($mapping['locations_id'] ?? 0);
-            if ($loc > 0) {
-                return $loc;
-            }
-            // Mapped with empty location → all locations.
-            return null;
+        $user = new User();
+        if (!$user->getFromDB($uid)) {
+            return 0;
         }
 
-        // No mapping: unrestricted if they have any plugin "view all" / config right.
-        if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, READ)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, UPDATE)
-            || Session::haveRight('config', UPDATE)
-        ) {
-            return null;
-        }
-
-        // Owned-only / confirm-only users: no location filter needed.
-        if (self::canSeeEquipment() || self::canConfirm()) {
-            return null;
-        }
-
-        return 0;
+        $user_loc = (int) ($user->fields['locations_id'] ?? 0);
+        // Location manager / support tech must have a GLPI user Location set.
+        return $user_loc > 0 ? $user_loc : 0;
     }
 
     public static function canAccessLocation(int $locations_id): bool
@@ -210,45 +213,46 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
+     * Users whose native GLPI Location matches.
+     *
      * @return list<int>
      */
-    public static function getUserIdsWithPluginLocation(int $locations_id): array
+    public static function getUserIdsWithGlpiLocation(int $locations_id): array
     {
         global $DB;
 
         if ($locations_id <= 0
-            || !$DB->tableExists(PluginAuchanassettrackerProfile::getTable())
-            || !$DB->tableExists('glpi_profiles_users')) {
-            return [];
-        }
-
-        $profile_ids = [];
-        foreach ($DB->request([
-            'SELECT' => ['profiles_id'],
-            'FROM'   => PluginAuchanassettrackerProfile::getTable(),
-            'WHERE'  => ['locations_id' => $locations_id],
-        ]) as $row) {
-            $pid = (int) ($row['profiles_id'] ?? 0);
-            if ($pid > 0) {
-                $profile_ids[$pid] = true;
-            }
-        }
-        if ($profile_ids === []) {
+            || !$DB->tableExists('glpi_users')
+            || !$DB->fieldExists('glpi_users', 'locations_id')
+        ) {
             return [];
         }
 
         $uids = [];
         foreach ($DB->request([
-            'SELECT' => ['users_id'],
-            'FROM'   => 'glpi_profiles_users',
-            'WHERE'  => ['profiles_id' => array_keys($profile_ids)],
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_users',
+            'WHERE'  => [
+                'locations_id' => $locations_id,
+                'is_active'    => 1,
+                'is_deleted'   => 0,
+            ],
         ]) as $row) {
-            $uid = (int) ($row['users_id'] ?? 0);
+            $uid = (int) ($row['id'] ?? 0);
             if ($uid > 0) {
                 $uids[$uid] = true;
             }
         }
         return array_map('intval', array_keys($uids));
+    }
+
+    /**
+     * @deprecated use getUserIdsWithGlpiLocation()
+     * @return list<int>
+     */
+    public static function getUserIdsWithPluginLocation(int $locations_id): array
+    {
+        return self::getUserIdsWithGlpiLocation($locations_id);
     }
 
     public static function userMatchesRecipientLocation(int $users_id, int $locations_id): bool
@@ -258,12 +262,8 @@ class PluginAuchanassettrackerRighthelper
         }
 
         $user = new User();
-        if ($user->getFromDB($users_id)
-            && (int) ($user->fields['locations_id'] ?? 0) === $locations_id) {
-            return true;
-        }
-
-        return in_array($users_id, self::getUserIdsWithPluginLocation($locations_id), true);
+        return $user->getFromDB($users_id)
+            && (int) ($user->fields['locations_id'] ?? 0) === $locations_id;
     }
 
     public static function canAccessRecipientUser(int $users_id): bool
@@ -303,15 +303,8 @@ class PluginAuchanassettrackerRighthelper
             'is_deleted' => 0,
         ];
         if ($scope !== null) {
-            // Match GLPI native location OR plugin profile location mapping.
-            $plugin_uids = self::getUserIdsWithPluginLocation($scope);
-            $loc_or = [
-                ['locations_id' => $scope],
-            ];
-            if ($plugin_uids !== []) {
-                $loc_or[] = ['id' => $plugin_uids];
-            }
-            $where[] = ['OR' => $loc_or];
+            // Match native GLPI user Location only.
+            $where['locations_id'] = $scope;
         }
 
         $term = trim($term);

@@ -879,37 +879,6 @@ JS);
             return [];
         }
 
-        // Optional location filter via plugin mapping table.
-        if ($locations_id !== null
-            && $DB->tableExists(PluginAuchanassettrackerProfile::getTable())) {
-            $scoped = [];
-            foreach ($DB->request([
-                'FROM'  => PluginAuchanassettrackerProfile::getTable(),
-                'WHERE' => ['profiles_id' => $profile_ids],
-            ]) as $row) {
-                $pid = (int) ($row['profiles_id'] ?? 0);
-                $loc = (int) ($row['locations_id'] ?? 0);
-                if ($loc === 0 || $loc === $locations_id) {
-                    $scoped[$pid] = true;
-                }
-            }
-            // Profiles with rights but no mapping row: treat as all locations.
-            foreach ($profile_ids as $pid) {
-                $has_map = false;
-                foreach ($DB->request([
-                    'FROM'  => PluginAuchanassettrackerProfile::getTable(),
-                    'WHERE' => ['profiles_id' => $pid],
-                    'LIMIT' => 1,
-                ]) as $_) {
-                    $has_map = true;
-                }
-                if (!$has_map) {
-                    $scoped[$pid] = true;
-                }
-            }
-            $profile_ids = array_keys($scoped);
-        }
-
         if ($profile_ids === []) {
             return [];
         }
@@ -925,7 +894,17 @@ JS);
                 $uids[$uid] = true;
             }
         }
-        return array_keys($uids);
+
+        // Filter by native GLPI user Location when a scope is requested.
+        if ($locations_id !== null && $locations_id > 0 && $uids !== []) {
+            $at_loc = array_fill_keys(
+                PluginAuchanassettrackerRighthelper::getUserIdsWithGlpiLocation($locations_id),
+                true
+            );
+            $uids = array_intersect_key($uids, $at_loc);
+        }
+
+        return array_map('intval', array_keys($uids));
     }
 
     /**
