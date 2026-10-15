@@ -26,22 +26,10 @@ if (!function_exists('plugin_auchanassettracker_bootstrap')) {
 }
 plugin_auchanassettracker_bootstrap();
 
-// Public/stateless page: use GLPI default language (e.g. ro_RO) when no session lang.
-global $CFG_GLPI;
-$lang = trim((string) ($_SESSION['glpilanguage'] ?? ''));
-if ($lang === '') {
-    $lang = trim((string) ($CFG_GLPI['language'] ?? 'en_GB'));
-}
-if ($lang === '') {
-    $lang = 'en_GB';
-}
-$_SESSION['glpilanguage'] = $lang;
-if (class_exists('Session', false) && method_exists('Session', 'loadLanguage')) {
-    Session::loadLanguage($lang);
-}
-if (function_exists('plugin_auchanassettracker_load_translations')) {
-    plugin_auchanassettracker_load_translations();
-}
+// Language: ?lang= from QR URL → GLPI session/default (en_GB / ro_RO).
+$lang = PluginAuchanassettrackerQrhelper::applyLanguage(
+    isset($_GET['lang']) ? (string) $_GET['lang'] : null
+);
 $html_lang = strtolower(str_replace('_', '-', explode('.', $lang)[0]));
 if ($html_lang === '') {
     $html_lang = 'en';
@@ -53,6 +41,7 @@ $container = PluginAuchanassettrackerContainer::findByToken($token);
 header('Content-Type: text/html; charset=UTF-8');
 header('X-Robots-Tag: noindex');
 header('Cache-Control: no-store');
+header('Content-Language: ' . str_replace('_', '-', $lang));
 
 $e = static function (?string $value): string {
     return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
@@ -131,12 +120,23 @@ if ($items === []) {
         . $e(__('No available equipment in this container.', 'auchanassettracker'))
         . '</div>';
 } else {
+    $show_notes = false;
+    foreach ($items as $it) {
+        if (trim((string) ($it['notes'] ?? '')) !== '') {
+            $show_notes = true;
+            break;
+        }
+    }
+
     echo '<div class="table-responsive"><table class="table table-striped table-hover aat-qrview-table">'
         . '<thead><tr>'
         . '<th>' . $e(__('Name')) . '</th>'
         . '<th>' . $e(__('Serial number')) . '</th>'
-        . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>'
-        . '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
+        . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>';
+    if ($show_notes) {
+        echo '<th>' . $e(__('Notes')) . '</th>';
+    }
+    echo '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
         . '</tr></thead><tbody>';
 
     foreach ($items as $it) {
@@ -176,20 +176,20 @@ if ($items === []) {
 
         echo '<tr>'
             . '<td data-label="' . $e(__('Name')) . '">'
-            . '<span class="aat-qrview-item-name">' . $e($item_name) . '</span>';
-        // Notes line only on rows that have notes (no empty Notes column).
-        if ($notes !== '') {
-            echo '<div class="aat-qrview-item-notes">'
-                . '<span class="aat-qrview-hero-label">' . $e(__('Notes')) . ':</span> '
-                . $e($notes)
-                . '</div>';
-        }
-        echo '</td>'
+            . '<span class="aat-qrview-item-name">' . $e($item_name) . '</span></td>'
             . '<td data-label="' . $e(__('Serial number')) . '">'
             . '<span class="aat-qrview-item-serial">' . $e($serial) . '</span></td>'
             . '<td data-label="' . $e(__('Equipment type', 'auchanassettracker')) . '">'
-            . $e($typeName) . '</td>'
-            . '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
+            . $e($typeName) . '</td>';
+        if ($show_notes) {
+            // Only filled notes show text; empty cells stay blank (column exists only if needed).
+            echo '<td data-label="' . $e(__('Notes')) . '">'
+                . ($notes !== ''
+                    ? '<span class="aat-qrview-item-notes">' . $e($notes) . '</span>'
+                    : '')
+                . '</td>';
+        }
+        echo '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
             . $e($added) . '</td>'
             . '</tr>';
     }

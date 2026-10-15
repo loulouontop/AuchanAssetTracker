@@ -46,15 +46,95 @@ class PluginAuchanassettrackerQrhelper
     }
 
     /**
+     * Normalize to a supported UI language (en_GB / ro_RO).
+     */
+    public static function normalizeLanguage(string $lang): string
+    {
+        $lang = str_replace('-', '_', trim($lang));
+        if ($lang === '') {
+            return 'en_GB';
+        }
+        $lower = strtolower($lang);
+        if (str_starts_with($lower, 'en')) {
+            return 'en_GB';
+        }
+        if (str_starts_with($lower, 'ro')) {
+            return 'ro_RO';
+        }
+        return $lang;
+    }
+
+    /**
+     * Preferred language for QR URLs/pages: session → GLPI default → en_GB.
+     */
+    public static function getPreferredLanguage(): string
+    {
+        global $CFG_GLPI;
+
+        $lang = trim((string) ($_SESSION['glpilanguage'] ?? ''));
+        if ($lang === '') {
+            $lang = trim((string) ($CFG_GLPI['language'] ?? 'en_GB'));
+        }
+
+        return self::normalizeLanguage($lang);
+    }
+
+    /**
+     * Apply language for the current request (public QR page / labels).
+     */
+    public static function applyLanguage(?string $lang = null): string
+    {
+        global $CFG_GLPI, $TRANSLATE;
+
+        $lang = self::normalizeLanguage($lang ?? self::getPreferredLanguage());
+        $_SESSION['glpilanguage'] = $lang;
+
+        // Keep CFG in sync for helpers that read the default language.
+        if (isset($CFG_GLPI) && is_array($CFG_GLPI)) {
+            $CFG_GLPI['language'] = $lang;
+        }
+
+        if (class_exists('Session', false) && method_exists('Session', 'loadLanguage')) {
+            try {
+                Session::loadLanguage($lang);
+            } catch (Throwable $e) {
+                try {
+                    Session::loadLanguage();
+                } catch (Throwable $e2) {
+                    // Continue with plugin domain only.
+                }
+            }
+        }
+
+        if (isset($TRANSLATE) && is_object($TRANSLATE) && method_exists($TRANSLATE, 'setLocale')) {
+            try {
+                $TRANSLATE->setLocale($lang);
+            } catch (Throwable $e) {
+                // Ignore locale backend issues on public page.
+            }
+        }
+
+        if (function_exists('plugin_auchanassettracker_load_translations')) {
+            plugin_auchanassettracker_load_translations();
+        }
+
+        return $lang;
+    }
+
+    /**
      * Public scan URL.
      * GLPI 11 exposes plugin public/ files at /plugins/<dir>/qr.php (no "/public/" in URL).
      * That path is served without the authenticated front controller.
+     * Includes lang= so the shelf page matches the GLPI UI language (en/ro).
      */
     public static function getScanUrl(string $token): string
     {
         $token = trim($token);
         // IMPORTANT: do not include "/public/" — that route goes through GLPI login.
-        $path = '/plugins/' . plugin_auchanassettracker_dir() . '/qr.php?t=' . urlencode($token);
+        $lang = self::getPreferredLanguage();
+        $path = '/plugins/' . plugin_auchanassettracker_dir()
+            . '/qr.php?t=' . urlencode($token)
+            . '&lang=' . urlencode($lang);
 
         $base = self::getGlpiBaseUrl();
         if ($base === '') {

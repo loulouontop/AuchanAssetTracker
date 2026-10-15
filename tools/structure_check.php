@@ -177,7 +177,7 @@ if (!str_contains($view, 'DO_NOT_CHECK_LOGIN')) {
 foreach ([
     'listInContainer', 'Physical container', 'Serial number',
     'Equipment type', 'Added on', 'aat-qrview-hero-desc',
-    'aat-qrview-item-notes', 'loadLanguage', 'CFG_GLPI',
+    'aat-qrview-item-notes', 'applyLanguage', 'show_notes',
     'View only — to manage, open GLPI.',
 ] as $needle) {
     if (!str_contains($view, $needle)) {
@@ -188,7 +188,10 @@ foreach ([
 }
 
 $helper = file_get_contents("$root/inc/qrhelper.class.php");
-foreach (['getGlpiBaseUrl', 'getScanUrl', 'getQrPngDataUri', 'HTTP_HOST', '/qr.php?t='] as $needle) {
+foreach ([
+    'getGlpiBaseUrl', 'getScanUrl', 'getQrPngDataUri', 'HTTP_HOST', '/qr.php?t=',
+    'getPreferredLanguage', 'applyLanguage', 'normalizeLanguage', '&lang=',
+] as $needle) {
     if (!str_contains($helper, $needle)) {
         fail("qrhelper missing $needle");
     } else {
