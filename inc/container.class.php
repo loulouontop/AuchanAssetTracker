@@ -340,6 +340,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             . "</textarea>";
         echo "</td></tr>";
 
+        $qr_label_url = '';
         if ($ID > 0) {
             global $DB;
             $token = trim((string) ($this->fields['qr_token'] ?? ''));
@@ -352,34 +353,24 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             if ($token !== '') {
                 $url = PluginAuchanassettrackerQrhelper::getScanUrl($token);
                 $img = PluginAuchanassettrackerQrhelper::getQrPngDataUri($url);
-                $label_url = plugin_auchanassettracker_web_dir(true)
+                $qr_label_url = plugin_auchanassettracker_web_dir(true)
                     . '/front/container.qr.php?id=' . $ID;
-                echo "<tr class='tab_bg_1'><td>"
-                    . __('QR code', 'auchanassettracker') . "</td><td colspan='3'>";
-                echo "<div class='aat-qr-block'>";
-                echo "<div class='aat-qr-meta'>";
-                echo "<div class='form-label mb-1'>"
-                    . Html::entities_deep(__('QR URL', 'auchanassettracker'))
-                    . "</div>";
+
+                // Same 4-column layout as Location / Active (labels in col 1 & 3).
+                echo "<tr class='tab_bg_1 aat-qr-row'><td>"
+                    . __('QR URL', 'auchanassettracker') . "</td><td>";
                 echo "<code class='aat-qr-url'>" . Html::entities_deep($url) . "</code>";
-                echo "<div class='aat-qr-actions'>";
-                echo "<a class='btn btn-sm btn-secondary' href='"
-                    . Html::entities_deep($label_url)
-                    . "' target='_blank' rel='noopener'>"
-                    . __('Download PDF label', 'auchanassettracker') . "</a>";
-                echo "</div>";
                 echo "<div class='form-text'>"
                     . Html::entities_deep(__(
-                        'Scan the label on a phone for a read-only list of Available stock in this container. No GLPI login required on the internal network.',
+                        'Scan the label on a phone using the internal network for a read only list of Available stock in this container.',
                         'auchanassettracker'
                     ))
                     . "</div>";
-                echo "</div>";
-                echo "<div class='aat-qr-preview-wrap'>";
+                echo "</td><td>" . __('QR code', 'auchanassettracker') . "</td><td>";
                 if ($img !== '') {
                     echo "<img class='aat-qr-preview' src='"
                         . htmlspecialchars($img, ENT_QUOTES, 'UTF-8')
-                        . "' alt='QR' width='160' height='160'/>";
+                        . "' alt='QR' width='140' height='140'/>";
                 } else {
                     echo "<div class='form-text text-danger'>"
                         . Html::entities_deep(__(
@@ -388,13 +379,45 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                         ))
                         . "</div>";
                 }
-                echo "</div>";
-                echo "</div>";
                 echo "</td></tr>";
             }
         }
 
         $this->showFormButtons($options);
+
+        // Place "Download PDF label" in the same footer bar as Save / trash.
+        if ($qr_label_url !== '') {
+            $btn_label = __('Download PDF label', 'auchanassettracker');
+            $js_url = json_encode($qr_label_url, JSON_UNESCAPED_SLASHES);
+            $js_label = json_encode($btn_label, JSON_UNESCAPED_UNICODE);
+            $js_id = (int) $ID;
+            echo Html::scriptBlock(<<<JS
+(function () {
+  var url = $js_url;
+  var label = $js_label;
+  var id = $js_id;
+  var \$form = $('input[type="hidden"][name="id"][value="' + id + '"]').closest('form');
+  if (!\$form.length) {
+    \$form = $('form').has('input[name="id"][value="' + id + '"]').first();
+  }
+  var \$footer = \$form.find('.card-footer').first();
+  if (!\$footer.length) {
+    return;
+  }
+  if (\$footer.find('.aat-qr-pdf-btn').length) {
+    return;
+  }
+  var \$btn = $('<a></a>')
+    .addClass('btn btn-secondary aat-qr-pdf-btn')
+    .attr({ href: url, target: '_blank', rel: 'noopener' })
+    .text(label);
+  // Footer uses flex-row-reverse: append keeps Save/trash on the right.
+  \$footer.append(\$btn);
+})();
+JS
+            );
+        }
+
         return true;
     }
 

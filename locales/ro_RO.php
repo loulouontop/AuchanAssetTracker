@@ -164,6 +164,7 @@ return [
     'Scan the label on a phone for a read-only list of Available stock in this container.' => 'Scanați eticheta pe telefon pentru o listă doar-citire a stocului Disponibil din acest container.',
     'Scan the label on a phone (GLPI login required) for a read-only list of Available stock in this container.' => 'Scanați eticheta pe telefon (autentificare GLPI necesară) pentru o listă doar-citire a stocului Disponibil din acest container.',
     'Scan the label on a phone for a read-only list of Available stock in this container. No GLPI login required on the internal network.' => 'Scanați eticheta pe telefon pentru o listă doar-citire a stocului Disponibil din acest container. Nu este necesară autentificarea GLPI în rețeaua internă.',
+    'Scan the label on a phone using the internal network for a read only list of Available stock in this container.' => 'Scanați eticheta pe telefon folosind rețeaua internă pentru o listă doar-citire a stocului Disponibil din acest container.',
     'Reason' => 'Motiv',
     'Receipt confirmed.' => 'Primire confirmată.',
     'Recent activity' => 'Activitate recentă',

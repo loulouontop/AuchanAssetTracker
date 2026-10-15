@@ -352,45 +352,23 @@ body:has(.aat-modal-shell) {
   color: inherit !important;
 }
 
-/* Sprint 4 — container QR on form (URL left, code right) */
-.aat-qr-block {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  width: 100%;
+/* Sprint 4 — container QR row (QR URL | value || QR code | image) */
+tr.aat-qr-row > td {
+  vertical-align: top;
 }
-.aat-qr-meta {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.aat-qr-preview-wrap {
-  flex: 0 0 auto;
-  margin-left: auto;
+code.aat-qr-url {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
 }
 img.aat-qr-preview {
   display: block;
-  width: 160px;
-  height: 160px;
+  width: 140px;
+  height: 140px;
   border: 1px solid var(--tblr-border-color, #d0d5dd);
   background: #fff;
   padding: 6px;
 }
-code.aat-qr-url {
-  display: block;
-  max-width: 100%;
-  word-break: break-all;
-  margin: 0 0 0.65rem;
-}
-.aat-qr-actions {
-  margin-bottom: 0.35rem;
-}
-@media (max-width: 767.98px) {
-  .aat-qr-block {
-    flex-wrap: wrap;
-  }
-  .aat-qr-preview-wrap {
-    margin-left: 0;
-  }
+.card-footer .aat-qr-pdf-btn {
+  margin-right: 0.5rem;
 }
