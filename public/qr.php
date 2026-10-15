@@ -1,8 +1,11 @@
 <?php
 /**
- * Public container QR view — no GLPI login (internal network / hosted with GLPI).
- * Shows Available equipment in a container, grouped by type (read-only).
+ * Public container QR view — no GLPI login.
+ * Served by GLPI as /plugins/<PluginDir>/qr.php (file lives in public/).
  */
+
+// Must be defined before GLPI bootstrap.
+define('DO_NOT_CHECK_LOGIN', 1);
 
 $glpi_root = dirname(__DIR__, 3);
 if (!is_readable($glpi_root . '/inc/includes.php')) {
@@ -10,8 +13,6 @@ if (!is_readable($glpi_root . '/inc/includes.php')) {
     echo 'GLPI not found.';
     exit;
 }
-
-define('DO_NOT_CHECK_LOGIN', 1);
 
 include_once $glpi_root . '/inc/includes.php';
 
@@ -28,9 +29,10 @@ $container = PluginAuchanassettrackerContainer::findByToken($token);
 
 header('Content-Type: text/html; charset=UTF-8');
 header('X-Robots-Tag: noindex');
+header('Cache-Control: no-store');
 
 $e = static function (?string $value): string {
-    return Html::entities_deep((string) $value);
+    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 };
 
 if ($container === null) {
@@ -50,59 +52,67 @@ if ($container === null) {
 }
 
 $items = PluginAuchanassettrackerEquipment::listInContainer((int) $container['id']);
-$grouped = [];
-foreach ($items as $it) {
-    $tid = (int) ($it['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
-    $grouped[$tid][] = $it;
-}
 
 $loc = Dropdown::getDropdownName('glpi_locations', (int) ($container['locations_id'] ?? 0));
 if ($loc === '' || $loc === '&nbsp;' || $loc === '-1') {
     $loc = '—';
 }
 
-$code = (string) ($container['code'] ?? '');
-$name = (string) ($container['name'] ?? '');
-$title = trim($code !== '' ? $code : $name);
-if ($title === '') {
-    $title = __('Physical container', 'auchanassettracker');
+$code = trim((string) ($container['code'] ?? ''));
+$name = trim((string) ($container['name'] ?? ''));
+if ($name === '') {
+    $name = __('Physical container', 'auchanassettracker');
 }
 
 echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
     . '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    . '<title>' . $e($title) . '</title>'
+    . '<title>' . $e($name) . '</title>'
     . '<link rel="stylesheet" href="css/qrview.css">'
     . '</head><body class="aat-qrview"><div class="aat-qrview-shell">';
 
-echo '<div class="card aat-qrview-header-card">'
-    . '<div class="card-header"><h1 class="card-title">'
+echo '<header class="aat-qrview-hero">'
+    . '<div class="aat-qrview-hero-title">'
     . $e(__('Physical container', 'auchanassettracker'))
-    . '</h1></div>'
-    . '<div class="card-body">'
-    . '<div class="aat-qrview-meta">'
-    . '<div class="aat-qrview-field"><span class="aat-qrview-label">'
-    . $e(__('Location'))
-    . '</span><span class="aat-qrview-value">' . $e($loc) . '</span></div>'
-    . '<div class="aat-qrview-field"><span class="aat-qrview-label">'
-    . $e(__('Container code', 'auchanassettracker'))
-    . '</span><span class="aat-qrview-value aat-qrview-code">' . $e($code !== '' ? $code : '—') . '</span></div>'
-    . '<div class="aat-qrview-field"><span class="aat-qrview-label">'
-    . $e(__('Container name', 'auchanassettracker'))
-    . '</span><span class="aat-qrview-value">' . $e($name !== '' ? $name : '—') . '</span></div>'
-    . '</div></div></div>';
+    . ' — ' . $e($name)
+    . '</div>'
+    . '<div class="aat-qrview-hero-code">' . $e($code !== '' ? $code : '—') . '</div>'
+    . '<div class="aat-qrview-hero-loc">' . $e($loc) . '</div>'
+    . '</header>';
 
 echo '<div class="card aat-qrview-stock-card">'
     . '<div class="card-header"><h2 class="card-title">'
-    . $e(__('Available stock', 'auchanassettracker'))
+    . $e(__('Equipment', 'auchanassettracker'))
     . ' <span class="badge">' . count($items) . '</span>'
     . '</h2></div><div class="card-body p-0">';
 
-if ($grouped === []) {
+if ($items === []) {
     echo '<div class="aat-qrview-empty">'
         . $e(__('No available equipment in this container.', 'auchanassettracker'))
         . '</div>';
 } else {
-    foreach ($grouped as $tid => $list) {
+    echo '<div class="table-responsive"><table class="table table-striped table-hover aat-qrview-table">'
+        . '<thead><tr>'
+        . '<th>' . $e(__('Name')) . '</th>'
+        . '<th>' . $e(__('Serial number')) . '</th>'
+        . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>'
+        . '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
+        . '</tr></thead><tbody>';
+
+    foreach ($items as $it) {
+        $item_name = trim((string) ($it['name'] ?? ''));
+        if ($item_name === '') {
+            $item_name = trim((string) ($it['model'] ?? ''));
+        }
+        if ($item_name === '') {
+            $item_name = '#' . (int) ($it['id'] ?? 0);
+        }
+
+        $serial = trim((string) ($it['serial'] ?? ''));
+        if ($serial === '') {
+            $serial = '—';
+        }
+
+        $tid = (int) ($it['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
         $typeName = '';
         if ($tid > 0) {
             $typeName = Dropdown::getDropdownName(
@@ -111,44 +121,29 @@ if ($grouped === []) {
             );
         }
         if ($typeName === '' || $typeName === '&nbsp;' || $typeName === '-1') {
-            $typeName = __('Equipment type', 'auchanassettracker');
+            $typeName = '—';
         }
 
-        echo '<div class="aat-qrview-group">'
-            . '<div class="aat-qrview-group-title">'
-            . $e($typeName) . ' <span class="badge">' . count($list) . '</span>'
-            . '</div>'
-            . '<div class="table-responsive"><table class="table table-striped table-hover aat-qrview-table">'
-            . '<thead><tr>'
-            . '<th>' . $e(__('Name')) . '</th>'
-            . '<th>' . $e(__('Serial number')) . '</th>'
-            . '</tr></thead><tbody>';
-
-        foreach ($list as $it) {
-            $item_name = trim((string) ($it['name'] ?? ''));
-            if ($item_name === '') {
-                $item_name = trim((string) ($it['model'] ?? ''));
-            }
-            if ($item_name === '') {
-                $item_name = '#' . (int) ($it['id'] ?? 0);
-            }
-            $serial = trim((string) ($it['serial'] ?? ''));
-            if ($serial === '') {
-                $serial = '—';
-            }
-
-            echo '<tr>'
-                . '<td data-label="' . $e(__('Name')) . '">'
-                . '<span class="aat-qrview-item-name">' . $e($item_name) . '</span>'
-                . '</td>'
-                . '<td data-label="' . $e(__('Serial number')) . '">'
-                . '<span class="aat-qrview-item-serial">' . $e($serial) . '</span>'
-                . '</td>'
-                . '</tr>';
+        $added = trim((string) ($it['date_creation'] ?? ''));
+        if ($added !== '' && class_exists('Html', false) && method_exists('Html', 'convDateTime')) {
+            $added = Html::convDateTime($added);
+        } elseif ($added === '') {
+            $added = '—';
         }
 
-        echo '</tbody></table></div></div>';
+        echo '<tr>'
+            . '<td data-label="' . $e(__('Name')) . '">'
+            . '<span class="aat-qrview-item-name">' . $e($item_name) . '</span></td>'
+            . '<td data-label="' . $e(__('Serial number')) . '">'
+            . '<span class="aat-qrview-item-serial">' . $e($serial) . '</span></td>'
+            . '<td data-label="' . $e(__('Equipment type', 'auchanassettracker')) . '">'
+            . $e($typeName) . '</td>'
+            . '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
+            . $e($added) . '</td>'
+            . '</tr>';
     }
+
+    echo '</tbody></table></div>';
 }
 
 echo '</div></div>';

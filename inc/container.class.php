@@ -378,7 +378,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                 echo "<div class='aat-qr-preview-wrap'>";
                 if ($img !== '') {
                     echo "<img class='aat-qr-preview' src='"
-                        . Html::entities_deep($img)
+                        . htmlspecialchars($img, ENT_QUOTES, 'UTF-8')
                         . "' alt='QR' width='160' height='160'/>";
                 } else {
                     echo "<div class='form-text text-danger'>"

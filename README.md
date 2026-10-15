@@ -37,8 +37,8 @@ GLPI plugin for IT equipment stock, physical containers with QR labels, allocati
 
 - Unique `qr_token` per physical container
 - QR code preview on the container form (URL left, QR right) + printable PDF/HTML shelf label
-- Public scan URL (`public/qr.php`, no login; hosted with GLPI on the LAN): Available gear grouped by type
-- Scan page labels Location / Container code / Container name; Name + Serial number columns
+- Public scan URL at `/plugins/<dir>/qr.php` (GLPI public file, no login on the LAN)
+- Scan page: container name, code, location; table with Name, Serial, Type, Added on
 - Scan = view only; edits stay in desktop GLPI
 - Inactive / deleted containers → no data
 

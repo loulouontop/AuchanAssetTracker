@@ -10,6 +10,8 @@ if ($id <= 0 || !$c->getFromDB($id) || !$c->canViewItem()) {
     exit;
 }
 
+// Force HTML before any QR generation side effects.
 header('Content-Type: text/html; charset=UTF-8');
+header('X-Content-Type-Options: nosniff');
 echo PluginAuchanassettrackerQrhelper::renderLabelHtml($c->fields);
 exit;

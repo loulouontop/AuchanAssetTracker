@@ -6,6 +6,7 @@ return [
     'A physical container is mandatory for equipment in stock.' => 'Un container fizic este obligatoriu pentru echipamentul din stoc.',
     'A reason is mandatory.' => 'Motivul este obligatoriu.',
     'Active alerts' => 'Alerte active',
+    'Added on' => 'Adăugat la',
     'Alert thresholds' => 'Praguri alerte',
     'All equipment must belong to the source location.' => 'Toate echipamentele trebuie să aparțină locației sursă.',
     'Allocate' => 'Alocă',

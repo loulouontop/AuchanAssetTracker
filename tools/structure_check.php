@@ -42,10 +42,11 @@ foreach ([
 
 foreach ([
     'inc/dashboard.class.php', 'inc/report.class.php',
-    'front/dashboard.php', 'front/report.php', 'docs/README.md',
+    'front/dashboard.php', 'front/report.php', 'front/container.qrview.php',
+    'docs/README.md',
 ] as $rel) {
     if (file_exists("$root/$rel")) {
-        fail("Sprint 5+ file still present: $rel");
+        fail("must not be present: $rel");
     } else {
         ok("absent $rel");
     }
@@ -109,7 +110,10 @@ foreach (['dashboard', 'report'] as $bad) {
 }
 
 $container = file_get_contents("$root/inc/container.class.php");
-foreach (['findByToken', 'qr_token', 'Download PDF label', 'QR code', 'aat-qr-preview', 'getQrPngDataUri'] as $needle) {
+foreach ([
+    'findByToken', 'qr_token', 'Download PDF label', 'QR code',
+    'aat-qr-preview', 'aat-qr-meta', 'aat-qr-preview-wrap', 'getQrPngDataUri',
+] as $needle) {
     if (!str_contains($container, $needle)) {
         fail("container missing $needle");
     } else {
@@ -142,33 +146,46 @@ if (str_contains($sql, 'auchanequipment')) {
     ok('no coupling to plugin 1 tables');
 }
 
-foreach (['public/qr.php', 'public/qrimg.php'] as $gone) {
-    if (file_exists("$root/$gone")) {
-        fail("unauthenticated $gone must not remain");
+if (file_exists("$root/public/qrimg.php")) {
+    fail('public/qrimg.php must not remain (embedded QR preferred)');
+} else {
+    ok('absent public/qrimg.php');
+}
+
+$view = file_get_contents("$root/public/qr.php");
+if (!str_contains($view, 'DO_NOT_CHECK_LOGIN')) {
+    fail('public/qr.php must allow unauthenticated access');
+} else {
+    ok('public/qr.php unauthenticated');
+}
+foreach ([
+    'listInContainer', 'Physical container', 'Serial number',
+    'Equipment type', 'Added on', 'View only — to manage, open GLPI.',
+] as $needle) {
+    if (!str_contains($view, $needle)) {
+        fail("public/qr.php missing $needle");
     } else {
-        ok("absent $gone");
+        ok("public/qr.php has $needle");
     }
 }
 
-$view = file_get_contents("$root/front/container.qrview.php");
-if (!str_contains($view, 'listInContainer')) {
-    fail('qrview must list container stock');
-} else {
-    ok('qrview lists stock');
-}
-if (str_contains($view, 'DO_NOT_CHECK_LOGIN')) {
-    fail('qrview must require GLPI login');
-} else {
-    ok('qrview requires login');
-}
-
 $helper = file_get_contents("$root/inc/qrhelper.class.php");
-foreach (['getGlpiBaseUrl', 'getScanUrl', 'getQrPngDataUri', 'HTTP_HOST'] as $needle) {
+foreach (['getGlpiBaseUrl', 'getScanUrl', 'getQrPngDataUri', 'HTTP_HOST', '/qr.php?t='] as $needle) {
     if (!str_contains($helper, $needle)) {
         fail("qrhelper missing $needle");
     } else {
         ok("qrhelper has $needle");
     }
+}
+if (str_contains($helper, '/public/qr.php')) {
+    fail('scan URL must not include /public/ (GLPI login route)');
+} else {
+    ok('scan URL omits /public/');
+}
+if (!str_contains($helper, 'tempnam')) {
+    fail('QR PNG must use temp file (avoid image/png header leak)');
+} else {
+    ok('QR PNG uses temp file');
 }
 
 echo $errors === 0 ? "\nAll structure checks passed.\n" : "\n$errors failure(s).\n";

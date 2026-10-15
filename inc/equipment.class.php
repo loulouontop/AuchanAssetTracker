@@ -1390,6 +1390,11 @@ JS);
         return $counts;
     }
 
+    /**
+     * All non-deleted equipment currently stored in a physical container.
+     *
+     * @return list<array<string, mixed>>
+     */
     public static function listInContainer(int $container_id): array
     {
         global $DB;
@@ -1397,11 +1402,11 @@ JS);
         if ($container_id <= 0) {
             return $rows;
         }
+        // Any status still linked to this shelf (normally Available).
         foreach ($DB->request([
             'FROM'  => self::getTable(),
             'WHERE' => [
                 'plugin_auchanassettracker_containers_id' => $container_id,
-                'status'     => self::STATUS_AVAILABLE,
                 'is_deleted' => 0,
             ],
             'ORDER' => 'plugin_auchanassettracker_equipmenttypes_id ASC, name ASC, model ASC, serial ASC, id ASC',

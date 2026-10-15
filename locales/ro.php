@@ -100,6 +100,7 @@ return [
     'Invalid or inactive QR code.' => 'Cod QR invalid sau inactiv.',
     'No available equipment in this container.' => 'Nu există echipament disponibil în acest container.',
     'Not found' => 'Negăsit',
+    'Added on' => 'Adăugat la',
     'Container name' => 'Nume container',
     'Available stock' => 'Stoc disponibil',
     'Scan the label on a phone for a read-only list of Available stock in this container.' => 'Scanați eticheta pe telefon pentru o listă doar-citire a stocului Disponibil din acest container.',
