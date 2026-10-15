@@ -1,27 +1,11 @@
 <?php
 /**
- * Public QR view — no GLPI login required.
+ * Container QR scan view — GLPI login required (internal network).
  * Shows Available equipment in a container, grouped by type (read-only).
  */
 
-$glpi_root = dirname(__DIR__, 3);
-if (!is_readable($glpi_root . '/inc/includes.php')) {
-    http_response_code(500);
-    echo 'GLPI not found.';
-    exit;
-}
-
-define('DO_NOT_CHECK_LOGIN', 1);
-
-include_once $glpi_root . '/inc/includes.php';
-
-if (!function_exists('plugin_auchanassettracker_bootstrap')) {
-    require_once dirname(__DIR__) . '/setup.php';
-}
-plugin_auchanassettracker_bootstrap();
-if (function_exists('plugin_auchanassettracker_load_translations')) {
-    plugin_auchanassettracker_load_translations();
-}
+include_once __DIR__ . '/_bootstrap.php';
+plugin_auchanassettracker_front_bootstrap();
 
 $token = trim((string) ($_GET['t'] ?? ''));
 $container = PluginAuchanassettrackerContainer::findByToken($token);
@@ -40,6 +24,12 @@ if ($container === null) {
     exit;
 }
 
+$locations_id = (int) ($container['locations_id'] ?? 0);
+if ($locations_id > 0 && !PluginAuchanassettrackerRighthelper::canAccessLocation($locations_id)) {
+    Html::displayRightError();
+    exit;
+}
+
 $items = PluginAuchanassettrackerEquipment::listInContainer((int) $container['id']);
 $grouped = [];
 foreach ($items as $it) {
@@ -47,7 +37,7 @@ foreach ($items as $it) {
     $grouped[$tid][] = $it;
 }
 
-$loc = Dropdown::getDropdownName('glpi_locations', (int) $container['locations_id']);
+$loc = Dropdown::getDropdownName('glpi_locations', $locations_id);
 
 echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
     . '<meta name="viewport" content="width=device-width,initial-scale=1">'

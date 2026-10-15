@@ -27,8 +27,7 @@ foreach ([
     'inc/qrhelper.class.php', 'inc/phpqrcode/qrlib.php',
     'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
     'front/transfer.php', 'front/transfer.form.php', 'front/equipment.form.php',
-    'front/container.qr.php',
-    'public/qr.php', 'public/qrimg.php',
+    'front/container.qr.php', 'front/container.qrview.php',
     'ajax/containers.php', 'ajax/models.php', 'ajax/users.php',
     'css/assettracker.css', 'public/css/assettracker.css',
     'locales/en_GB.php', 'locales/ro_RO.php',
@@ -109,7 +108,7 @@ foreach (['dashboard', 'report'] as $bad) {
 }
 
 $container = file_get_contents("$root/inc/container.class.php");
-foreach (['findByToken', 'qr_token', 'Download PDF label', 'QR public URL'] as $needle) {
+foreach (['findByToken', 'qr_token', 'Download PDF label', 'QR code', 'aat-qr-preview', 'getQrPngDataUri'] as $needle) {
     if (!str_contains($container, $needle)) {
         fail("container missing $needle");
     } else {
@@ -142,16 +141,33 @@ if (str_contains($sql, 'auchanequipment')) {
     ok('no coupling to plugin 1 tables');
 }
 
-$public = file_get_contents("$root/public/qr.php");
-if (!str_contains($public, 'DO_NOT_CHECK_LOGIN')) {
-    fail('public qr.php must allow unauthenticated access');
-} else {
-    ok('public qr.php unauthenticated');
+foreach (['public/qr.php', 'public/qrimg.php'] as $gone) {
+    if (file_exists("$root/$gone")) {
+        fail("unauthenticated $gone must not remain");
+    } else {
+        ok("absent $gone");
+    }
 }
-if (!str_contains($public, 'listInContainer')) {
-    fail('public qr.php must list container stock');
+
+$view = file_get_contents("$root/front/container.qrview.php");
+if (!str_contains($view, 'listInContainer')) {
+    fail('qrview must list container stock');
 } else {
-    ok('public qr.php lists stock');
+    ok('qrview lists stock');
+}
+if (str_contains($view, 'DO_NOT_CHECK_LOGIN')) {
+    fail('qrview must require GLPI login');
+} else {
+    ok('qrview requires login');
+}
+
+$helper = file_get_contents("$root/inc/qrhelper.class.php");
+foreach (['getGlpiBaseUrl', 'getScanUrl', 'getQrPngDataUri', 'HTTP_HOST'] as $needle) {
+    if (!str_contains($helper, $needle)) {
+        fail("qrhelper missing $needle");
+    } else {
+        ok("qrhelper has $needle");
+    }
 }
 
 echo $errors === 0 ? "\nAll structure checks passed.\n" : "\n$errors failure(s).\n";

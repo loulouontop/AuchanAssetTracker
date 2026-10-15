@@ -350,11 +350,29 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             }
 
             if ($token !== '') {
-                $url = PluginAuchanassettrackerQrhelper::getPublicUrl($token);
+                $url = PluginAuchanassettrackerQrhelper::getScanUrl($token);
+                $img = PluginAuchanassettrackerQrhelper::getQrPngDataUri($url);
                 $label_url = plugin_auchanassettracker_web_dir(true)
                     . '/front/container.qr.php?id=' . $ID;
                 echo "<tr class='tab_bg_1'><td>"
-                    . __('QR public URL', 'auchanassettracker') . "</td><td colspan='3'>";
+                    . __('QR code', 'auchanassettracker') . "</td><td colspan='3'>";
+                echo "<div class='aat-qr-block'>";
+                if ($img !== '') {
+                    echo "<img class='aat-qr-preview' src='"
+                        . Html::entities_deep($img)
+                        . "' alt='QR' width='160' height='160'/>";
+                } else {
+                    echo "<div class='form-text text-danger'>"
+                        . Html::entities_deep(__(
+                            'QR image could not be generated (PHP GD extension required).',
+                            'auchanassettracker'
+                        ))
+                        . "</div>";
+                }
+                echo "<div class='aat-qr-meta'>";
+                echo "<div><span class='form-label'>"
+                    . Html::entities_deep(__('QR URL', 'auchanassettracker'))
+                    . "</span></div>";
                 echo "<code class='aat-qr-url'>" . Html::entities_deep($url) . "</code> ";
                 echo "<a class='btn btn-sm btn-secondary' href='"
                     . Html::entities_deep($label_url)
@@ -362,10 +380,11 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                     . __('Download PDF label', 'auchanassettracker') . "</a>";
                 echo "<div class='form-text'>"
                     . Html::entities_deep(__(
-                        'Scan the label on a phone for a read-only list of Available stock in this container.',
+                        'Scan the label on a phone (GLPI login required) for a read-only list of Available stock in this container.',
                         'auchanassettracker'
                     ))
                     . "</div>";
+                echo "</div></div>";
                 echo "</td></tr>";
             }
         }
@@ -375,7 +394,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
     }
 
     /**
-     * Resolve an active container by its public QR token (no login).
+     * Resolve an active container by its QR token (scan view).
      *
      * @return array<string, mixed>|null
      */

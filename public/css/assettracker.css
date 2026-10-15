@@ -352,10 +352,29 @@ body:has(.aat-modal-shell) {
   color: inherit !important;
 }
 
-/* Sprint 4 — container QR public URL on form */
+/* Sprint 4 — container QR on form */
+.aat-qr-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+}
+img.aat-qr-preview {
+  display: block;
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--tblr-border-color, #d0d5dd);
+  background: #fff;
+  padding: 6px;
+}
+.aat-qr-meta {
+  min-width: 220px;
+  flex: 1 1 240px;
+}
 code.aat-qr-url {
   display: inline-block;
   max-width: 100%;
   word-break: break-all;
   vertical-align: middle;
+  margin-right: 0.5rem;
 }
