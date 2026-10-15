@@ -126,12 +126,21 @@ class PluginAuchanassettrackerQrhelper
      */
     public static function renderLabelHtml(array $container): string
     {
-        $name = Html::entities_deep($container['name'] ?? '');
-        $code = Html::entities_deep($container['code'] ?? '');
+        $raw_name = trim((string) ($container['name'] ?? ''));
+        if ($raw_name === '') {
+            $raw_name = __('Physical container', 'auchanassettracker');
+        }
+        $raw_code = trim((string) ($container['code'] ?? ''));
+        $name = Html::entities_deep($raw_name);
+        $code = Html::entities_deep($raw_code !== '' ? $raw_code : '—');
         $token = (string) ($container['qr_token'] ?? '');
         $url = self::getScanUrl($token);
         $img = self::getQrPngDataUri($url);
         $loc = Dropdown::getDropdownName('glpi_locations', (int) ($container['locations_id'] ?? 0));
+        if ($loc === '' || $loc === '&nbsp;' || $loc === '-1') {
+            $loc = '—';
+        }
+        $title = Html::entities_deep(__('Physical container', 'auchanassettracker')) . ' — ' . $name;
 
         // Never run Html::entities_deep on the data URI (can break base64).
         $img_html = $img !== ''
@@ -146,16 +155,17 @@ class PluginAuchanassettrackerQrhelper
 html,body{background:#fff;color:#111;margin:0}
 body{font-family:Arial,sans-serif;text-align:center;padding:24px}
 .box{border:2px solid #222;padding:20px;display:inline-block;min-width:280px;background:#fff}
-h1{font-size:18px;margin:0 0 8px}
-.code{font-size:22px;font-weight:bold;letter-spacing:1px}
-.loc{color:#555;margin:8px 0}
-img{width:180px;height:180px;margin:12px 0;background:#fff}
+.title{font-size:18px;font-weight:700;margin:0 0 6px;line-height:1.3}
+.code{font-size:14px;font-weight:600;letter-spacing:0.02em;color:#334155;margin:0 0 4px;
+font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.loc{font-size:13px;color:#667382;margin:0 0 12px}
+img{width:180px;height:180px;margin:8px 0 12px;background:#fff}
 .url{font-size:10px;word-break:break-all;color:#333}
 .missing{color:#a00;font-size:12px;margin:12px 0}
 @media print{button{display:none}}
 </style></head><body>
 <div class="box">
-<h1>' . $name . '</h1>
+<div class="title">' . $title . '</div>
 <div class="code">' . $code . '</div>
 <div class="loc">' . Html::entities_deep($loc) . '</div>
 ' . $img_html . '
