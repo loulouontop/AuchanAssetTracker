@@ -59,9 +59,10 @@ if ($container === null) {
 $items = PluginAuchanassettrackerEquipment::listInContainer((int) $container['id']);
 
 $loc = Dropdown::getDropdownName('glpi_locations', (int) ($container['locations_id'] ?? 0));
-if ($loc === '' || $loc === '&nbsp;' || $loc === '-1') {
-    $loc = '—';
+if ($loc === '&nbsp;' || $loc === '-1') {
+    $loc = '';
 }
+$loc = trim(html_entity_decode(strip_tags((string) $loc), ENT_QUOTES, 'UTF-8'));
 
 $code = trim((string) ($container['code'] ?? ''));
 $name = trim((string) ($container['name'] ?? ''));
@@ -79,10 +80,14 @@ echo '<header class="aat-qrview-hero">'
     . '<div class="aat-qrview-hero-title">'
     . $e(__('Physical container', 'auchanassettracker'))
     . ' — ' . $e($name)
-    . '</div>'
-    . '<div class="aat-qrview-hero-code">' . $e($code !== '' ? $code : '—') . '</div>'
-    . '<div class="aat-qrview-hero-loc">' . $e($loc) . '</div>'
-    . '</header>';
+    . '</div>';
+if ($code !== '') {
+    echo '<div class="aat-qrview-hero-code">' . $e($code) . '</div>';
+}
+if ($loc !== '') {
+    echo '<div class="aat-qrview-hero-loc">' . $e($loc) . '</div>';
+}
+echo '</header>';
 
 echo '<div class="card aat-qrview-stock-card">'
     . '<div class="card-header"><h2 class="card-title">'
@@ -108,32 +113,34 @@ if ($items === []) {
         if ($item_name === '') {
             $item_name = trim((string) ($it['model'] ?? ''));
         }
-        if ($item_name === '') {
-            $item_name = '#' . (int) ($it['id'] ?? 0);
-        }
+        // Keep empty when nothing to show (no placeholder).
 
         $serial = trim((string) ($it['serial'] ?? ''));
-        if ($serial === '') {
-            $serial = '—';
-        }
 
-        $tid = (int) ($it['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
+        // Sprint UI stores GLPI asset class in itemtype (Computer, Monitor, …).
         $typeName = '';
-        if ($tid > 0) {
-            $typeName = Dropdown::getDropdownName(
-                PluginAuchanassettrackerEquipmenttype::getTable(),
-                $tid
-            );
+        $glpi_type = trim((string) ($it['itemtype'] ?? ''));
+        if ($glpi_type !== '' && class_exists($glpi_type) && method_exists($glpi_type, 'getTypeName')) {
+            $typeName = trim((string) $glpi_type::getTypeName(1));
         }
-        if ($typeName === '' || $typeName === '&nbsp;' || $typeName === '-1') {
-            $typeName = '—';
+        if ($typeName === '') {
+            // Legacy rows may still use plugin equipmenttypes dropdown.
+            $tid = (int) ($it['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
+            if ($tid > 0) {
+                $typeName = Dropdown::getDropdownName(
+                    PluginAuchanassettrackerEquipmenttype::getTable(),
+                    $tid
+                );
+                if ($typeName === '&nbsp;' || $typeName === '-1') {
+                    $typeName = '';
+                }
+                $typeName = trim(html_entity_decode(strip_tags((string) $typeName), ENT_QUOTES, 'UTF-8'));
+            }
         }
 
         $added = trim((string) ($it['date_creation'] ?? ''));
         if ($added !== '' && class_exists('Html', false) && method_exists('Html', 'convDateTime')) {
-            $added = Html::convDateTime($added);
-        } elseif ($added === '') {
-            $added = '—';
+            $added = (string) Html::convDateTime($added);
         }
 
         echo '<tr>'
