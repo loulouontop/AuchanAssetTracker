@@ -66,6 +66,7 @@ $loc = trim(html_entity_decode(strip_tags((string) $loc), ENT_QUOTES, 'UTF-8'));
 
 $code = trim((string) ($container['code'] ?? ''));
 $name = trim((string) ($container['name'] ?? ''));
+$description = trim((string) ($container['description'] ?? ''));
 if ($name === '') {
     $name = __('Physical container', 'auchanassettracker');
 }
@@ -87,6 +88,10 @@ if ($code !== '') {
 if ($loc !== '') {
     echo '<div class="aat-qrview-hero-loc">' . $e($loc) . '</div>';
 }
+// Prefer under location (keeps one header block, no extra section).
+if ($description !== '') {
+    echo '<div class="aat-qrview-hero-desc">' . $e($description) . '</div>';
+}
 echo '</header>';
 
 echo '<div class="card aat-qrview-stock-card">'
@@ -105,6 +110,7 @@ if ($items === []) {
         . '<th>' . $e(__('Name')) . '</th>'
         . '<th>' . $e(__('Serial number')) . '</th>'
         . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>'
+        . '<th>' . $e(__('Notes')) . '</th>'
         . '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
         . '</tr></thead><tbody>';
 
@@ -138,6 +144,8 @@ if ($items === []) {
             }
         }
 
+        $notes = trim((string) ($it['notes'] ?? ''));
+
         $added = trim((string) ($it['date_creation'] ?? ''));
         if ($added !== '' && class_exists('Html', false) && method_exists('Html', 'convDateTime')) {
             $added = (string) Html::convDateTime($added);
@@ -150,6 +158,8 @@ if ($items === []) {
             . '<span class="aat-qrview-item-serial">' . $e($serial) . '</span></td>'
             . '<td data-label="' . $e(__('Equipment type', 'auchanassettracker')) . '">'
             . $e($typeName) . '</td>'
+            . '<td data-label="' . $e(__('Notes')) . '">'
+            . '<span class="aat-qrview-item-notes">' . $e($notes) . '</span></td>'
             . '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
             . $e($added) . '</td>'
             . '</tr>';

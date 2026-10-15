@@ -63,6 +63,22 @@ body.aat-qrview {
   color: var(--aat-muted);
 }
 
+.aat-qrview-hero-desc {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--aat-border);
+  font-size: 0.875rem;
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.aat-qrview-item-notes {
+  color: #475569;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .card {
   background: var(--aat-card);
   border: 1px solid var(--aat-border);
