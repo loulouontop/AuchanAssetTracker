@@ -352,6 +352,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             if ($token !== '') {
                 $url = PluginAuchanassettrackerQrhelper::getScanUrl($token);
                 $img = PluginAuchanassettrackerQrhelper::getQrPngDataUri($url);
+                $label_url = plugin_auchanassettracker_web_dir(true)
+                    . '/front/container.qr.php?id=' . $ID;
 
                 // Same 4-column layout as Location / Active (labels in col 1 & 3).
                 echo "<tr class='tab_bg_1 aat-qr-row'><td>"
@@ -377,66 +379,24 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                         . "</div>";
                 }
                 echo "</td></tr>";
+
+                // Native GLPI footer button (same bar as Save / trash; leftmost via flex-row-reverse).
+                $open_js = 'window.open('
+                    . json_encode($label_url, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP)
+                    . ', "_blank", "noopener"); return false;';
+                $options['addbuttons']['aat_download_pdf_label'] = [
+                    'title'     => __('Download PDF label', 'auchanassettracker'),
+                    'text'      => __('Download PDF label', 'auchanassettracker'),
+                    'icon'      => 'ti ti-qrcode',
+                    'btn_class' => 'btn-secondary aat-qr-pdf-btn',
+                    'type'      => 'button',
+                    'onclick'   => $open_js,
+                ];
             }
         }
 
         $this->showFormButtons($options);
         return true;
-    }
-
-    /**
-     * Inject "Download PDF label" into the same footer bar as Save / trash.
-     */
-    public function showFormButtons($options = [])
-    {
-        $label_url = $this->getQrLabelUrl();
-        if ($label_url === '') {
-            return parent::showFormButtons($options);
-        }
-
-        $btn = '<a class="btn btn-secondary aat-qr-pdf-btn" href="'
-            . htmlspecialchars($label_url, ENT_QUOTES, 'UTF-8')
-            . '" target="_blank" rel="noopener">'
-            . '<i class="ti ti-qrcode me-1"></i>'
-            . htmlspecialchars(__('Download PDF label', 'auchanassettracker'), ENT_QUOTES, 'UTF-8')
-            . '</a>';
-
-        ob_start();
-        $result = parent::showFormButtons($options);
-        $html = (string) ob_get_clean();
-
-        if ($html !== '' && !str_contains($html, 'aat-qr-pdf-btn')) {
-            $footer_re = '/(<(?:div|footer)[^>]*class=[\'"][^\'"]*(?:card-footer|form-buttons)[^\'"]*[\'"][^>]*>)/i';
-            if (preg_match($footer_re, $html)) {
-                $html = preg_replace($footer_re, '$1' . $btn, $html, 1) ?? $html;
-            } else {
-                // Fallback: dedicated action row if GLPI markup differs.
-                $html .= '<div class="card-footer d-flex flex-wrap align-items-center gap-2 mx-n2 mb-n2 aat-qr-pdf-footer">'
-                    . $btn . '</div>';
-            }
-        } elseif ($html === '') {
-            echo '<div class="card-footer d-flex flex-wrap align-items-center gap-2 mx-n2 mb-n2 aat-qr-pdf-footer">'
-                . $btn . '</div>';
-        }
-
-        echo $html;
-        return $result;
-    }
-
-    /**
-     * Printable label URL for the current container (empty if not available).
-     */
-    private function getQrLabelUrl(): string
-    {
-        $id = (int) $this->getID();
-        if ($id <= 0) {
-            return '';
-        }
-        $token = trim((string) ($this->fields['qr_token'] ?? ''));
-        if ($token === '') {
-            return '';
-        }
-        return plugin_auchanassettracker_web_dir(true) . '/front/container.qr.php?id=' . $id;
     }
 
     /**
