@@ -176,7 +176,8 @@ if (!str_contains($view, 'DO_NOT_CHECK_LOGIN')) {
 }
 foreach ([
     'listInContainer', 'Physical container', 'Serial number',
-    'Equipment type', 'Added on', 'Notes', 'aat-qrview-hero-desc',
+    'Equipment type', 'Added on', 'aat-qrview-hero-desc',
+    'aat-qrview-item-notes', 'loadLanguage', 'CFG_GLPI',
     'View only — to manage, open GLPI.',
 ] as $needle) {
     if (!str_contains($view, $needle)) {

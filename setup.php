@@ -83,9 +83,12 @@ function plugin_auchanassettracker_bootstrap(): void
 
 function plugin_auchanassettracker_load_translations(): void
 {
-    global $TRANSLATE;
+    global $TRANSLATE, $CFG_GLPI;
 
-    $lang = (string) ($_SESSION['glpilanguage'] ?? 'en_GB');
+    $lang = trim((string) ($_SESSION['glpilanguage'] ?? ''));
+    if ($lang === '') {
+        $lang = trim((string) ($CFG_GLPI['language'] ?? 'en_GB'));
+    }
     if ($lang === '') {
         $lang = 'en_GB';
     }
