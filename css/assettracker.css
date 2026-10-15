@@ -351,3 +351,11 @@ body:has(.aat-modal-shell) {
 .navbar .dropdown-menu a.dropdown-item[href*="AuchanAssetTracker"]:focus {
   color: inherit !important;
 }
+
+/* Sprint 4 — container QR public URL on form */
+code.aat-qr-url {
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  vertical-align: middle;
+}

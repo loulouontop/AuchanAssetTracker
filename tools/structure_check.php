@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 /**
- * Offline structure checks (no GLPI required) — Sprint 3 delivery.
+ * Offline structure checks (no GLPI required) — Sprint 4 delivery.
  */
 $root = dirname(__DIR__);
 $errors = 0;
@@ -24,8 +24,11 @@ foreach ([
     'inc/assetform.class.php', 'inc/bulk.class.php', 'inc/confirm.class.php', 'inc/notice.class.php',
     'inc/transfer.class.php', 'inc/transferitem.class.php', 'inc/tickethook.class.php',
     'inc/mailhelper.class.php', 'inc/config.class.php', 'inc/menu.class.php',
+    'inc/qrhelper.class.php', 'inc/phpqrcode/qrlib.php',
     'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
     'front/transfer.php', 'front/transfer.form.php', 'front/equipment.form.php',
+    'front/container.qr.php',
+    'public/qr.php', 'public/qrimg.php',
     'ajax/containers.php', 'ajax/models.php', 'ajax/users.php',
     'css/assettracker.css', 'public/css/assettracker.css',
     'locales/en_GB.php', 'locales/ro_RO.php',
@@ -38,12 +41,11 @@ foreach ([
 }
 
 foreach ([
-    'inc/dashboard.class.php', 'inc/report.class.php', 'inc/qrhelper.class.php',
-    'front/dashboard.php', 'front/report.php', 'front/container.qr.php',
-    'public/qr.php', 'public/qrimg.php', 'docs/README.md',
+    'inc/dashboard.class.php', 'inc/report.class.php',
+    'front/dashboard.php', 'front/report.php', 'docs/README.md',
 ] as $rel) {
     if (file_exists("$root/$rel")) {
-        fail("Sprint 4+ file still present: $rel");
+        fail("Sprint 5+ file still present: $rel");
     } else {
         ok("absent $rel");
     }
@@ -62,6 +64,7 @@ foreach ([
     'glpi_plugin_auchanassettracker_configs',
     'final_reason',
     'service_tickets_id',
+    'qr_token',
 ] as $needle) {
     if (!str_contains($sql, $needle)) {
         fail("SQL missing $needle");
@@ -83,13 +86,13 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.3.0'")) {
-    fail('expected version 0.3.0');
+if (!str_contains($setup, "'0.4.0'")) {
+    fail('expected version 0.4.0');
 } else {
-    ok('version 0.3.0');
+    ok('version 0.4.0');
 }
 
-foreach (['transfer', 'transferitem', 'tickethook'] as $need) {
+foreach (['transfer', 'transferitem', 'tickethook', 'qrhelper'] as $need) {
     if (!preg_match("/['\"]" . preg_quote($need, '/') . "['\"]/", $setup)) {
         fail("setup missing bootstrap $need");
     } else {
@@ -97,7 +100,7 @@ foreach (['transfer', 'transferitem', 'tickethook'] as $need) {
     }
 }
 
-foreach (['qrhelper', 'dashboard', 'report'] as $bad) {
+foreach (['dashboard', 'report'] as $bad) {
     if (preg_match("/['\"]" . preg_quote($bad, '/') . "['\"]/", $setup)) {
         fail("setup still bootstraps $bad");
     } else {
@@ -105,10 +108,23 @@ foreach (['qrhelper', 'dashboard', 'report'] as $bad) {
     }
 }
 
-$menu = file_get_contents("$root/inc/menu.class.php");
-if (!str_contains($menu, 'SECTOR') || !str_contains($menu, 'redefine_menus') && !str_contains(file_get_contents("$root/setup.php"), 'redefine_menus')) {
-    // SECTOR must exist; redefine_menus is in setup/hook
+$container = file_get_contents("$root/inc/container.class.php");
+foreach (['findByToken', 'qr_token', 'Download PDF label', 'QR public URL'] as $needle) {
+    if (!str_contains($container, $needle)) {
+        fail("container missing $needle");
+    } else {
+        ok("container has $needle");
+    }
 }
+
+$equip = file_get_contents("$root/inc/equipment.class.php");
+if (!str_contains($equip, 'function listInContainer')) {
+    fail('equipment missing listInContainer');
+} else {
+    ok('equipment listInContainer');
+}
+
+$menu = file_get_contents("$root/inc/menu.class.php");
 if (!str_contains($menu, 'SECTOR')) {
     fail('menu missing SECTOR (top-level GLPI menu)');
 } else {
@@ -124,6 +140,18 @@ if (str_contains($sql, 'auchanequipment')) {
     fail('SQL must not reference auchanequipment');
 } else {
     ok('no coupling to plugin 1 tables');
+}
+
+$public = file_get_contents("$root/public/qr.php");
+if (!str_contains($public, 'DO_NOT_CHECK_LOGIN')) {
+    fail('public qr.php must allow unauthenticated access');
+} else {
+    ok('public qr.php unauthenticated');
+}
+if (!str_contains($public, 'listInContainer')) {
+    fail('public qr.php must list container stock');
+} else {
+    ok('public qr.php lists stock');
 }
 
 echo $errors === 0 ? "\nAll structure checks passed.\n" : "\n$errors failure(s).\n";

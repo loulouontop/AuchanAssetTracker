@@ -338,6 +338,49 @@ function plugin_auchanassettracker_ensure_schema(): void
         }
     }
 
+    // Sprint 4: unique QR token per container (add column → backfill → unique index).
+    if ($DB->tableExists($containers) && !$DB->fieldExists($containers, 'qr_token')) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$containers` ADD `qr_token` VARCHAR(64) NOT NULL DEFAULT ''"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
+
+        foreach ($DB->request([
+            'SELECT' => ['id', 'qr_token'],
+            'FROM'   => $containers,
+        ]) as $row) {
+            if (trim((string) ($row['qr_token'] ?? '')) !== '') {
+                continue;
+            }
+            $DB->update($containers, [
+                'qr_token' => bin2hex(random_bytes(16)),
+            ], ['id' => (int) $row['id']]);
+        }
+
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$containers` ADD UNIQUE KEY `qr_token` (`qr_token`)"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1061')
+                && !str_contains($msg, 'Duplicate key')
+                && !str_contains($msg, 'Duplicate entry')
+            ) {
+                // Index may already exist under another name — ignore benign cases.
+                if (!str_contains($msg, '1062')) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
     $alloc = 'glpi_plugin_auchanassettracker_allocations';
     if ($DB->tableExists($alloc)) {
         $alloc_columns = [

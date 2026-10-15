@@ -1,8 +1,8 @@
-# AuchanAssetTracker — Sprint 3
+# AuchanAssetTracker — Sprint 4
 
-GLPI plugin for IT equipment stock, physical containers, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
+GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.3.0 (Sprint 3)  
+**Version:** 0.4.0 (Sprint 4)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -33,29 +33,38 @@ GLPI plugin for IT equipment stock, physical containers, allocation with user co
 - History / Documents tabs; Location physical containers + contents
 - Alert thresholds: allocation / transfer / service days
 
+## Sprint 4 scope
+
+- Unique `qr_token` per physical container
+- Printable PDF/HTML shelf label (QR + public URL)
+- Public mobile URL (no GLPI login): Available gear in that container, grouped by type
+- Scan = view only; edits stay in desktop GLPI
+- Inactive / deleted containers → no public data
+
 ## Profile role
 
 Administration → Profiles → **Auchan Asset Tracker** → set **Role** (rights come from the role).  
 Location scope for location managers / support techs uses the user’s native GLPI **User → Location**. Central admin has no location limit.
 
-## Upgrade from Sprint 2
+## Upgrade from Sprint 3
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.3.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds transfer tables and `final_*` / `service_*` columns), migrates legacy roles into ProfileRights, then updates `glpi_plugins.version`.
+2. Version becomes **0.4.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds `qr_token` and unique index, backfills tokens), then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
-4. Clear browser cache / GLPI cache if the menu does not refresh. Re-login (or switch profile) so session rights refresh.
+4. Open a container → use **Download PDF label** / public URL. Clear browser cache / GLPI cache if needed.
 
 ## Requirements
 
 - GLPI 11.0.2 (min 11.0.0)
-- PHP 8.1+
+- PHP 8.1+ (GD recommended for QR PNG generation)
 
 ## Install
 
-1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name).
+1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name). Include the `public/` folder.
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
 3. Set the plugin **Role** under **Administration → Profiles → Auchan Asset Tracker**, and set each user’s **Location** on the GLPI user form when they need location scope.
 4. Create locations and containers before receiving stock.
+5. Open a container → print the QR label; scan on a phone to verify the public view.
 
 ## Locale
 

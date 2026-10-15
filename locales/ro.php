@@ -90,4 +90,13 @@ return [
     'Transfer validated.' => 'Transfer validat.',
     'Default 7 days before an in-transit transfer is considered overdue.' => 'Implicit 7 zile înainte ca un transfer în tranzit să fie considerat întârziat.',
     'Default 30 days before equipment in service is considered overdue.' => 'Implicit 30 zile înainte ca echipamentul în service să fie considerat întârziat.',
+    'Download PDF label' => 'Descarcă etichetă PDF',
+    'Print' => 'Tipărește',
+    'QR public URL' => 'URL public QR',
+    'Container not found' => 'Container negăsit',
+    'Invalid or inactive QR code.' => 'Cod QR invalid sau inactiv.',
+    'No available equipment in this container.' => 'Nu există echipament disponibil în acest container.',
+    'Not found' => 'Negăsit',
+    'Scan the label on a phone for a read-only list of Available stock in this container.' => 'Scanați eticheta pe telefon pentru o listă doar-citire a stocului Disponibil din acest container.',
+    'View only — manage stock from the GLPI desktop app.' => 'Doar vizualizare — gestionați stocul din aplicația GLPI pe desktop.',
 ];

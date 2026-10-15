@@ -200,7 +200,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             $input['code'] = self::generateCode($locations_id);
         }
 
-        // Heal UNIQUE qr_token from older installs (empty '' collides).
+        // Unique public QR token (Sprint 4). Heal empty values so UNIQUE never collides.
         global $DB;
         if ($DB->fieldExists(self::getTable(), 'qr_token')) {
             $token = trim((string) ($input['qr_token'] ?? ''));
@@ -246,6 +246,9 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         if (isset($input['entities_id'])) {
             $input['entities_id'] = (int) $input['entities_id'];
         }
+
+        // Token is system-managed — never accept a client-supplied change.
+        unset($input['qr_token']);
 
         $input['date_mod'] = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
         return $input;
@@ -337,8 +340,67 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             . "</textarea>";
         echo "</td></tr>";
 
+        if ($ID > 0) {
+            global $DB;
+            $token = trim((string) ($this->fields['qr_token'] ?? ''));
+            if ($token === '' && $DB->fieldExists(self::getTable(), 'qr_token')) {
+                $token = bin2hex(random_bytes(16));
+                $DB->update(self::getTable(), ['qr_token' => $token], ['id' => $ID]);
+                $this->fields['qr_token'] = $token;
+            }
+
+            if ($token !== '') {
+                $url = PluginAuchanassettrackerQrhelper::getPublicUrl($token);
+                $label_url = plugin_auchanassettracker_web_dir(true)
+                    . '/front/container.qr.php?id=' . $ID;
+                echo "<tr class='tab_bg_1'><td>"
+                    . __('QR public URL', 'auchanassettracker') . "</td><td colspan='3'>";
+                echo "<code class='aat-qr-url'>" . Html::entities_deep($url) . "</code> ";
+                echo "<a class='btn btn-sm btn-secondary' href='"
+                    . Html::entities_deep($label_url)
+                    . "' target='_blank' rel='noopener'>"
+                    . __('Download PDF label', 'auchanassettracker') . "</a>";
+                echo "<div class='form-text'>"
+                    . Html::entities_deep(__(
+                        'Scan the label on a phone for a read-only list of Available stock in this container.',
+                        'auchanassettracker'
+                    ))
+                    . "</div>";
+                echo "</td></tr>";
+            }
+        }
+
         $this->showFormButtons($options);
         return true;
+    }
+
+    /**
+     * Resolve an active container by its public QR token (no login).
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findByToken(string $token): ?array
+    {
+        global $DB;
+
+        $token = trim($token);
+        if ($token === '' || !$DB->fieldExists(self::getTable(), 'qr_token')) {
+            return null;
+        }
+
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => [
+                'qr_token'   => $token,
+                'is_active'  => 1,
+                'is_deleted' => 0,
+            ],
+            'LIMIT' => 1,
+        ]) as $row) {
+            return $row;
+        }
+
+        return null;
     }
 
     public static function generateCode(int $locations_id): string
