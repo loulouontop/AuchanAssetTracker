@@ -36,10 +36,11 @@ GLPI plugin for IT equipment stock, physical containers with QR labels, allocati
 ## Sprint 4 scope
 
 - Unique `qr_token` per physical container
-- QR code preview on the container form + printable PDF/HTML shelf label
-- Scan URL (GLPI front, login required on the internal network): Available gear in that container, grouped by type
+- QR code preview on the container form (URL left, QR right) + printable PDF/HTML shelf label
+- Public scan URL (`public/qr.php`, no login; hosted with GLPI on the LAN): Available gear grouped by type
+- Scan page labels Location / Container code / Container name; Name + Serial number columns
 - Scan = view only; edits stay in desktop GLPI
-- Inactive / deleted containers → no data; location isolation for managers/techs
+- Inactive / deleted containers → no data
 
 ## Profile role
 
@@ -64,7 +65,7 @@ Location scope for location managers / support techs uses the user’s native GL
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
 3. Set the plugin **Role** under **Administration → Profiles → Auchan Asset Tracker**, and set each user’s **Location** on the GLPI user form when they need location scope.
 4. Create locations and containers before receiving stock.
-5. Open a container → check the on-form QR preview → print the label; scan on a phone (GLPI login) to verify the shelf view.
+5. Open a container → check URL (left) + QR (right) → print the label; open/scan the public URL (no login) to verify the shelf view.
 6. QR links use the host you open GLPI with (not a hardcoded localhost). Optionally set **Setup → General → URL of the application** as a fallback.
 
 ## Locale

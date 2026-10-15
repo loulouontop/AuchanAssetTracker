@@ -47,18 +47,18 @@ class PluginAuchanassettrackerQrhelper
     }
 
     /**
-     * Internal scan URL (GLPI front — requires login on the LAN).
+     * Public scan URL (plugin public/ — no GLPI login; use on the LAN).
      */
     public static function getScanUrl(string $token): string
     {
         $token = trim($token);
         $path = '/plugins/' . plugin_auchanassettracker_dir()
-            . '/front/container.qrview.php?t=' . urlencode($token);
+            . '/public/qr.php?t=' . urlencode($token);
 
         $base = self::getGlpiBaseUrl();
         if ($base === '') {
             return rtrim(plugin_auchanassettracker_web_dir(true), '/')
-                . '/front/container.qrview.php?t=' . urlencode($token);
+                . '/public/qr.php?t=' . urlencode($token);
         }
 
         return rtrim($base, '/') . $path;

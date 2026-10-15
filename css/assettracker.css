@@ -352,12 +352,22 @@ body:has(.aat-modal-shell) {
   color: inherit !important;
 }
 
-/* Sprint 4 — container QR on form */
+/* Sprint 4 — container QR on form (URL left, code right) */
 .aat-qr-block {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 1rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: 100%;
+}
+.aat-qr-meta {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.aat-qr-preview-wrap {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 img.aat-qr-preview {
   display: block;
@@ -367,14 +377,20 @@ img.aat-qr-preview {
   background: #fff;
   padding: 6px;
 }
-.aat-qr-meta {
-  min-width: 220px;
-  flex: 1 1 240px;
-}
 code.aat-qr-url {
-  display: inline-block;
+  display: block;
   max-width: 100%;
   word-break: break-all;
-  vertical-align: middle;
-  margin-right: 0.5rem;
+  margin: 0 0 0.65rem;
+}
+.aat-qr-actions {
+  margin-bottom: 0.35rem;
+}
+@media (max-width: 767.98px) {
+  .aat-qr-block {
+    flex-wrap: wrap;
+  }
+  .aat-qr-preview-wrap {
+    margin-left: 0;
+  }
 }

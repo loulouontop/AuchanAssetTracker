@@ -1394,6 +1394,9 @@ JS);
     {
         global $DB;
         $rows = [];
+        if ($container_id <= 0) {
+            return $rows;
+        }
         foreach ($DB->request([
             'FROM'  => self::getTable(),
             'WHERE' => [
@@ -1401,7 +1404,7 @@ JS);
                 'status'     => self::STATUS_AVAILABLE,
                 'is_deleted' => 0,
             ],
-            'ORDER' => 'plugin_auchanassettracker_equipmenttypes_id ASC, model ASC',
+            'ORDER' => 'plugin_auchanassettracker_equipmenttypes_id ASC, name ASC, model ASC, serial ASC, id ASC',
         ]) as $row) {
             $rows[] = $row;
         }

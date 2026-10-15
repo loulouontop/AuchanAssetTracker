@@ -357,6 +357,25 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                 echo "<tr class='tab_bg_1'><td>"
                     . __('QR code', 'auchanassettracker') . "</td><td colspan='3'>";
                 echo "<div class='aat-qr-block'>";
+                echo "<div class='aat-qr-meta'>";
+                echo "<div class='form-label mb-1'>"
+                    . Html::entities_deep(__('QR URL', 'auchanassettracker'))
+                    . "</div>";
+                echo "<code class='aat-qr-url'>" . Html::entities_deep($url) . "</code>";
+                echo "<div class='aat-qr-actions'>";
+                echo "<a class='btn btn-sm btn-secondary' href='"
+                    . Html::entities_deep($label_url)
+                    . "' target='_blank' rel='noopener'>"
+                    . __('Download PDF label', 'auchanassettracker') . "</a>";
+                echo "</div>";
+                echo "<div class='form-text'>"
+                    . Html::entities_deep(__(
+                        'Scan the label on a phone for a read-only list of Available stock in this container. No GLPI login required on the internal network.',
+                        'auchanassettracker'
+                    ))
+                    . "</div>";
+                echo "</div>";
+                echo "<div class='aat-qr-preview-wrap'>";
                 if ($img !== '') {
                     echo "<img class='aat-qr-preview' src='"
                         . Html::entities_deep($img)
@@ -369,22 +388,8 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
                         ))
                         . "</div>";
                 }
-                echo "<div class='aat-qr-meta'>";
-                echo "<div><span class='form-label'>"
-                    . Html::entities_deep(__('QR URL', 'auchanassettracker'))
-                    . "</span></div>";
-                echo "<code class='aat-qr-url'>" . Html::entities_deep($url) . "</code> ";
-                echo "<a class='btn btn-sm btn-secondary' href='"
-                    . Html::entities_deep($label_url)
-                    . "' target='_blank' rel='noopener'>"
-                    . __('Download PDF label', 'auchanassettracker') . "</a>";
-                echo "<div class='form-text'>"
-                    . Html::entities_deep(__(
-                        'Scan the label on a phone (GLPI login required) for a read-only list of Available stock in this container.',
-                        'auchanassettracker'
-                    ))
-                    . "</div>";
-                echo "</div></div>";
+                echo "</div>";
+                echo "</div>";
                 echo "</td></tr>";
             }
         }
