@@ -340,7 +340,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             . "</textarea>";
         echo "</td></tr>";
 
-        $qr_label_url = '';
         if ($ID > 0) {
             global $DB;
             $token = trim((string) ($this->fields['qr_token'] ?? ''));
@@ -353,8 +352,6 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             if ($token !== '') {
                 $url = PluginAuchanassettrackerQrhelper::getScanUrl($token);
                 $img = PluginAuchanassettrackerQrhelper::getQrPngDataUri($url);
-                $qr_label_url = plugin_auchanassettracker_web_dir(true)
-                    . '/front/container.qr.php?id=' . $ID;
 
                 // Same 4-column layout as Location / Active (labels in col 1 & 3).
                 echo "<tr class='tab_bg_1 aat-qr-row'><td>"
@@ -384,41 +381,66 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         }
 
         $this->showFormButtons($options);
+        return true;
+    }
 
-        // Place "Download PDF label" in the same footer bar as Save / trash.
-        if ($qr_label_url !== '') {
-            $btn_label = __('Download PDF label', 'auchanassettracker');
-            $js_url = json_encode($qr_label_url, JSON_UNESCAPED_SLASHES);
-            $js_label = json_encode($btn_label, JSON_UNESCAPED_UNICODE);
-            $js_id = (int) $ID;
-            echo Html::scriptBlock(<<<JS
-(function () {
-  var url = $js_url;
-  var label = $js_label;
-  var id = $js_id;
-  var \$form = $('input[type="hidden"][name="id"][value="' + id + '"]').closest('form');
-  if (!\$form.length) {
-    \$form = $('form').has('input[name="id"][value="' + id + '"]').first();
-  }
-  var \$footer = \$form.find('.card-footer').first();
-  if (!\$footer.length) {
-    return;
-  }
-  if (\$footer.find('.aat-qr-pdf-btn').length) {
-    return;
-  }
-  var \$btn = $('<a></a>')
-    .addClass('btn btn-secondary aat-qr-pdf-btn')
-    .attr({ href: url, target: '_blank', rel: 'noopener' })
-    .text(label);
-  // Footer uses flex-row-reverse: append keeps Save/trash on the right.
-  \$footer.append(\$btn);
-})();
-JS
-            );
+    /**
+     * Inject "Download PDF label" into the same footer bar as Save / trash.
+     */
+    public function showFormButtons($options = [])
+    {
+        $label_url = $this->getQrLabelUrl();
+        if ($label_url === '') {
+            return parent::showFormButtons($options);
         }
 
-        return true;
+        $btn = '<a class="btn btn-secondary aat-qr-pdf-btn" href="'
+            . htmlspecialchars($label_url, ENT_QUOTES, 'UTF-8')
+            . '" target="_blank" rel="noopener">'
+            . '<i class="ti ti-qrcode me-1"></i>'
+            . htmlspecialchars(__('Download PDF label', 'auchanassettracker'), ENT_QUOTES, 'UTF-8')
+            . '</a>';
+
+        ob_start();
+        $result = parent::showFormButtons($options);
+        $html = (string) ob_get_clean();
+
+        if ($html !== '' && !str_contains($html, 'aat-qr-pdf-btn')) {
+            if (preg_match('/<div[^>]*class="[^"]*(?:card-footer|form-buttons)[^"]*"[^>]*>/i', $html)) {
+                $html = preg_replace(
+                    '/(<div[^>]*class="[^"]*(?:card-footer|form-buttons)[^"]*"[^>]*>)/i',
+                    '$1' . $btn,
+                    $html,
+                    1
+                ) ?? $html;
+            } else {
+                // Fallback: dedicated action row if GLPI markup differs.
+                $html .= '<div class="card-footer d-flex flex-wrap align-items-center gap-2 mx-n2 mb-n2 aat-qr-pdf-footer">'
+                    . $btn . '</div>';
+            }
+        } elseif ($html === '') {
+            echo '<div class="card-footer d-flex flex-wrap align-items-center gap-2 mx-n2 mb-n2 aat-qr-pdf-footer">'
+                . $btn . '</div>';
+        }
+
+        echo $html;
+        return $result;
+    }
+
+    /**
+     * Printable label URL for the current container (empty if not available).
+     */
+    private function getQrLabelUrl(): string
+    {
+        $id = (int) $this->getID();
+        if ($id <= 0) {
+            return '';
+        }
+        $token = trim((string) ($this->fields['qr_token'] ?? ''));
+        if ($token === '') {
+            return '';
+        }
+        return plugin_auchanassettracker_web_dir(true) . '/front/container.qr.php?id=' . $id;
     }
 
     /**
