@@ -126,7 +126,8 @@ foreach (['dashboard', 'report'] as $bad) {
 $container = file_get_contents("$root/inc/container.class.php");
 foreach ([
     'findByToken', 'qr_token', 'Download PDF label', 'QR code', 'QR URL',
-    'aat-qr-preview', 'aat-qr-pdf-btn', 'getQrPngDataUri',
+    'aat-qr-preview', 'aat-qr-pdf-btn', 'ti ti-qrcode', 'getQrPngDataUri',
+    'function showFormButtons',
     'Scan the label on a phone using the internal network for a read only list of Available stock in this container.',
 ] as $needle) {
     if (!str_contains($container, $needle)) {

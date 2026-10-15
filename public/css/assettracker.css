@@ -369,6 +369,13 @@ img.aat-qr-preview {
   background: #fff;
   padding: 6px;
 }
-.card-footer .aat-qr-pdf-btn {
-  margin-right: 0.5rem;
+.card-footer .aat-qr-pdf-btn,
+.form-buttons .aat-qr-pdf-btn,
+.aat-qr-pdf-footer .aat-qr-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  margin: 0.15rem 0.35rem;
+}
+.aat-qr-pdf-btn .ti {
+  font-size: 1.05em;
 }

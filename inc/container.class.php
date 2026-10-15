@@ -406,13 +406,9 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         $html = (string) ob_get_clean();
 
         if ($html !== '' && !str_contains($html, 'aat-qr-pdf-btn')) {
-            if (preg_match('/<div[^>]*class="[^"]*(?:card-footer|form-buttons)[^"]*"[^>]*>/i', $html)) {
-                $html = preg_replace(
-                    '/(<div[^>]*class="[^"]*(?:card-footer|form-buttons)[^"]*"[^>]*>)/i',
-                    '$1' . $btn,
-                    $html,
-                    1
-                ) ?? $html;
+            $footer_re = '/(<(?:div|footer)[^>]*class=[\'"][^\'"]*(?:card-footer|form-buttons)[^\'"]*[\'"][^>]*>)/i';
+            if (preg_match($footer_re, $html)) {
+                $html = preg_replace($footer_re, '$1' . $btn, $html, 1) ?? $html;
             } else {
                 // Fallback: dedicated action row if GLPI markup differs.
                 $html .= '<div class="card-footer d-flex flex-wrap align-items-center gap-2 mx-n2 mb-n2 aat-qr-pdf-footer">'
