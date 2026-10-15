@@ -109,6 +109,44 @@ function plugin_auchanassettracker_post_init(): void
     plugin_auchanassettracker_load_translations();
 }
 
+/**
+ * Early boot (GLPI 11): register public QR before session/firewall decisions.
+ */
+function plugin_auchanassettracker_boot(): void
+{
+    plugin_auchanassettracker_register_public_qr_access();
+}
+
+function plugin_auchanassettracker_register_public_qr_access(): void
+{
+    // GLPI 11: every plugin PHP script defaults to authenticated-only.
+    // DO_NOT_CHECK_LOGIN alone is ignored by the Kernel firewall — we must
+    // declare STRATEGY_NO_CHECK (+ optional stateless session) explicitly.
+    // Patterns are relative to /plugins/<dir>/ (no /public/ prefix in URL).
+    $keys = array_unique([
+        plugin_auchanassettracker_dir(),
+        strtolower(plugin_auchanassettracker_dir()),
+    ]);
+    $pattern = '#^/qr\\.php$#';
+
+    foreach ($keys as $key) {
+        if ($key === '') {
+            continue;
+        }
+        if (class_exists(\Glpi\Http\Firewall::class)) {
+            \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts(
+                $key,
+                $pattern,
+                \Glpi\Http\Firewall::STRATEGY_NO_CHECK
+            );
+        }
+        if (class_exists(\Glpi\Http\SessionManager::class)) {
+            // Avoid “no session → redirect to login” for phone scans.
+            \Glpi\Http\SessionManager::registerPluginStatelessPath($key, $pattern);
+        }
+    }
+}
+
 function plugin_init_auchanassettracker(): void
 {
     global $PLUGIN_HOOKS, $DB, $CFG_GLPI;
@@ -117,6 +155,9 @@ function plugin_init_auchanassettracker(): void
 
     $PLUGIN_HOOKS['csrf_compliant'][$plug] = true;
     $PLUGIN_HOOKS['post_init'][$plug] = 'plugin_auchanassettracker_post_init';
+
+    // Must run for anonymous requests too (before the login early-return).
+    plugin_auchanassettracker_register_public_qr_access();
 
     plugin_auchanassettracker_bootstrap();
 

@@ -2,10 +2,15 @@
 /**
  * Public container QR view — no GLPI login.
  * Served by GLPI as /plugins/<PluginDir>/qr.php (file lives in public/).
+ *
+ * Anonymous access also requires Firewall STRATEGY_NO_CHECK + stateless path
+ * registration in setup.php (GLPI 11 Kernel). DO_NOT_CHECK_LOGIN alone is not enough.
  */
 
-// Must be defined before GLPI bootstrap.
-define('DO_NOT_CHECK_LOGIN', 1);
+// Must be defined before GLPI bootstrap (legacy + Kernel).
+if (!defined('DO_NOT_CHECK_LOGIN')) {
+    define('DO_NOT_CHECK_LOGIN', 1);
+}
 
 $glpi_root = dirname(__DIR__, 3);
 if (!is_readable($glpi_root . '/inc/includes.php')) {

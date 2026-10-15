@@ -93,6 +93,20 @@ if (!str_contains($setup, "'0.4.0'")) {
     ok('version 0.4.0');
 }
 
+foreach ([
+    'addPluginStrategyForLegacyScripts',
+    'STRATEGY_NO_CHECK',
+    'registerPluginStatelessPath',
+    'plugin_auchanassettracker_boot',
+    'plugin_auchanassettracker_register_public_qr_access',
+] as $needle) {
+    if (!str_contains($setup, $needle)) {
+        fail("setup missing public QR access: $needle");
+    } else {
+        ok("setup has $needle");
+    }
+}
+
 foreach (['transfer', 'transferitem', 'tickethook', 'qrhelper'] as $need) {
     if (!preg_match("/['\"]" . preg_quote($need, '/') . "['\"]/", $setup)) {
         fail("setup missing bootstrap $need");
