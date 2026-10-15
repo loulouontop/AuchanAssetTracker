@@ -90,7 +90,10 @@ if ($loc !== '') {
 }
 // Prefer under location (keeps one header block, no extra section).
 if ($description !== '') {
-    echo '<div class="aat-qrview-hero-desc">' . $e($description) . '</div>';
+    echo '<div class="aat-qrview-hero-desc">'
+        . '<span class="aat-qrview-hero-desc-label">' . $e(__('Description')) . ':</span> '
+        . $e($description)
+        . '</div>';
 }
 echo '</header>';
 
@@ -105,13 +108,23 @@ if ($items === []) {
         . $e(__('No available equipment in this container.', 'auchanassettracker'))
         . '</div>';
 } else {
+    $show_notes = false;
+    foreach ($items as $it) {
+        if (trim((string) ($it['notes'] ?? '')) !== '') {
+            $show_notes = true;
+            break;
+        }
+    }
+
     echo '<div class="table-responsive"><table class="table table-striped table-hover aat-qrview-table">'
         . '<thead><tr>'
         . '<th>' . $e(__('Name')) . '</th>'
         . '<th>' . $e(__('Serial number')) . '</th>'
-        . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>'
-        . '<th>' . $e(__('Notes')) . '</th>'
-        . '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
+        . '<th>' . $e(__('Equipment type', 'auchanassettracker')) . '</th>';
+    if ($show_notes) {
+        echo '<th>' . $e(__('Notes')) . '</th>';
+    }
+    echo '<th>' . $e(__('Added on', 'auchanassettracker')) . '</th>'
         . '</tr></thead><tbody>';
 
     foreach ($items as $it) {
@@ -157,10 +170,12 @@ if ($items === []) {
             . '<td data-label="' . $e(__('Serial number')) . '">'
             . '<span class="aat-qrview-item-serial">' . $e($serial) . '</span></td>'
             . '<td data-label="' . $e(__('Equipment type', 'auchanassettracker')) . '">'
-            . $e($typeName) . '</td>'
-            . '<td data-label="' . $e(__('Notes')) . '">'
-            . '<span class="aat-qrview-item-notes">' . $e($notes) . '</span></td>'
-            . '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
+            . $e($typeName) . '</td>';
+        if ($show_notes) {
+            echo '<td data-label="' . $e(__('Notes')) . '">'
+                . '<span class="aat-qrview-item-notes">' . $e($notes) . '</span></td>';
+        }
+        echo '<td data-label="' . $e(__('Added on', 'auchanassettracker')) . '">'
             . $e($added) . '</td>'
             . '</tr>';
     }

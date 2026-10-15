@@ -73,6 +73,11 @@ body.aat-qrview {
   word-break: break-word;
 }
 
+.aat-qrview-hero-desc-label {
+  font-weight: 600;
+  color: #334155;
+}
+
 .aat-qrview-item-notes {
   color: #475569;
   white-space: pre-wrap;
