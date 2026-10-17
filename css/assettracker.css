@@ -232,18 +232,38 @@ ul.aat-alert-col .aat-alert-li {
 }
 
 /*
- * Destination = exact native Location::dropdown.
- * Hide only the bare <select> until GLPI setupAjaxDropdown marks it select2-hidden-accessible
- * (same idea as physical container — does not restyle the control).
+ * Destination = exact native Location::dropdown (setupAjaxDropdown).
+ * Hide bare <select> until Select2 binds; enlarge Select2 to fill the form row.
  */
 .aat-location-dropdown {
   width: 100%;
+  max-width: 100%;
+}
+
+.aat-location-dropdown .btn-group {
+  width: 100% !important;
+  max-width: 100%;
 }
 
 .aat-location-dropdown select.form-select:not(.select2-hidden-accessible) {
   visibility: hidden !important;
   pointer-events: none !important;
   min-height: 38px;
+  /* Reserve the same footprint Select2 will use (avoids layout jump). */
+  width: calc(100% - 72px) !important;
+  min-width: 280px;
+}
+
+.aat-location-dropdown .select2-container {
+  width: calc(100% - 72px) !important;
+  min-width: 280px !important;
+  max-width: calc(100% - 72px);
+}
+
+.aat-location-dropdown .select2-selection--single {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
 }
 
 ul.aat-alert-col .aat-alert-li a {

@@ -107,6 +107,11 @@ if (!is_readable("$root/js/aat-forms.js")) {
 } else {
     ok('js/aat-forms.js present');
 }
+if (!is_readable("$root/public/js/aat-forms.js")) {
+    fail('public/js/aat-forms.js missing (GLPI 11 serves plugin assets from public/)');
+} else {
+    ok('public/js/aat-forms.js present');
+}
 
 foreach ([
     'addPluginStrategyForLegacyScripts',
@@ -276,13 +281,14 @@ $xfer = file_get_contents("$root/inc/transfer.class.php");
 if (!str_contains($xfer, 'function dropdownDestinationLocation')
     || !str_contains($xfer, 'users_id_rejector')
     || !str_contains($xfer, 'Location::dropdown')
+    || !str_contains($xfer, 'bootNativeLocationDropdownHtml')
     || !str_contains($xfer, "'comments'")
     || !str_contains($xfer, "'addicon'")
     || !str_contains($xfer, 'destinationLocationsToExclude')
 ) {
-    fail('transfer missing native Location::dropdown / exclude own site');
+    fail('transfer missing native Location::dropdown boot / exclude own site');
 } else {
-    ok('transfer native Location dropdown + exclude');
+    ok('transfer native Location dropdown boot + exclude');
 }
 $css = file_get_contents("$root/css/assettracker.css");
 if (!str_contains($css, 'aat-location-dropdown')
