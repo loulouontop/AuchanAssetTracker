@@ -285,6 +285,8 @@ return [
     'Optional: map any GLPI profile to an Asset Tracker role. The plugin also creates Central admin, Location manager, Support technician, and End user. Location managers and support technicians are limited to the Location on each user’s GLPI form. Central admin has no location limit. Plugin Configuration is Super-Admin only.' => 'Opțional: mapați orice profil GLPI la un rol Asset Tracker. Pluginul creează și Admin central, Manager locație, Tehnician support și Utilizator final. Managerii de locație și tehnicienii support sunt limitați la locația de pe formularul GLPI al utilizatorului. Administratorul central nu are limită de locație. Configurația pluginului este doar pentru Super-Admin.',
     'Show all (%d)' => 'Afișează tot (%d)',
     'Show all' => 'Afișează tot',
+    'View all (%d)' => 'Vezi tot (%d)',
+    'View all' => 'Vezi tot',
     'Transfer #%d was rejected by the destination location.' => 'Transferul #%d a fost respins de locația destinație.',
     'Transfer cancelled. Equipment restored at source.' => 'Transfer anulat. Echipamentul a fost restaurat la sursă.',
     'Transfer rejected' => 'Transfer respins',

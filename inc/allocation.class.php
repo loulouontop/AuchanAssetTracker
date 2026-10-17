@@ -908,6 +908,26 @@ JS);
     }
 
     /**
+     * Tabler icon for a GLPI asset itemtype (alert lists).
+     */
+    public static function iconForItemtype(string $itemtype): string
+    {
+        return match ($itemtype) {
+            'Computer'          => 'ti ti-device-desktop',
+            'Monitor'           => 'ti ti-device-desktop-analytics',
+            'Phone'             => 'ti ti-device-mobile',
+            'Peripheral'        => 'ti ti-keyboard',
+            'NetworkEquipment'  => 'ti ti-router',
+            'Printer'           => 'ti ti-printer',
+            'PassiveDCEquipment'=> 'ti ti-server',
+            'Rack'              => 'ti ti-server-2',
+            'Enclosure'         => 'ti ti-box',
+            'PDU'               => 'ti ti-plug',
+            default             => 'ti ti-package',
+        };
+    }
+
+    /**
      * Render Active alerts (operational state only — not duplicated as notices).
      *
      * - Late confirmations: pending longer than the day threshold
@@ -934,12 +954,13 @@ JS);
                     $label = '#' . $eid;
                 }
                 $items[] = [
-                    'id'    => $eid,
-                    'label' => $label,
-                    'href'  => $base . '/front/equipment.form.php?id=' . $eid,
+                    'id'       => $eid,
+                    'label'    => $label,
+                    'href'     => $base . '/front/equipment.form.php?id=' . $eid,
+                    'itemtype' => (string) ($row['itemtype'] ?? ''),
                 ];
             }
-            self::renderAlertItemGrid(
+            self::renderAlertItemColumns(
                 __('Late confirmations (days)', 'auchanassettracker'),
                 $items,
                 'aat-overdue'
@@ -955,12 +976,13 @@ JS);
                     $label = '#' . $eid;
                 }
                 $items[] = [
-                    'id'    => $eid,
-                    'label' => $label,
-                    'href'  => $base . '/front/equipment.form.php?id=' . $eid,
+                    'id'       => $eid,
+                    'label'    => $label,
+                    'href'     => $base . '/front/equipment.form.php?id=' . $eid,
+                    'itemtype' => (string) ($eq['itemtype'] ?? ''),
                 ];
             }
-            self::renderAlertItemGrid(
+            self::renderAlertItemColumns(
                 __('Needs a container (rejected)', 'auchanassettracker'),
                 $items,
                 'aat-needs-container'
@@ -971,38 +993,59 @@ JS);
     }
 
     /**
-     * Compact 4-column alert grid; if more than 8 items, preview + Show all modal.
+     * Classic link lists in 4 columns × 5 rows (20 max). View all popup when more.
      *
-     * @param list<array{id: int, label: string, href: string}> $items
+     * @param list<array{id: int, label: string, href: string, itemtype?: string}> $items
      */
-    public static function renderAlertItemGrid(string $title, array $items, string $uid): void
+    public static function renderAlertItemColumns(string $title, array $items, string $uid): void
     {
         $total = count($items);
         if ($total === 0) {
             return;
         }
 
-        $preview_limit = 8;
+        $columns = 4;
+        $per_col = 5;
+        $preview_limit = $columns * $per_col; // 20
         $preview = array_slice($items, 0, $preview_limit);
         $modal_id = Html::cleanId($uid . '-modal-' . mt_rand());
 
+        // Column-major: col1 = items 0–4, col2 = 5–9, …
+        $cols = array_fill(0, $columns, []);
+        foreach ($preview as $i => $item) {
+            $cols[(int) floor($i / $per_col)][] = $item;
+        }
+
         echo "<div class='aat-alert-section'>";
         echo "<p class='mb-1 fw-semibold'>" . Html::entities_deep($title) . "</p>";
-        echo "<div class='aat-alert-grid'>";
-        foreach ($preview as $item) {
-            echo "<a class='aat-alert-chip' href='" . Html::entities_deep($item['href']) . "'>"
-                . Html::entities_deep($item['label']) . "</a>";
+        echo "<div class='aat-alert-columns'>";
+        foreach ($cols as $col_items) {
+            if ($col_items === []) {
+                echo "<div class='aat-alert-col' aria-hidden='true'></div>";
+                continue;
+            }
+            echo "<ul class='aat-alert-col'>";
+            foreach ($col_items as $item) {
+                echo self::formatAlertListItem($item);
+            }
+            echo "</ul>";
         }
         echo "</div>";
 
         if ($total > $preview_limit) {
-            $show_all = sprintf(
-                __('Show all (%d)', 'auchanassettracker'),
+            $view_all = sprintf(
+                __('View all (%d)', 'auchanassettracker'),
                 $total
             );
             echo "<button type='button' class='btn btn-sm btn-outline-secondary mt-2'"
                 . " data-bs-toggle='modal' data-bs-target='#" . Html::entities_deep($modal_id) . "'>"
-                . Html::entities_deep($show_all) . "</button>";
+                . Html::entities_deep($view_all) . "</button>";
+
+            // Modal: same 4-column list layout for the full set.
+            $modal_cols = array_fill(0, $columns, []);
+            foreach ($items as $i => $item) {
+                $modal_cols[$i % $columns][] = $item;
+            }
 
             echo "<div class='modal fade' id='" . Html::entities_deep($modal_id) . "'"
                 . " tabindex='-1' aria-hidden='true'>";
@@ -1014,10 +1057,13 @@ JS);
                 . " aria-label='" . Html::entities_deep(__('Close')) . "'></button>";
             echo "</div>";
             echo "<div class='modal-body'>";
-            echo "<div class='aat-alert-grid aat-alert-grid-modal'>";
-            foreach ($items as $item) {
-                echo "<a class='aat-alert-chip' href='" . Html::entities_deep($item['href']) . "'>"
-                    . Html::entities_deep($item['label']) . "</a>";
+            echo "<div class='aat-alert-columns aat-alert-columns-modal'>";
+            foreach ($modal_cols as $col_items) {
+                echo "<ul class='aat-alert-col'>";
+                foreach ($col_items as $item) {
+                    echo self::formatAlertListItem($item);
+                }
+                echo "</ul>";
             }
             echo "</div></div>";
             echo "<div class='modal-footer'>";
@@ -1027,5 +1073,18 @@ JS);
         }
 
         echo "</div>";
+    }
+
+    /**
+     * @param array{id: int, label: string, href: string, itemtype?: string} $item
+     */
+    public static function formatAlertListItem(array $item): string
+    {
+        $icon = self::iconForItemtype((string) ($item['itemtype'] ?? ''));
+        return "<li class='aat-alert-li'>"
+            . "<a href='" . Html::entities_deep($item['href']) . "'>"
+            . "<i class='" . Html::entities_deep($icon) . " aat-alert-type-icon' aria-hidden='true'></i> "
+            . "<span>" . Html::entities_deep($item['label']) . "</span>"
+            . "</a></li>";
     }
 }
