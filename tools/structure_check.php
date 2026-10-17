@@ -87,15 +87,15 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.4'")) {
-    fail('expected version 0.4.4');
+if (!str_contains($setup, "'0.4.5'")) {
+    fail('expected version 0.4.5');
 } else {
-    ok('version 0.4.4');
+    ok('version 0.4.5');
 }
-if (!str_contains($setup, 'helpdesk_menu_entry')) {
-    fail('setup missing helpdesk_menu_entry');
+if (str_contains($setup, 'helpdesk_menu_entry')) {
+    fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
 } else {
-    ok('setup has helpdesk_menu_entry');
+    ok('setup omits helpdesk_menu_entry');
 }
 if (!str_contains($setup, 'aat-forms.js')) {
     fail('setup missing aat-forms.js');
@@ -176,6 +176,7 @@ foreach ([
     'ensureBundledProfiles', 'getBundledProfiles', 'Location manager', 'End user',
     'findOrCreateProfileByName', 'syncProfileLocalizedLabels', 'getProfileNameVariants',
     'cloneCoreRightsFromTemplate', 'helpdesk', 'function showForm', 'getTabNameForItem',
+    'displayRightsChoiceMatrix', 'saveRightsFromPost',
 ] as $needle) {
     if (!str_contains($profile, $needle)) {
         fail("profile missing $needle");

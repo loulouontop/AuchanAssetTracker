@@ -345,10 +345,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 self::RIGHT_CONFIRM    => READ | UPDATE,
                 self::RIGHT_CONFIG     => 0,
             ] + $zero,
-            // Own location: new allocation + service (no transfers / stock receipt / bulk / config).
+            // Own location: allocation + view/edit equipment & containers (no create/delete/transfer/bulk/config).
             'support_tech' => [
                 self::RIGHT_EQUIPMENT  => READ | UPDATE | READ_ASSIGNED | UPDATE_ASSIGNED,
-                self::RIGHT_CONTAINER  => READ,
+                self::RIGHT_CONTAINER  => READ | UPDATE,
                 self::RIGHT_BULK       => 0,
                 self::RIGHT_ALLOCATION => READ | CREATE | UPDATE,
                 self::RIGHT_TRANSFER   => 0,
@@ -573,7 +573,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /** Config flag: one-time seed of Admin/Technician/Self-Service rights onto bundled profiles. */
-    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v3';
+    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v4';
 
     /**
      * Copy non-plugin ProfileRight rows from a template profile (create only).
@@ -969,7 +969,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Optional role dropdown on Administration → Profiles → Auchan Asset Tracker.
+     * Role dropdown + GLPI-style rights matrix (editable per plugin module).
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -980,6 +980,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         if (!$profile->getFromDB($profiles_id)) {
             return false;
         }
+        // Reload so matrix checkboxes see current profilerights.
+        $profile->getFromDB($profiles_id);
+
+        self::ensureRightsRowsForProfile($profiles_id);
 
         $current = self::getForProfileId($profiles_id) ?? [
             'role' => PluginAuchanassettrackerRighthelper::ROLE_USER,
@@ -995,6 +999,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         if ($canedit) {
             echo "<form method='post' action='" . Html::entities_deep($action) . "'>";
             echo Html::hidden('profiles_id', ['value' => $profiles_id]);
+            echo Html::hidden('id', ['value' => $profiles_id]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
         }
 
@@ -1018,12 +1023,19 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
-                'Optional: map any GLPI profile to an Asset Tracker role. The plugin also creates Central admin, Location manager, Support technician, and End user. Location managers and support technicians are limited to the Location on each user’s GLPI form. Central admin has no location limit. Plugin Configuration is Super-Admin only.',
+                'Role sets location scope and default plugin rights. The matrix below is editable and saved with this form. Changing the role reapplies the role preset (you can fine-tune afterward). Plugin Configuration should stay Super-Admin only.',
                 'auchanassettracker'
             ))
             . "</div>";
         echo "</td></tr></tbody>";
         echo "</table></div>";
+
+        // Native GLPI checkbox matrix (Read / Update / Create / Delete / …).
+        $profile->displayRightsChoiceMatrix(self::getAllRights(true), [
+            'canedit'       => $canedit,
+            'default_class' => 'tab_bg_2',
+            'title'         => __('Auchan Asset Tracker', 'auchanassettracker'),
+        ]);
 
         if ($canedit) {
             echo "<div class='form-button-separator card-body mx-n2 mb-n2 border-top"
@@ -1038,6 +1050,85 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         echo "</div>";
         return true;
+    }
+
+    /**
+     * Apply rights matrix POST fields (same shape as Profile::prepareInputForUpdate).
+     *
+     * @return bool true if any right value was processed
+     */
+    public static function saveRightsFromPost(array $post): bool
+    {
+        global $DB;
+
+        $profiles_id = (int) ($post['profiles_id'] ?? $post['id'] ?? 0);
+        if ($profiles_id <= 0 || !$DB->tableExists('glpi_profilerights')) {
+            return false;
+        }
+
+        $changed = [];
+        foreach (self::getRightNames() as $right) {
+            $key = '_' . $right;
+            if (!isset($post[$key])) {
+                continue;
+            }
+            $raw = $post[$key];
+            if (!is_array($raw)) {
+                $raw = ['1' => $raw];
+            }
+            $newvalue = 0;
+            foreach ($raw as $value => $valid) {
+                if (!$valid) {
+                    continue;
+                }
+                if (($underscore_pos = strpos((string) $value, '_')) !== false) {
+                    $value = substr((string) $value, 0, $underscore_pos);
+                }
+                $newvalue += (int) $value;
+            }
+            $changed[$right] = $newvalue;
+            if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+                $_SESSION['glpiactiveprofile'][$right] = $newvalue;
+            }
+        }
+
+        if ($changed === []) {
+            return false;
+        }
+
+        ProfileRight::updateProfileRights($profiles_id, $changed);
+
+        if (isset($changed[self::RIGHT_EQUIPMENT])) {
+            ProfileRight::updateProfileRights($profiles_id, [
+                self::LEGACY_RIGHT => (int) $changed[self::RIGHT_EQUIPMENT],
+            ]);
+            if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+                $_SESSION['glpiactiveprofile'][self::LEGACY_RIGHT] = (int) $changed[self::RIGHT_EQUIPMENT];
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Whether the posted role differs from the stored mapping.
+     */
+    public static function roleChangedInPost(array $post): bool
+    {
+        $profiles_id = (int) ($post['profiles_id'] ?? $post['id'] ?? 0);
+        if ($profiles_id <= 0 || !isset($post['role'])) {
+            return false;
+        }
+        $roles = array_keys(PluginAuchanassettrackerRighthelper::getRoles());
+        $role = (string) $post['role'];
+        if (!in_array($role, $roles, true)) {
+            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
+        }
+        $existing = self::getForProfileId($profiles_id);
+        if ($existing === null) {
+            return true;
+        }
+        return (string) ($existing['role'] ?? '') !== $role;
     }
 
     /**
