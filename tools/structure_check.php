@@ -235,6 +235,14 @@ if (!str_contains($mail, 'renderHtmlEmail') || !str_contains($mail, '#E30613')) 
 } else {
     ok('mailhelper HTML template');
 }
+if (!str_contains($mail, 'sendViaGlpiMailer')
+    || !str_contains($mail, "class_exists('GLPIMailer')")
+    || str_contains($mail, "class_exists('GLPIMailer', false)")
+) {
+    fail('mailhelper must autoload GLPIMailer (not class_exists false)');
+} else {
+    ok('mailhelper GLPIMailer autoload');
+}
 
 $rights = file_get_contents("$root/inc/righthelper.class.php");
 if (!str_contains($rights, 'getMappedRole')
