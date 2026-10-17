@@ -969,7 +969,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Role dropdown + GLPI-style rights matrix (editable per plugin module).
+     * GLPI-style rights matrix only (editable per plugin module).
+     * Internal role mapping stays for bundled profiles / location scope — not shown here.
      */
     public function showForm($ID, array $options = []): bool
     {
@@ -985,13 +986,6 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         self::ensureRightsRowsForProfile($profiles_id);
 
-        $current = self::getForProfileId($profiles_id) ?? [
-            'role' => PluginAuchanassettrackerRighthelper::ROLE_USER,
-        ];
-        $role = (string) ($current['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
-        if (!isset(PluginAuchanassettrackerRighthelper::getRoles()[$role])) {
-            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
-        }
         $action = plugin_auchanassettracker_web_dir() . '/front/profile.form.php';
 
         echo "<div class='aat-profile-wrap firstbloc'>";
@@ -1002,33 +996,6 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             echo Html::hidden('id', ['value' => $profiles_id]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken(true)]);
         }
-
-        echo "<div class='mb-4 table-responsive aat-profile-meta'>";
-        echo "<table class='table table-hover card-table'>";
-        echo "<thead><tr class='border-top'><th colspan='1' class=''>"
-            . "<span class='fs-4'>"
-            . Html::entities_deep(__('Role', 'auchanassettracker'))
-            . "</span></th></tr></thead>";
-        echo "<tbody><tr><td class='aat-profile-meta-cell'>";
-        echo "<div class='aat-profile-field'>";
-        if ($canedit) {
-            Dropdown::showFromArray('role', PluginAuchanassettrackerRighthelper::getRoles(), [
-                'value' => $role,
-                'width' => '320px',
-            ]);
-        } else {
-            $roles = PluginAuchanassettrackerRighthelper::getRoles();
-            echo Html::entities_deep($roles[$role] ?? $role);
-        }
-        echo "</div>";
-        echo "<div class='form-text mt-1'>"
-            . Html::entities_deep(__(
-                'Role sets location scope and default plugin rights. The matrix below is editable and saved with this form. Changing the role reapplies the role preset (you can fine-tune afterward). Plugin Configuration should stay Super-Admin only.',
-                'auchanassettracker'
-            ))
-            . "</div>";
-        echo "</td></tr></tbody>";
-        echo "</table></div>";
 
         // Native GLPI checkbox matrix (Read / Update / Create / Delete / …).
         $profile->displayRightsChoiceMatrix(self::getAllRights(true), [

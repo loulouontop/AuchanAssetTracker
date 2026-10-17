@@ -87,10 +87,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.5'")) {
-    fail('expected version 0.4.5');
+if (!str_contains($setup, "'0.4.1'")) {
+    fail('expected version 0.4.1');
 } else {
-    ok('version 0.4.5');
+    ok('version 0.4.1');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -205,6 +205,32 @@ if (!preg_match("/default\\s*=>\\s*\\[[^\\]]*RIGHT_EQUIPMENT\\s*=>\\s*0/s", $pro
 } else {
     ok('end user has no equipment');
 }
+$confirm_front = file_get_contents("$root/front/confirm.php");
+$confirm_class = file_get_contents("$root/inc/confirm.class.php");
+if (!str_contains($confirm_front, 'helpHeader') || !str_contains($confirm_front, 'helpFooter')) {
+    fail('confirm.php must use helpHeader/helpFooter for simplified interface');
+} else {
+    ok('confirm.php helpdesk header');
+}
+if (str_contains($confirm_class, 'initForm(')) {
+    fail('confirm.class.php must not call initForm (CREATE on ID -1)');
+} else {
+    ok('confirm skips initForm');
+}
+if (str_contains($profile, "Dropdown::showFromArray('role'")
+    || str_contains($profile, "__('Role', 'auchanassettracker')")
+) {
+    fail('Profiles tab must not show Role dropdown');
+} else {
+    ok('Profiles tab has no Role field');
+}
+$mail = file_get_contents("$root/inc/mailhelper.class.php");
+if (!str_contains($mail, 'renderHtmlEmail') || !str_contains($mail, '#E30613')) {
+    fail('mailhelper missing Auchan HTML email template');
+} else {
+    ok('mailhelper HTML template');
+}
+
 $rights = file_get_contents("$root/inc/righthelper.class.php");
 if (!str_contains($rights, 'getMappedRole')
     || !str_contains($rights, 'ROLE_SUPPORT_TECH')

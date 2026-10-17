@@ -121,6 +121,24 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
             . __('Default 30 days before equipment in service is considered overdue.', 'auchanassettracker')
             . "</div></div>";
 
+        echo "<div class='alert alert-info mb-3' role='status'>";
+        echo "<p class='mb-1'><strong>"
+            . Html::entities_deep(__('How alerts and emails work', 'auchanassettracker'))
+            . "</strong></p>";
+        echo "<p class='mb-1 small'>"
+            . Html::entities_deep(__(
+                'These day thresholds only drive Active alerts on New allocation (late confirmations, overdue transfers, long service). They do not send email by themselves.',
+                'auchanassettracker'
+            ))
+            . "</p>";
+        echo "<p class='mb-0 small'>"
+            . Html::entities_deep(__(
+                'Emails and in-app notices are sent by the plugin on events (new allocation → recipient; Did not receive / transfer reject → allocator). They are not listed under Setup → Notifications (plugin HTML mail, not native Notification templates).',
+                'auchanassettracker'
+            ))
+            . "</p>";
+        echo "</div>";
+
         echo "<div class='text-center'>";
         echo Html::submit(_sx('button', 'Save'), ['name' => 'save_thresholds', 'class' => 'btn btn-primary']);
         echo "</div>";

@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.4.5 (Sprint 4)  
+**Version:** 0.4.1 (Sprint 4)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -58,14 +58,20 @@ Central admin / Location manager use the **central** interface and seed GLPI rig
 
 **Plugin Configuration** (alert thresholds) is available to **Super-Admin** only — not to the Central admin profile.
 
-Optional: **Administration → Profiles → Auchan Asset Tracker** tab maps any profile to a role.  
+**Administration → Profiles → Auchan Asset Tracker** shows an editable rights matrix (no Role dropdown). Bundled profiles keep an internal role for location scope.  
 Profile names/comments follow the active GLPI language (EN / RO).  
 Assign users under **Administration → Users** (profile + Location for managers/techs).
+
+### Alerts vs emails
+
+- **Configuration** day thresholds → **Active alerts** lists only (late confirm / overdue transfer / long service). No email from the threshold alone.
+- **Emails + in-app notices** → plugin `Mailhelper` on events (allocate pending, Did not receive, transfer reject). HTML Auchan template (RO-friendly). Not registered in Setup → Notifications / Notification templates (those are native GLPI `NotificationTarget` only).
+- **Quick test:** allocate Available gear to a user with email → recipient gets notice + mail; open Confirm on End user (simplified) and reject with comment → allocator gets notice + mail.
 
 ## Upgrade from Sprint 3 / 0.4.0
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.4.5**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, creates/updates the four profiles if missing, seeds GLPI rights from Admin/Technician/Self-Service once, then updates `glpi_plugins.version`. Profiles → Auchan Asset Tracker shows an editable rights matrix; End user helpdesk uses only the Auchan Asset Tracker menu (Confirm receipt).
+2. Version becomes **0.4.1**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, creates/updates the four profiles if missing, seeds GLPI rights from Admin/Technician/Self-Service once, then updates `glpi_plugins.version`. Profiles → Auchan Asset Tracker shows an editable rights matrix; End user helpdesk uses only the Auchan Asset Tracker menu (Confirm receipt) and stays on the simplified interface.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
 4. **No need to uninstall** or delete the four profiles — upgrade refreshes their GLPI rights/interface once.
 5. Log out and back in after upgrade (especially End user / Support technician).
