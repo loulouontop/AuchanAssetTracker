@@ -422,6 +422,18 @@ function plugin_auchanassettracker_ensure_schema(): void
             }
         }
     }
+    if ($DB->tableExists($transfers) && !$DB->fieldExists($transfers, 'users_id_rejector')) {
+        try {
+            $DB->doQuery(
+                "ALTER TABLE `$transfers` ADD `users_id_rejector` INT UNSIGNED NOT NULL DEFAULT 0"
+            );
+        } catch (Throwable $e) {
+            $msg = $e->getMessage();
+            if (!str_contains($msg, '1060') && !str_contains($msg, 'Duplicate column')) {
+                throw $e;
+            }
+        }
+    }
 
     $titems = 'glpi_plugin_auchanassettracker_transferitems';
     if ($DB->tableExists($titems)

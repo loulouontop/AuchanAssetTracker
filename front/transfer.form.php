@@ -102,6 +102,14 @@ if ($id > 0) {
         PluginAuchanassettrackerTransfer::STATUS_CANCELLED  => __('Cancelled'),
     ];
     $st = (string) ($tr->fields['transfer_status'] ?? '');
+    $reject_comment = trim((string) ($tr->fields['reject_comment'] ?? ''));
+    $is_rejected = $st === PluginAuchanassettrackerTransfer::STATUS_CANCELLED && $reject_comment !== '';
+    if ($is_rejected) {
+        $status_labels[PluginAuchanassettrackerTransfer::STATUS_CANCELLED] = __(
+            'Rejected',
+            'auchanassettracker'
+        );
+    }
     $is_in_transit = $st === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT;
     $can_sender = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
 
@@ -121,11 +129,18 @@ if ($id > 0) {
         . PluginAuchanassettrackerAllocation::userNameLink((int) ($tr->fields['users_id_initiator'] ?? 0))
         . "</p>";
     $validator_id = (int) ($tr->fields['users_id_validator'] ?? 0);
-    if ($validator_id > 0
-        || $st === PluginAuchanassettrackerTransfer::STATUS_COMPLETED
-    ) {
+    $rejector_id = (int) ($tr->fields['users_id_rejector'] ?? 0);
+    if ($rejector_id <= 0 && $is_rejected) {
+        $rejector_id = $validator_id;
+    }
+    if ($st === PluginAuchanassettrackerTransfer::STATUS_COMPLETED || ($validator_id > 0 && !$is_rejected)) {
         echo "<p><strong>" . __('Approved by', 'auchanassettracker') . ":</strong> "
             . PluginAuchanassettrackerAllocation::userNameLink($validator_id)
+            . "</p>";
+    }
+    if ($is_rejected) {
+        echo "<p><strong>" . __('Rejected by', 'auchanassettracker') . ":</strong> "
+            . PluginAuchanassettrackerAllocation::userNameLink($rejector_id)
             . "</p>";
     }
 
@@ -133,9 +148,9 @@ if ($id > 0) {
         echo "<p><strong>" . __('Notes') . ":</strong> "
             . nl2br(Html::entities_deep((string) $tr->fields['notes'])) . "</p>";
     }
-    if (trim((string) ($tr->fields['reject_comment'] ?? '')) !== '') {
+    if ($reject_comment !== '') {
         echo "<p><strong>" . __('Reject comment', 'auchanassettracker') . ":</strong> "
-            . nl2br(Html::entities_deep((string) $tr->fields['reject_comment'])) . "</p>";
+            . nl2br(Html::entities_deep($reject_comment)) . "</p>";
     }
 
     // Sender edit while in transit (destination, notes, equipment).
@@ -157,9 +172,8 @@ if ($id > 0) {
         if ($source > 0) {
             $dest_opts['used'] = [$source];
         }
-        echo "<div class='aat-location-dropdown'>";
-        Location::dropdown($dest_opts);
-        echo "</div></div>";
+        PluginAuchanassettrackerTransfer::dropdownDestinationLocation($dest_opts);
+        echo "</div>";
         echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
         echo "<textarea name='notes' class='form-control' rows='2'>"
             . Html::entities_deep((string) ($tr->fields['notes'] ?? ''))
@@ -339,7 +353,6 @@ if ($id > 0) {
     echo "<div class='mb-3'><label class='form-label'>"
         . __('Destination location', 'auchanassettracker') . $req . "</label>";
     // Scoped profiles (location manager / location set): hide own location from destination.
-    // Hide bare <select> until Select2 binds (avoids grey ----- flash).
     $dest_opts = [
         'name'                => 'locations_id_dest',
         'display_emptychoice' => true,
@@ -348,9 +361,8 @@ if ($id > 0) {
     if ($scope !== null && (int) $scope > 0) {
         $dest_opts['used'] = [(int) $scope];
     }
-    echo "<div class='aat-location-dropdown'>";
-    Location::dropdown($dest_opts);
-    echo "</div></div>";
+    PluginAuchanassettrackerTransfer::dropdownDestinationLocation($dest_opts);
+    echo "</div>";
     echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
     echo "<textarea name='notes' class='form-control' rows='2'></textarea></div>";
 
