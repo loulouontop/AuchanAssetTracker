@@ -243,6 +243,13 @@ if (!str_contains($mail, 'sendViaGlpiMailer')
 } else {
     ok('mailhelper GLPIMailer autoload');
 }
+if (!str_contains($mail, 'resolveMailFrom')
+    || !str_contains($mail, 'getEmailSender')
+) {
+    fail('mailhelper must set From via Config::getEmailSender');
+} else {
+    ok('mailhelper From/Sender from GLPI config');
+}
 
 $rights = file_get_contents("$root/inc/righthelper.class.php");
 if (!str_contains($rights, 'getMappedRole')
