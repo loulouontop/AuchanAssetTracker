@@ -908,23 +908,26 @@ JS);
     }
 
     /**
-     * Tabler icon for a GLPI asset itemtype (alert lists).
+     * Use the same icon GLPI uses for the asset itemtype.
      */
     public static function iconForItemtype(string $itemtype): string
     {
-        return match ($itemtype) {
-            'Computer'          => 'ti ti-device-desktop',
-            'Monitor'           => 'ti ti-device-desktop-analytics',
-            'Phone'             => 'ti ti-device-mobile',
-            'Peripheral'        => 'ti ti-keyboard',
-            'NetworkEquipment'  => 'ti ti-router',
-            'Printer'           => 'ti ti-printer',
-            'PassiveDCEquipment'=> 'ti ti-server',
-            'Rack'              => 'ti ti-server-2',
-            'Enclosure'         => 'ti ti-box',
-            'PDU'               => 'ti ti-plug',
-            default             => 'ti ti-package',
-        };
+        if ($itemtype !== ''
+            && class_exists($itemtype)
+            && is_callable([$itemtype, 'getIcon'])
+        ) {
+            $icon = (string) $itemtype::getIcon();
+            if ($icon !== '') {
+                return $icon;
+            }
+        }
+        if (class_exists('CommonDBTM') && is_callable(['CommonDBTM', 'getIcon'])) {
+            $fallback = (string) CommonDBTM::getIcon();
+            if ($fallback !== '') {
+                return $fallback;
+            }
+        }
+        return 'ti ti-package';
     }
 
     /**
