@@ -275,22 +275,22 @@ if (!str_contains($xfer_front, 'Transferred by')
 $xfer = file_get_contents("$root/inc/transfer.class.php");
 if (!str_contains($xfer, 'function dropdownDestinationLocation')
     || !str_contains($xfer, 'users_id_rejector')
-    || !str_contains($xfer, 'aat-location-pending')
-    || !str_contains($xfer, 'ti-plus')
-    || !str_contains($xfer, 'ti-info-circle')
+    || !str_contains($xfer, 'Location::dropdown')
+    || !str_contains($xfer, "'comments'")
+    || !str_contains($xfer, "'addicon'")
     || !str_contains($xfer, 'destinationLocationsToExclude')
 ) {
-    fail('transfer missing immediate Select2 dest dropdown i/+ / exclude own site');
+    fail('transfer missing native Location::dropdown / exclude own site');
 } else {
-    ok('transfer destination Select2 i/+ + exclude');
+    ok('transfer native Location dropdown + exclude');
 }
 $css = file_get_contents("$root/css/assettracker.css");
-if (!str_contains($css, 'aat-location-pending')
+if (!str_contains($css, 'aat-location-dropdown')
     || !str_contains($css, '--bs-gutter-x: 2.5rem')
 ) {
-    fail('css missing location pending / alert column gap');
+    fail('css missing location wrapper / alert column gap');
 } else {
-    ok('css location pending + alert gap');
+    ok('css location wrapper + alert gap');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

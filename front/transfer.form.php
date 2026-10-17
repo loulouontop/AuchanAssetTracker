@@ -167,7 +167,6 @@ if ($id > 0) {
             'name'                => 'locations_id_dest',
             'value'               => (int) $tr->fields['locations_id_dest'],
             'display_emptychoice' => false,
-            'width'               => '100%',
         ];
         if ($source > 0) {
             $dest_opts['used'] = [$source];
@@ -353,10 +352,10 @@ if ($id > 0) {
     echo "<div class='mb-3'><label class='form-label'>"
         . __('Destination location', 'auchanassettracker') . $req . "</label>";
     // Own / scoped location excluded inside dropdownDestinationLocation().
+    // No custom width — GLPI native Location::dropdown sizes Select2 for i/+ / map.
     PluginAuchanassettrackerTransfer::dropdownDestinationLocation([
         'name'                => 'locations_id_dest',
         'display_emptychoice' => true,
-        'width'               => '100%',
     ]);
     echo "</div>";
     echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
