@@ -57,69 +57,82 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
-     * Plugin tabs / actions are driven by the mapped role (not inferred for every profile).
-     * Unmapped profiles (except Super-Admin) get no plugin tabs.
-     *
-     * - End user → Confirm receipt only
-     * - Support technician → New allocation
-     * - Location manager / Central admin → full plugin ops (location-scoped vs global)
-     * - Configuration → Super-Admin only
+     * Plugin tab visibility follows ProfileRight bits (editable matrix on Profiles tab).
+     * Role still drives location scope + Super-Admin config.
+     * Bundled presets: End user = confirm; Support tech = allocation + read/edit stock;
+     * Location manager / Central admin = full ops.
      */
     public static function canSeeEquipment(): bool
     {
-        $role = self::getCurrentRole();
-        return $role === self::ROLE_CENTRAL_ADMIN
-            || $role === self::ROLE_LOCATION_MANAGER;
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, [
+            READ, READ_ASSIGNED, READ_OWNED,
+        ]);
     }
 
     public static function canSeeContainers(): bool
     {
-        return self::canSeeEquipment();
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONTAINER, [
+            READ, READ_ASSIGNED, READ_OWNED,
+        ]);
     }
 
+    /** Create stock / containers / bulk (not granted to Support technician by default). */
     public static function canManageStock(): bool
     {
-        return self::canSeeEquipment();
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, CREATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE);
     }
 
     public static function canBulk(): bool
     {
-        return self::canSeeEquipment();
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, READ);
     }
 
     public static function canAllocate(): bool
     {
-        $role = self::getCurrentRole();
-        return $role === self::ROLE_CENTRAL_ADMIN
-            || $role === self::ROLE_LOCATION_MANAGER
-            || $role === self::ROLE_SUPPORT_TECH;
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_ALLOCATION, [
+            READ, CREATE, UPDATE,
+        ]);
     }
 
     public static function canTransfer(): bool
     {
-        $role = self::getCurrentRole();
-        return $role === self::ROLE_CENTRAL_ADMIN
-            || $role === self::ROLE_LOCATION_MANAGER;
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_TRANSFER, [
+            READ, CREATE, UPDATE,
+        ]);
     }
 
     public static function canConfirm(): bool
     {
+        // Role End user / mapped confirm roles, or explicit ProfileRight bits.
         $role = self::getCurrentRole();
-        return $role === self::ROLE_USER
+        if ($role === self::ROLE_USER
             || $role === self::ROLE_SUPPORT_TECH
             || $role === self::ROLE_LOCATION_MANAGER
-            || $role === self::ROLE_CENTRAL_ADMIN;
+            || $role === self::ROLE_CENTRAL_ADMIN
+        ) {
+            return true;
+        }
+        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONFIRM, [
+            READ, UPDATE, READ_OWNED, UPDATE_OWNED,
+        ]);
     }
 
     public static function canWriteOff(): bool
     {
-        return self::canSeeEquipment();
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_OWNED)
+            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_ASSIGNED);
     }
 
     public static function canChangeFinalStatus(): bool
     {
-        // Final statuses / reintroduce: Central admin (or Super-Admin via role).
-        return self::getCurrentRole() === self::ROLE_CENTRAL_ADMIN;
+        if (self::getCurrentRole() === self::ROLE_CENTRAL_ADMIN) {
+            return true;
+        }
+        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
+            && Session::haveRight('config', UPDATE);
     }
 
     /**

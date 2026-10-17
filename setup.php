@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.4');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.5');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -194,12 +194,8 @@ function plugin_init_auchanassettracker(): void
         return;
     }
 
-    // Simplified (helpdesk) interface: Confirm receipt shortcut in the self-service menu.
-    if (PluginAuchanassettrackerRighthelper::canConfirm()) {
-        // Relative to the plugin directory (GLPI prepends /plugins/<dir>/).
-        $PLUGIN_HOOKS['helpdesk_menu_entry'][$plug] = 'front/confirm.php';
-        $PLUGIN_HOOKS['helpdesk_menu_entry_icon'][$plug] = 'ti ti-check';
-    }
+    // Helpdesk: Confirm receipt only via redefine_menus (Auchan Asset Tracker sector).
+    // Do not register helpdesk_menu_entry — that adds a second “Plugins” menu entry.
 
     Plugin::registerClass('PluginAuchanassettrackerContainer');
     Plugin::registerClass('PluginAuchanassettrackerEquipment');

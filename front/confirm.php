@@ -37,7 +37,12 @@ Html::header(
     PluginAuchanassettrackerMenu::MENU_CONFIRM
 );
 
-$item->check(-1, READ);
+// Do not use check(-1, READ): CommonDBTM requires Session::haveRight bits that
+// helpdesk End users may not hold until session refresh; canView()/canConfirm() already ran.
+if (!PluginAuchanassettrackerConfirm::canView()) {
+    Html::displayRightError();
+    exit;
+}
 $item->showForm(0);
 
 Html::footer();

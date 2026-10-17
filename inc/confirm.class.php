@@ -41,7 +41,10 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
 
     public static function canView(): bool
     {
-        return PluginAuchanassettrackerRighthelper::canConfirm();
+        return PluginAuchanassettrackerRighthelper::canConfirm()
+            || Session::haveRight(self::$rightname, READ)
+            || Session::haveRight(self::$rightname, READ_OWNED)
+            || Session::haveRight(self::$rightname, UPDATE);
     }
 
     public static function canCreate(): bool
