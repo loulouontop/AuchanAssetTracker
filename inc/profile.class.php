@@ -252,28 +252,28 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'comment'    => 'Auchan Asset Tracker — global operations (all locations). Plugin config remains Super-Admin only.',
                 'is_default' => false,
                 'interface'  => 'central',
-                'clone_from' => ['Admin'],
+                'clone_from' => ['Admin', 'Administrator', 'Administrateur'],
             ],
             PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER => [
                 'name'       => 'Location manager',
                 'comment'    => 'Auchan Asset Tracker — full operations on own location (receipt, stock, allocation, transfer, write-off).',
                 'is_default' => false,
                 'interface'  => 'central',
-                'clone_from' => ['Admin'],
+                'clone_from' => ['Admin', 'Administrator', 'Administrateur'],
             ],
             PluginAuchanassettrackerRighthelper::ROLE_SUPPORT_TECH => [
                 'name'       => 'Support technician',
                 'comment'    => 'Auchan Asset Tracker — new allocation and service on assigned location.',
                 'is_default' => false,
                 'interface'  => 'central',
-                'clone_from' => ['Technician'],
+                'clone_from' => ['Technician', 'Technicien', 'Tech'],
             ],
             PluginAuchanassettrackerRighthelper::ROLE_USER => [
                 'name'       => 'End user',
                 'comment'    => 'Auchan Asset Tracker — confirm receipt only. Default profile for new users.',
                 'is_default' => true,
                 'interface'  => 'helpdesk',
-                'clone_from' => ['Self-Service'],
+                'clone_from' => ['Self-Service', 'Self-service', 'Hotliner'],
             ],
         ];
     }
@@ -506,17 +506,74 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             return 0;
         }
 
+        // Prefer exact name match (skip Super-Admin — too broad for templates).
         foreach ($DB->request([
             'SELECT' => ['id', 'name'],
             'FROM'   => 'glpi_profiles',
-            'WHERE'  => ['name' => $names],
+            'WHERE'  => [
+                'name' => $names,
+                ['NOT' => ['name' => 'Super-Admin']],
+            ],
             'LIMIT'  => 1,
         ]) as $row) {
             return (int) ($row['id'] ?? 0);
         }
 
+        // Fallback: case-insensitive / partial match on known templates.
+        foreach ($DB->request([
+            'SELECT' => ['id', 'name', 'interface'],
+            'FROM'   => 'glpi_profiles',
+            'WHERE'  => [
+                ['NOT' => ['name' => 'Super-Admin']],
+            ],
+        ]) as $row) {
+            $pname = trim((string) ($row['name'] ?? ''));
+            if ($pname === '') {
+                continue;
+            }
+            foreach ($names as $want) {
+                if (strcasecmp($pname, $want) === 0) {
+                    return (int) $row['id'];
+                }
+            }
+        }
+
         return 0;
     }
+
+    /**
+     * How many non-plugin ProfileRight rows a profile currently has.
+     */
+    public static function countCoreRights(int $profiles_id): int
+    {
+        global $DB;
+
+        if ($profiles_id <= 0 || !$DB->tableExists('glpi_profilerights')) {
+            return 0;
+        }
+
+        $plugin_names = self::getRightNames();
+        $plugin_names[] = self::LEGACY_RIGHT;
+        $n = 0;
+        foreach ($DB->request([
+            'SELECT' => ['name'],
+            'FROM'   => 'glpi_profilerights',
+            'WHERE'  => ['profiles_id' => $profiles_id],
+        ]) as $row) {
+            $name = (string) ($row['name'] ?? '');
+            if ($name === '' || in_array($name, $plugin_names, true)) {
+                continue;
+            }
+            if (str_starts_with($name, 'plugin_auchanassettracker')) {
+                continue;
+            }
+            $n++;
+        }
+        return $n;
+    }
+
+    /** Config flag: one-time seed of Admin/Technician/Self-Service rights onto bundled profiles. */
+    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v2';
 
     /**
      * Copy non-plugin ProfileRight rows from a template profile (create only).
@@ -714,15 +771,23 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $role_mismatch = $existing === null
                 || (string) ($existing['role'] ?? '') !== $role;
 
-            if ($created) {
-                // Seed GLPI core rights from Admin / Technician / Self-Service (once).
-                self::cloneCoreRightsFromTemplate($profiles_id, $clone_from);
-                self::setProfileInterface($profiles_id, $interface);
+            // Seed GLPI core rights from Admin / Technician / Self-Service when the
+            // profile is new, or once on upgrade if still nearly empty (no uninstall needed).
+            $seed_core = $created;
+            if (!$seed_core && $force_rights) {
+                $already = class_exists('PluginAuchanassettrackerConfig', false)
+                    ? PluginAuchanassettrackerConfig::get(self::CFG_CORE_RIGHTS_SEEDED)
+                    : null;
+                if ($already !== '1' || self::countCoreRights($profiles_id) < 8) {
+                    $seed_core = true;
+                }
             }
 
-            if ($force_rights) {
-                // Upgrade path: align interface defaults; do not re-clone core rights
-                // (preserves client edits under Administration → Profiles).
+            if ($seed_core) {
+                self::cloneCoreRightsFromTemplate($profiles_id, $clone_from);
+            }
+
+            if ($created || $force_rights) {
                 self::setProfileInterface($profiles_id, $interface);
             }
 
@@ -751,6 +816,10 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                     self::rightsFromLegacyRole($role)
                 );
             }
+        }
+
+        if ($force_rights && class_exists('PluginAuchanassettrackerConfig', false)) {
+            PluginAuchanassettrackerConfig::set(self::CFG_CORE_RIGHTS_SEEDED, '1');
         }
     }
 

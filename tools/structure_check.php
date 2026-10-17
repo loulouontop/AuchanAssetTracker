@@ -87,10 +87,15 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.2'")) {
-    fail('expected version 0.4.2');
+if (!str_contains($setup, "'0.4.3'")) {
+    fail('expected version 0.4.3');
 } else {
-    ok('version 0.4.2');
+    ok('version 0.4.3');
+}
+if (!str_contains($setup, 'helpdesk_menu_entry')) {
+    fail('setup missing helpdesk_menu_entry');
+} else {
+    ok('setup has helpdesk_menu_entry');
 }
 
 foreach ([
@@ -203,10 +208,12 @@ if (!str_contains($rights, "haveRight('config', UPDATE)")) {
     ok('canConfigure Super-Admin gate');
 }
 $alloc = file_get_contents("$root/inc/allocation.class.php");
-if (!str_contains($alloc, 'aat-alert-grid') || !str_contains($alloc, 'Show all')) {
-    fail('allocation alerts missing grid / Show all');
+if (!str_contains($alloc, 'aat-alert-columns') || !str_contains($alloc, 'View all')
+    || !str_contains($alloc, 'iconForItemtype')
+) {
+    fail('allocation alerts missing columns / View all / icons');
 } else {
-    ok('allocation alert grid');
+    ok('allocation alert columns');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {
