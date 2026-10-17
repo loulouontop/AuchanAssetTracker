@@ -64,7 +64,8 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
 
     /**
      * Exact native GLPI Location::dropdown (setupAjaxDropdown + i / + / map).
-     * Only excludes own/source sites via `used` — no custom Select2.
+     * Excludes own/source sites via `used`. Reorders GLPI's ready-handler so Select2
+     * binds as soon as the <select> exists (avoids native ----- flash on refresh).
      *
      * @param array{name?: string, value?: int, used?: list<int>, width?: string, display_emptychoice?: bool} $options
      */
@@ -93,25 +94,78 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
             unset($used[$value]);
         }
 
-        // Same defaults as native Location field (info + add + map when available).
+        // Native Location field. Wider than default icon-reserved calc so the control
+        // reads larger on the transfer form while still leaving room for i / + / map.
         $opts = [
             'name'                => $name,
             'value'               => $value,
             'display_emptychoice' => $empty,
             'comments'            => true,
             'addicon'             => true,
+            'width'               => (string) ($options['width'] ?? 'calc(100% - 72px)'),
         ];
-        if (isset($options['width'])) {
-            $opts['width'] = (string) $options['width'];
-        }
         if ($used !== []) {
             $opts['used'] = array_values($used);
         }
 
-        // Thin wrapper only for optional bare-<select> hide; markup comes from GLPI.
-        echo "<div class='aat-location-dropdown' style='width:100%'>";
+        echo "<div class='aat-location-dropdown'>";
+        ob_start();
         Location::dropdown($opts);
+        $html = (string) ob_get_clean();
+        echo self::bootNativeLocationDropdownHtml($html);
         echo '</div>';
+    }
+
+    /**
+     * Move setupAjaxDropdown to right after </select> and run it immediately
+     * (GLPI emits it before the select inside $(function(){...}), which causes a flash).
+     */
+    public static function bootNativeLocationDropdownHtml(string $html): string
+    {
+        if ($html === '' || !str_contains($html, 'setupAjaxDropdown')) {
+            return $html;
+        }
+
+        $scripts = [];
+        $html = (string) preg_replace_callback(
+            '/<script\b[^>]*>[\s\S]*?setupAjaxDropdown[\s\S]*?<\/script>/i',
+            static function (array $m) use (&$scripts): string {
+                $scripts[] = $m[0];
+                return '';
+            },
+            $html,
+            1
+        );
+
+        if ($scripts === []) {
+            return $html;
+        }
+
+        $boot = $scripts[0];
+        // Unwrap document-ready so Select2 binds as soon as the select is in the DOM.
+        $boot = (string) preg_replace(
+            '/\$\(\s*function\s*\(\s*\)\s*\{/',
+            'window.select2_configs = window.select2_configs || {}; (function () {',
+            $boot,
+            1
+        );
+        // Close the IIFE: original ends with });  for $(function(){...});
+        $boot = (string) preg_replace(
+            '/\}\s*\)\s*;(\s*\/\/\s*\]\]>\s*)?<\/script>/i',
+            '})();$1</script>',
+            $boot,
+            1
+        );
+
+        // Insert boot script immediately after the select so the node exists.
+        $replaced = (string) preg_replace(
+            '/<\/select>/i',
+            '</select>' . $boot,
+            $html,
+            1
+        );
+
+        return $replaced !== '' ? $replaced : $html;
     }
 
     /**
