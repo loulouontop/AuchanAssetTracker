@@ -51,13 +51,13 @@ On install / upgrade the plugin creates four GLPI profiles (central interface) i
 | --- | --- | --- |
 | **Central admin** | `central_admin` | Full operations on **all** locations (stock, containers, allocation, transfers, write-off). |
 | **Location manager** | `location_manager` | Same operations, limited to the user’s GLPI **Location**. |
-| **Support technician** | `support_tech` | **New allocation** + transfers / service on assigned location (no stock receipt / bulk). |
-| **End user** | `user` | **Confirm receipt** + view own equipment only. Marked as the **default** profile for new users. |
+| **Support technician** | `support_tech` | **New allocation** + service on assigned location (no transfers / stock receipt / bulk). |
+| **End user** | `user` | **Confirm receipt** only. Marked as the **default** profile for new users. |
 
 **Plugin Configuration** (alert thresholds) is available to **Super-Admin** only — not to the Central admin profile.
 
-Assign users under **Administration → Users** (profile + Location for managers/techs).  
-Optional: **Administration → Profiles → Auchan Asset Tracker** tab still lets you remap a custom profile’s role.
+Profile names/comments follow the active GLPI language (EN / RO).  
+Assign users under **Administration → Users** (profile + Location for managers/techs).
 
 ## Upgrade from Sprint 3 / 0.4.0
 
