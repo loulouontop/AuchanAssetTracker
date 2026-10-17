@@ -2,7 +2,8 @@
 
 class PluginAuchanassettrackerMenu extends CommonGLPI
 {
-    public static $rightname = 'plugin_auchanassettracker_equipment';
+    /** Lowest common right so End users (confirm-only) still get the sector. */
+    public static $rightname = 'plugin_auchanassettracker_confirm';
 
     /** Top-level menu sector (not under Assets). */
     public const SECTOR = 'auchanassettracker';

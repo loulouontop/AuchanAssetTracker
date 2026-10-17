@@ -87,10 +87,15 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.2'")) {
-    fail('expected version 0.4.2');
+if (!str_contains($setup, "'0.4.3'")) {
+    fail('expected version 0.4.3');
 } else {
-    ok('version 0.4.2');
+    ok('version 0.4.3');
+}
+if (!str_contains($setup, 'helpdesk_menu_entry')) {
+    fail('setup missing helpdesk_menu_entry');
+} else {
+    ok('setup has helpdesk_menu_entry');
 }
 
 foreach ([

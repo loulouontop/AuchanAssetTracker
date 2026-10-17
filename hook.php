@@ -552,13 +552,32 @@ function plugin_auchanassettracker_redefine_menus(array $menu): array
         }
     }
 
-    $ours = PluginAuchanassettrackerMenu::getMenuContent();
-    if ($ours === false) {
-        unset($menu[PluginAuchanassettrackerMenu::SECTOR]);
+    $sector = PluginAuchanassettrackerMenu::SECTOR;
+    $interface = (string) ($_SESSION['glpiactiveprofile']['interface'] ?? 'central');
+
+    // Helpdesk / simplified interface: single Confirm receipt entry (GLPI expects content => [true]).
+    if ($interface === 'helpdesk') {
+        if (!PluginAuchanassettrackerRighthelper::canConfirm()) {
+            unset($menu[$sector]);
+            return $menu;
+        }
+        $confirm = plugin_auchanassettracker_web_dir(true) . '/front/confirm.php';
+        $menu[$sector] = [
+            'title'   => PluginAuchanassettrackerMenu::getMenuName(),
+            'default' => $confirm,
+            'icon'    => PluginAuchanassettrackerMenu::getIcon(),
+            'content' => [true],
+        ];
         return $menu;
     }
 
-    $menu[PluginAuchanassettrackerMenu::SECTOR] = [
+    $ours = PluginAuchanassettrackerMenu::getMenuContent();
+    if ($ours === false) {
+        unset($menu[$sector]);
+        return $menu;
+    }
+
+    $menu[$sector] = [
         'title'   => $ours['title'],
         'default' => $ours['page'],
         'icon'    => $ours['icon'],
