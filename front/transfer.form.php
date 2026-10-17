@@ -352,16 +352,12 @@ if ($id > 0) {
     echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
     echo "<div class='mb-3'><label class='form-label'>"
         . __('Destination location', 'auchanassettracker') . $req . "</label>";
-    // Scoped profiles (location manager / location set): hide own location from destination.
-    $dest_opts = [
+    // Own / scoped location excluded inside dropdownDestinationLocation().
+    PluginAuchanassettrackerTransfer::dropdownDestinationLocation([
         'name'                => 'locations_id_dest',
         'display_emptychoice' => true,
         'width'               => '100%',
-    ];
-    if ($scope !== null && (int) $scope > 0) {
-        $dest_opts['used'] = [(int) $scope];
-    }
-    PluginAuchanassettrackerTransfer::dropdownDestinationLocation($dest_opts);
+    ]);
     echo "</div>";
     echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
     echo "<textarea name='notes' class='form-control' rows='2'></textarea></div>";

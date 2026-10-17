@@ -232,8 +232,8 @@ ul.aat-alert-col .aat-alert-li {
 }
 
 /*
- * Destination location: keep a GLPI-sized placeholder until our Select2 is ready.
- * Avoids native <select> / ----- flash on refresh (same idea as recipient user).
+ * Destination location: native Location::dropdown (Select2 + i/+).
+ * Hide only the bare <select> until Select2 binds — keep i/+ visible (container pattern).
  */
 .aat-location-dropdown {
   display: block;
@@ -241,33 +241,20 @@ ul.aat-alert-col .aat-alert-li {
   min-height: 38px;
 }
 
-.aat-location-dropdown.aat-location-pending::before {
-  content: '';
-  display: block;
-  height: 38px;
-  border: 1px solid var(--tblr-border-color, #d0d0d0);
-  border-radius: 4px;
-  background: var(--tblr-bg-surface, #fff);
-  box-sizing: border-box;
-}
-
-.aat-location-dropdown.aat-location-pending > select,
-.aat-location-dropdown.aat-location-pending > .select2-container {
-  position: absolute !important;
-  left: -10000px !important;
-  width: 1px !important;
-  height: 1px !important;
-  overflow: hidden !important;
-  opacity: 0 !important;
+.aat-location-dropdown select:not(.select2-hidden-accessible) {
+  visibility: hidden !important;
   pointer-events: none !important;
+  min-height: 38px;
 }
 
-.aat-location-dropdown.aat-location-ready::before {
-  display: none !important;
+.aat-location-dropdown .btn-group {
+  width: 100%;
+  max-width: 100%;
 }
 
 .aat-location-dropdown .select2-container {
-  width: 100% !important;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 ul.aat-alert-col .aat-alert-li a {

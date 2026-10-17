@@ -104,6 +104,7 @@ return [
     'Default 5 working days. Alert managers when confirmation is late.' => 'Implicit 5 zile. Alertează managerii când confirmarea întârzie.',
     'Destination location' => 'Locație destinație',
     'Destination must be different from source location.' => 'Destinația trebuie să fie diferită de locația sursă.',
+    'Destination must be different from your location.' => 'Destinația trebuie să fie diferită de locația dvs.',
     'filtred by' => 'filtrat după',
     'filtered by' => 'filtrat după',
     'Did not receive' => 'Nu am primit',
