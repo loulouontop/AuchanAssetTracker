@@ -194,7 +194,7 @@ function plugin_auchanassettracker_install(array $params = []): bool
         PluginAuchanassettrackerManufacturer::seedDefaults();
     }
     if (class_exists('PluginAuchanassettrackerProfile', false)) {
-        PluginAuchanassettrackerProfile::initProfile();
+        PluginAuchanassettrackerProfile::initProfile(true);
     }
 
     plugin_auchanassettracker_sync_plugin_directory();
@@ -234,7 +234,7 @@ function plugin_auchanassettracker_upgrade($version): bool
         PluginAuchanassettrackerManufacturer::seedDefaults();
     }
     if (class_exists('PluginAuchanassettrackerProfile', false)) {
-        PluginAuchanassettrackerProfile::initProfile();
+        PluginAuchanassettrackerProfile::initProfile(true);
     }
 
     plugin_auchanassettracker_sync_plugin_directory();

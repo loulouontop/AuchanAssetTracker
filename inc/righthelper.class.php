@@ -95,19 +95,26 @@ class PluginAuchanassettrackerRighthelper
         return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE);
     }
 
+    /**
+     * Plugin Configuration menu — Super-Admin only.
+     * Bundled Central admin / Location manager profiles do not get RIGHT_CONFIG.
+     */
     public static function canConfigure(): bool
     {
+        // Native GLPI Super-Admin (or equivalent) always may open plugin config.
+        if (Session::haveRight('config', UPDATE)) {
+            return true;
+        }
         return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, READ)
             || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, UPDATE);
     }
 
     /**
-     * @deprecated use Session::haveRight on specific modules
+     * Global ops (all locations): bundled Central admin role, or Super-Admin.
      */
     public static function isCentralAdmin(): bool
     {
-        return self::canConfigure()
-            || Session::haveRight('config', UPDATE);
+        return self::getCurrentRole() === self::ROLE_CENTRAL_ADMIN;
     }
 
     /**
@@ -115,7 +122,9 @@ class PluginAuchanassettrackerRighthelper
      */
     public static function isLocationManager(): bool
     {
-        return self::canManageStock() || self::canWriteOff();
+        return self::getCurrentRole() === self::ROLE_LOCATION_MANAGER
+            || self::canManageStock()
+            || self::canWriteOff();
     }
 
     /**
@@ -123,11 +132,13 @@ class PluginAuchanassettrackerRighthelper
      */
     public static function isSupportTech(): bool
     {
-        return self::canAllocate() || self::canTransfer() || self::canManageStock();
+        return self::getCurrentRole() === self::ROLE_SUPPORT_TECH
+            || self::canAllocate()
+            || self::canTransfer();
     }
 
     /**
-     * @deprecated
+     * Active plugin role for the current GLPI profile.
      */
     public static function getCurrentRole(): string
     {
@@ -138,7 +149,8 @@ class PluginAuchanassettrackerRighthelper
                 return $role;
             }
         }
-        if (self::canConfigure()) {
+        // Unmapped Super-Admin → central admin (global ops + config).
+        if (Session::haveRight('config', UPDATE)) {
             return self::ROLE_CENTRAL_ADMIN;
         }
         if (self::canManageStock()) {
@@ -179,7 +191,7 @@ class PluginAuchanassettrackerRighthelper
     {
         $role = self::getCurrentRole();
 
-        if ($role === self::ROLE_CENTRAL_ADMIN || self::canConfigure()) {
+        if ($role === self::ROLE_CENTRAL_ADMIN) {
             return null;
         }
 

@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
 
-**Version:** 0.4.0 (Sprint 4)  
+**Version:** 0.4.1 (Sprint 4)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -43,17 +43,29 @@ GLPI plugin for IT equipment stock, physical containers with QR labels, allocati
 - Scan = view only; edits stay in desktop GLPI
 - Inactive / deleted containers → no data
 
-## Profile role
+## Profiles (auto-created)
 
-Administration → Profiles → **Auchan Asset Tracker** → set **Role** (rights come from the role).  
-Location scope for location managers / support techs uses the user’s native GLPI **User → Location**. Central admin has no location limit.
+On install / upgrade the plugin creates four GLPI profiles (central interface) if they do not already exist:
 
-## Upgrade from Sprint 3
+| Profile | Plugin role | What they see |
+| --- | --- | --- |
+| **Central admin** | `central_admin` | Full operations on **all** locations (stock, containers, allocation, transfers, write-off). |
+| **Location manager** | `location_manager` | Same operations, limited to the user’s GLPI **Location**. |
+| **Support technician** | `support_tech` | **New allocation** + transfers / service on assigned location (no stock receipt / bulk). |
+| **End user** | `user` | **Confirm receipt** + view own equipment only. Marked as the **default** profile for new users. |
+
+**Plugin Configuration** (alert thresholds) is available to **Super-Admin** only — not to the Central admin profile.
+
+Assign users under **Administration → Users** (profile + Location for managers/techs).  
+Optional: **Administration → Profiles → Auchan Asset Tracker** tab still lets you remap a custom profile’s role.
+
+## Upgrade from Sprint 3 / 0.4.0
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.4.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema` (adds `qr_token` and unique index, backfills tokens), then updates `glpi_plugins.version`.
+2. Version becomes **0.4.1**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, creates the four profiles if missing, then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
-4. Open a container → use **Download PDF label** / public URL. Clear browser cache / GLPI cache if needed.
+4. Check **Administration → Profiles** for **Central admin**, **Location manager**, **Support technician**, **End user**.
+5. Open a container → use **Download PDF label** / public URL. Clear browser cache / GLPI cache if needed.
 
 ## Requirements
 
@@ -64,7 +76,7 @@ Location scope for location managers / support techs uses the user’s native GL
 
 1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name). Include the `public/` folder.
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
-3. Set the plugin **Role** under **Administration → Profiles → Auchan Asset Tracker**, and set each user’s **Location** on the GLPI user form when they need location scope.
+3. After enable, open **Administration → Profiles** — the four Auchan profiles should already exist. Assign users to them; set **Location** on each manager/tech user form. New users default to **End user**.
 4. Create locations and containers before receiving stock.
 5. Open a container → check URL (left) + QR (right) → print the label; open/scan the public URL (no login) to verify the shelf view.
 6. QR links use the host you open GLPI with (not a hardcoded localhost). Optionally set **Setup → General → URL of the application** as a fallback.

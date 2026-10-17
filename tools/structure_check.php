@@ -87,10 +87,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.0'")) {
-    fail('expected version 0.4.0');
+if (!str_contains($setup, "'0.4.1'")) {
+    fail('expected version 0.4.1');
 } else {
-    ok('version 0.4.0');
+    ok('version 0.4.1');
 }
 
 foreach ([
@@ -154,6 +154,21 @@ if (!str_contains($menu, 'MENU_TRANSFER')) {
     fail('menu missing Transfers');
 } else {
     ok('menu has Transfers');
+}
+
+$profile = file_get_contents("$root/inc/profile.class.php");
+foreach (['ensureBundledProfiles', 'getBundledProfiles', 'Location manager', 'End user', 'findOrCreateProfileByName'] as $needle) {
+    if (!str_contains($profile, $needle)) {
+        fail("profile missing $needle");
+    } else {
+        ok("profile has $needle");
+    }
+}
+$rights = file_get_contents("$root/inc/righthelper.class.php");
+if (!str_contains($rights, "haveRight('config', UPDATE)")) {
+    fail('canConfigure should prefer Super-Admin config UPDATE');
+} else {
+    ok('canConfigure Super-Admin gate');
 }
 
 if (str_contains($sql, 'auchanequipment')) {

@@ -231,7 +231,41 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
+     * Bundled GLPI profiles created by the plugin (name → role).
+     * End user is the default profile for new GLPI users.
+     *
+     * @return array<string, array{name: string, comment: string, is_default: bool}>
+     */
+    public static function getBundledProfiles(): array
+    {
+        return [
+            PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN => [
+                'name'       => 'Central admin',
+                'comment'    => 'Auchan Asset Tracker — global operations (all locations). Plugin config remains Super-Admin only.',
+                'is_default' => false,
+            ],
+            PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER => [
+                'name'       => 'Location manager',
+                'comment'    => 'Auchan Asset Tracker — full operations on own location (receipt, stock, allocation, transfer, write-off).',
+                'is_default' => false,
+            ],
+            PluginAuchanassettrackerRighthelper::ROLE_SUPPORT_TECH => [
+                'name'       => 'Support technician',
+                'comment'    => 'Auchan Asset Tracker — allocation, transfers and service on assigned location.',
+                'is_default' => false,
+            ],
+            PluginAuchanassettrackerRighthelper::ROLE_USER => [
+                'name'       => 'End user',
+                'comment'    => 'Auchan Asset Tracker — confirm receipt and view own equipment only. Default profile for new users.',
+                'is_default' => true,
+            ],
+        ];
+    }
+
+    /**
      * Map legacy role string → per-right bitmasks.
+     *
+     * Config (RIGHT_CONFIG) is never granted via roles — Super-Admin only.
      *
      * @return array<string, int>
      */
@@ -241,8 +275,20 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         $names = self::getRightNames();
         $zero = array_fill_keys($names, 0);
 
+        // Config (RIGHT_CONFIG) is applied only for Super-Admin in initProfile.
+
         return match ($role) {
-            'central_admin' => array_fill_keys($names, $full),
+            // Global ops (all locations); configuration stays Super-Admin-only.
+            'central_admin' => [
+                self::RIGHT_EQUIPMENT  => $full,
+                self::RIGHT_CONTAINER  => $full,
+                self::RIGHT_BULK       => $full,
+                self::RIGHT_ALLOCATION => $full,
+                self::RIGHT_TRANSFER   => $full,
+                self::RIGHT_CONFIRM    => $full,
+                self::RIGHT_CONFIG     => 0,
+            ] + $zero,
+            // Own location: receipt, stock, containers, allocation, transfer, write-off.
             'location_manager' => [
                 self::RIGHT_EQUIPMENT  => $full,
                 self::RIGHT_CONTAINER  => $full,
@@ -252,6 +298,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 self::RIGHT_CONFIRM    => READ | UPDATE,
                 self::RIGHT_CONFIG     => 0,
             ] + $zero,
+            // Own location: new allocation + transfers / service (no stock receipt / bulk / config).
             'support_tech' => [
                 self::RIGHT_EQUIPMENT  => READ | UPDATE | READ_ASSIGNED | UPDATE_ASSIGNED,
                 self::RIGHT_CONTAINER  => READ,
@@ -261,7 +308,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 self::RIGHT_CONFIRM    => READ | UPDATE,
                 self::RIGHT_CONFIG     => 0,
             ] + $zero,
-            default => [ // end user
+            default => [ // end user — confirm receipt + view own equipment
                 self::RIGHT_EQUIPMENT  => READ_OWNED,
                 self::RIGHT_CONTAINER  => 0,
                 self::RIGHT_BULK       => 0,
@@ -273,7 +320,149 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         };
     }
 
-    public static function initProfile(): void
+    /**
+     * Find a GLPI profile by exact name, or create it (central interface).
+     */
+    public static function findOrCreateProfileByName(
+        string $name,
+        string $comment = '',
+        bool $is_default = false
+    ): int {
+        global $DB;
+
+        if ($name === '' || !$DB->tableExists('glpi_profiles')) {
+            return 0;
+        }
+
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_profiles',
+            'WHERE'  => ['name' => $name],
+            'LIMIT'  => 1,
+        ]) as $row) {
+            $id = (int) ($row['id'] ?? 0);
+            if ($id > 0 && $is_default && $DB->fieldExists('glpi_profiles', 'is_default')) {
+                // Keep End user as the default profile for new GLPI users.
+                $DB->update('glpi_profiles', ['is_default' => 0], [
+                    'is_default' => 1,
+                    ['NOT' => ['id' => $id]],
+                ]);
+                $DB->update('glpi_profiles', ['is_default' => 1], ['id' => $id]);
+            }
+            return $id;
+        }
+
+        $input = [
+            'name'      => $name,
+            'interface' => 'central',
+            'comment'   => $comment,
+        ];
+        if ($DB->fieldExists('glpi_profiles', 'is_default')) {
+            $input['is_default'] = $is_default ? 1 : 0;
+        }
+
+        $profile = new Profile();
+        $new_id = (int) $profile->add($input);
+        if ($new_id > 0) {
+            if ($is_default && $DB->fieldExists('glpi_profiles', 'is_default')) {
+                $DB->update('glpi_profiles', ['is_default' => 0], [
+                    'is_default' => 1,
+                    ['NOT' => ['id' => $new_id]],
+                ]);
+                $DB->update('glpi_profiles', ['is_default' => 1], ['id' => $new_id]);
+            }
+            return $new_id;
+        }
+
+        // Fallback if Profile::add is unavailable / blocked in this context.
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+        $row = [
+            'name'      => $name,
+            'interface' => 'central',
+        ];
+        if ($DB->fieldExists('glpi_profiles', 'comment')) {
+            $row['comment'] = $comment;
+        }
+        if ($DB->fieldExists('glpi_profiles', 'is_default')) {
+            $row['is_default'] = $is_default ? 1 : 0;
+        }
+        if ($DB->fieldExists('glpi_profiles', 'date_creation')) {
+            $row['date_creation'] = $now;
+        }
+        if ($DB->fieldExists('glpi_profiles', 'date_mod')) {
+            $row['date_mod'] = $now;
+        }
+        if ($DB->insert('glpi_profiles', $row)) {
+            $id = (int) $DB->insertId();
+            if ($id > 0 && $is_default && $DB->fieldExists('glpi_profiles', 'is_default')) {
+                $DB->update('glpi_profiles', ['is_default' => 0], [
+                    'is_default' => 1,
+                    ['NOT' => ['id' => $id]],
+                ]);
+            }
+            return $id;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Create the four Auchan Asset Tracker profiles if missing and bind roles + rights.
+     *
+     * @param bool $force_rights When true (install/upgrade), re-apply role right presets.
+     */
+    public static function ensureBundledProfiles(bool $force_rights = false): void
+    {
+        global $DB;
+
+        if (!$DB->tableExists('glpi_profiles') || !$DB->tableExists(self::getTable())) {
+            return;
+        }
+
+        foreach (self::getBundledProfiles() as $role => $meta) {
+            $before = 0;
+            foreach ($DB->request([
+                'SELECT' => ['id'],
+                'FROM'   => 'glpi_profiles',
+                'WHERE'  => ['name' => (string) $meta['name']],
+                'LIMIT'  => 1,
+            ]) as $row) {
+                $before = (int) ($row['id'] ?? 0);
+            }
+
+            $profiles_id = self::findOrCreateProfileByName(
+                (string) $meta['name'],
+                (string) ($meta['comment'] ?? ''),
+                !empty($meta['is_default'])
+            );
+            if ($profiles_id <= 0) {
+                continue;
+            }
+
+            $created = $before <= 0;
+            $existing = self::getForProfileId($profiles_id);
+            $role_mismatch = $existing === null
+                || (string) ($existing['role'] ?? '') !== $role;
+
+            if ($created || $role_mismatch || $force_rights) {
+                self::saveFromPost([
+                    'profiles_id' => $profiles_id,
+                    'role'        => $role,
+                ]);
+                self::applyRightsForRole($profiles_id, $role);
+            } else {
+                self::ensureRightsRowsForProfile(
+                    $profiles_id,
+                    self::rightsFromLegacyRole($role)
+                );
+            }
+        }
+    }
+
+    /**
+     * @param bool $force_bundled_rights Re-apply bundled profile right presets (install/upgrade).
+     */
+    public static function initProfile(bool $force_bundled_rights = false): void
     {
         global $DB, $GLPI_CACHE;
 
@@ -284,6 +473,9 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         if (isset($GLPI_CACHE) && is_object($GLPI_CACHE) && method_exists($GLPI_CACHE, 'set')) {
             $GLPI_CACHE->set('all_possible_rights', []);
         }
+
+        // Create Central admin / Location manager / Support technician / End user.
+        self::ensureBundledProfiles($force_bundled_rights);
 
         $full = self::getFullRightsMask();
         $rightNames = self::getRightNames();
@@ -306,19 +498,25 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
             $defaults = array_fill_keys($rightNames, 0);
             if ($isSuper) {
+                // Super-Admin: full plugin rights including Configuration.
                 $defaults = array_fill_keys($rightNames, $full);
             } else {
                 $mapping = self::getForProfileId($profiles_id);
                 if ($mapping !== null) {
                     $role = (string) ($mapping['role'] ?? 'user');
                     $defaults = self::rightsFromLegacyRole($role);
+                } else {
+                    // Unmapped profiles default to End user (confirm receipt only).
+                    $defaults = self::rightsFromLegacyRole(
+                        PluginAuchanassettrackerRighthelper::ROLE_USER
+                    );
                 }
             }
 
             // Seed missing rows only (do not overwrite admin edits).
             self::addDefaultProfileInfos($profiles_id, $defaults, false);
 
-            // Super-Admin: keep full rights on every load.
+            // Super-Admin: keep full rights on every load (only profile with Config).
             if ($isSuper) {
                 foreach ($rightNames as $name) {
                     $DB->update('glpi_profilerights', [
@@ -432,7 +630,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         echo "</div>";
         echo "<div class='form-text mt-1'>"
             . Html::entities_deep(__(
-                'Location managers and support technicians are limited to the Location set on each user’s GLPI profile (Administration → Users). Central admin has no location limit.',
+                'The plugin creates four profiles: Central admin, Location manager, Support technician, and End user (default for new users). Location managers and support technicians are limited to the Location set on each user’s GLPI form (Administration → Users). Central admin has no location limit. Plugin Configuration is available to Super-Admin only.',
                 'auchanassettracker'
             ))
             . "</div>";
@@ -606,10 +804,35 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
      */
     public static function applyRightsForRole(int $profiles_id, string $role): void
     {
+        global $DB;
+
         if ($profiles_id <= 0) {
             return;
         }
         $rights = self::rightsFromLegacyRole($role);
+
+        // Super-Admin always keeps plugin Configuration (never stripped by role presets).
+        $is_super = false;
+        if ($DB->tableExists('glpi_profiles')) {
+            foreach ($DB->request([
+                'SELECT' => ['id'],
+                'FROM'   => 'glpi_profiles',
+                'WHERE'  => [
+                    'id'   => $profiles_id,
+                    'name' => 'Super-Admin',
+                ],
+                'LIMIT'  => 1,
+            ]) as $_) {
+                $is_super = true;
+            }
+        }
+        if ($is_super) {
+            $full = self::getFullRightsMask();
+            foreach (self::getRightNames() as $name) {
+                $rights[$name] = $full;
+            }
+        }
+
         self::addDefaultProfileInfos($profiles_id, $rights, true);
         ProfileRight::updateProfileRights($profiles_id, $rights);
         if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
