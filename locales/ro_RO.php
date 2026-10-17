@@ -263,7 +263,7 @@ return [
     'User reported they did not receive: %s (%s). Please place it back in a container.' => 'Utilizatorul a raportat că nu a primit: %s (%s). Puneți-l înapoi într-un container.',
     'User reported they did not receive: %s. Item returned to its previous container.' => 'Utilizatorul a raportat că nu a primit: %s. Articolul a fost returnat în containerul anterior.',
     'User reported they did not receive: %s. Previous container unavailable — assign a container (see Active alerts).' => 'Utilizatorul a raportat că nu a primit: %s. Containerul anterior nu este disponibil — atribuiți un container (vezi Alerte active).',
-    'You have equipment awaiting confirmation: %s. Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s. Confirmați primirea în Auchan Asset Tracker.',
+    'You have equipment awaiting confirmation: %s. Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s. Confirmați primirea în Urmărire active Auchan.',
     'Default 5 calendar days. Late pending allocations appear under Active alerts on New allocation.' => 'Implicit 5 zile. Alocările neconfirmate apar la Alerte active pe Alocare nouă.',
     'Default 7 days before an in-transit transfer is considered overdue.' => 'Implicit 7 zile înainte ca un transfer în tranzit să fie considerat întârziat.',
     'Default 30 days before equipment in service is considered overdue.' => 'Implicit 30 zile înainte ca echipamentul în service să fie considerat întârziat.',
@@ -299,5 +299,5 @@ return [
     'You cannot modify equipment from another location.' => 'Nu puteți modifica echipament din altă locație.',
     'You cannot move a container to another location.' => 'Nu puteți muta un container în altă locație.',
     'You have %d equipment item(s) awaiting confirmation.' => 'Aveți %d echipament(e) în așteptare confirmare.',
-    'You have equipment awaiting confirmation: %s (%s). Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s (%s). Confirmați primirea în Auchan Asset Tracker.',
+    'You have equipment awaiting confirmation: %s (%s). Please confirm receipt in Auchan Asset Tracker.' => 'Aveți echipament în așteptare confirmare: %s (%s). Confirmați primirea în Urmărire active Auchan.',
 ];
