@@ -197,6 +197,57 @@ select.aat-recipient-user.aat-recipient-pending {
   margin-bottom: 0.5rem;
 }
 
+.aat-alert-section {
+  margin-bottom: 0.75rem;
+}
+
+.aat-alert-section:last-child {
+  margin-bottom: 0;
+}
+
+.aat-alert-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem 0.6rem;
+  align-items: stretch;
+}
+
+@media (max-width: 991.98px) {
+  .aat-alert-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 575.98px) {
+  .aat-alert-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.aat-alert-chip {
+  display: block;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.55);
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aat-alert-chip:hover {
+  background: rgba(255, 255, 255, 0.9);
+  text-decoration: underline;
+}
+
+.aat-alert-grid-modal {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 #aat-gear-user-msg {
   max-width: 36rem;
 }

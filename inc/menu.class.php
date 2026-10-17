@@ -111,8 +111,9 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             $content[self::MENU_CONTAINER] = $ct;
         }
 
-        if (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, READ)
+        if (PluginAuchanassettrackerRighthelper::getMappedRole() !== PluginAuchanassettrackerRighthelper::ROLE_USER
+            && (Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE)
+                || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, READ))
         ) {
             $content[self::MENU_BULK] = [
                 'title' => PluginAuchanassettrackerBulk::getTypeName(1),
