@@ -133,7 +133,8 @@ class PluginAuchanassettrackerRighthelper
     public static function isSupportTech(): bool
     {
         return self::getCurrentRole() === self::ROLE_SUPPORT_TECH
-            || self::canAllocate();
+            || self::canAllocate()
+            || self::canTransfer();
     }
 
     /**
