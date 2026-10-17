@@ -100,7 +100,11 @@ function plugin_auchanassettracker_load_translations(): void
             }
             $phpfile = __DIR__ . '/locales/' . $candidate . '.php';
             if (is_readable($phpfile)) {
+                // Plugin domain (menu, forms, messages).
                 $TRANSLATE->addTranslationFile('phparray', $phpfile, 'auchanassettracker', $lang);
+                // Also cover GLPI core UI chrome that appears on plugin pages
+                // (search bar: Filter, Sort, Export, rows/page, Document upload, …).
+                $TRANSLATE->addTranslationFile('phparray', $phpfile, 'glpi', $lang);
                 break;
             }
         }
@@ -173,6 +177,9 @@ function plugin_init_auchanassettracker(): void
         PluginAuchanassettrackerConfig::seedDefaults();
     }
 
+    // Translations before profile seeding (localized profile names/comments).
+    plugin_auchanassettracker_load_translations();
+
     // Register / migrate GLPI ProfileRight rows (idempotent; missing rows only).
     if ($DB->tableExists('glpi_profilerights')) {
         PluginAuchanassettrackerProfile::initProfile();
@@ -192,9 +199,7 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
     Plugin::registerClass('PluginAuchanassettrackerConfirm');
     Plugin::registerClass('PluginAuchanassettrackerTransfer');
-    Plugin::registerClass('PluginAuchanassettrackerProfile', [
-        'addtabon' => ['Profile'],
-    ]);
+    Plugin::registerClass('PluginAuchanassettrackerProfile');
     Plugin::registerClass('PluginAuchanassettrackerLocationtab', [
         'addtabon' => ['Location'],
     ]);

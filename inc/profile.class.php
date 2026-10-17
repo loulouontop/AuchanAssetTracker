@@ -1,7 +1,8 @@
 <?php
 
 /**
- * Plugin role mapping for Auchan Asset Tracker (rights from role).
+ * Plugin profile rights + bundled GLPI profiles for Auchan Asset Tracker.
+ * Roles are bound to the four auto-created profiles (no Profile tab UI).
  * Location scope uses native GLPI User.locations_id — not stored here.
  */
 class PluginAuchanassettrackerProfile extends CommonDBTM
@@ -131,34 +132,6 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     public static function getRightNames(): array
     {
         return array_column(self::getAllRights(true), 'field');
-    }
-
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
-    {
-        if ($item instanceof Profile
-            && (int) $item->getID() > 0
-            && ($item->fields['interface'] ?? '') !== 'helpdesk'
-            && Session::haveRight('profile', READ)
-        ) {
-            return self::createTabEntry(
-                __('Auchan Asset Tracker', 'auchanassettracker'),
-                0,
-                $item->getType(),
-                self::getIcon()
-            );
-        }
-        return '';
-    }
-
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
-    {
-        if ($item instanceof Profile) {
-            self::ensureRightsRowsForProfile((int) $item->getID());
-            $prof = new self();
-            $prof->showForm((int) $item->getID());
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -304,7 +277,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 self::RIGHT_CONTAINER  => READ,
                 self::RIGHT_BULK       => 0,
                 self::RIGHT_ALLOCATION => READ | CREATE | UPDATE,
-                self::RIGHT_TRANSFER   => READ | CREATE | UPDATE,
+                self::RIGHT_TRANSFER   => 0,
                 self::RIGHT_CONFIRM    => READ | UPDATE,
                 self::RIGHT_CONFIG     => 0,
             ] + $zero,
@@ -779,28 +752,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Whether the posted role differs from the stored mapping.
-     */
-    public static function roleChangedInPost(array $post): bool
-    {
-        $profiles_id = (int) ($post['profiles_id'] ?? 0);
-        if ($profiles_id <= 0 || !isset($post['role'])) {
-            return false;
-        }
-        $roles = array_keys(PluginAuchanassettrackerRighthelper::getRoles());
-        $role = (string) $post['role'];
-        if (!in_array($role, $roles, true)) {
-            $role = PluginAuchanassettrackerRighthelper::ROLE_USER;
-        }
-        $existing = self::getForProfileId($profiles_id);
-        if ($existing === null) {
-            return true;
-        }
-        return (string) ($existing['role'] ?? '') !== $role;
-    }
-
-    /**
-     * Apply rights matrix presets for a role (when the role dropdown changes).
+     * Apply rights matrix presets for a role (bundled profiles / install).
      */
     public static function applyRightsForRole(int $profiles_id, string $role): void
     {
