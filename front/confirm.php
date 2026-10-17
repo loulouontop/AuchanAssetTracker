@@ -30,19 +30,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-Html::header(
-    __('Confirm receipt', 'auchanassettracker'),
-    $_SERVER['PHP_SELF'],
-    PluginAuchanassettrackerMenu::SECTOR,
-    PluginAuchanassettrackerMenu::MENU_CONFIRM
-);
-
-// Do not use check(-1, READ): CommonDBTM requires Session::haveRight bits that
-// helpdesk End users may not hold until session refresh; canView()/canConfirm() already ran.
+// Do not use check(-1, READ) / initForm(-1): those require CREATE on ID -1 and
+// force central chrome. Helpdesk End users must stay on simplified interface.
 if (!PluginAuchanassettrackerConfirm::canView()) {
     Html::displayRightError();
     exit;
 }
+
+$title = __('Confirm receipt', 'auchanassettracker');
+$is_helpdesk = Session::getCurrentInterface() === 'helpdesk';
+if ($is_helpdesk) {
+    Html::helpHeader($title, PluginAuchanassettrackerMenu::SECTOR);
+} else {
+    Html::header(
+        $title,
+        $_SERVER['PHP_SELF'],
+        PluginAuchanassettrackerMenu::SECTOR,
+        PluginAuchanassettrackerMenu::MENU_CONFIRM
+    );
+}
+
 $item->showForm(0);
 
-Html::footer();
+if ($is_helpdesk) {
+    Html::helpFooter();
+} else {
+    Html::footer();
+}

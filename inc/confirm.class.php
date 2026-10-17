@@ -49,8 +49,8 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
 
     public static function canCreate(): bool
     {
-        return Session::haveRight(self::$rightname, UPDATE)
-            || Session::haveRight(self::$rightname, CREATE);
+        // Confirm workspace is not a "create item" form; End users confirm via canConfirm/canView.
+        return self::canView();
     }
 
     public function getRights($interface = 'central')
@@ -70,7 +70,8 @@ class PluginAuchanassettrackerConfirm extends CommonDBTM
 
     public function showForm($ID, array $options = [])
     {
-        $this->initForm(-1, $options);
+        // Skip CommonDBTM form init for new ID: CREATE right is not required here
+        // and would break helpdesk End users (denied central page).
         PluginAuchanassettrackerMenu::beginNativeFormCard(self::getTypeName(1), self::getIcon());
         self::renderConfirmWorkspace();
         PluginAuchanassettrackerMenu::endNativeFormCard();

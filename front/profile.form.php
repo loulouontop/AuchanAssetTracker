@@ -13,27 +13,18 @@ $profiles_id = (int) ($_POST['profiles_id'] ?? $_POST['id'] ?? 0);
 if (isset($_POST['update']) && $profiles_id > 0) {
     PluginAuchanassettrackerProfile::ensureRightsRowsForProfile($profiles_id);
 
-    $role_changed = PluginAuchanassettrackerProfile::roleChangedInPost($_POST);
-    $result = PluginAuchanassettrackerProfile::saveFromPost($_POST);
+    // Save the editable GLPI-style rights matrix only (no Role field on the tab).
+    $saved = PluginAuchanassettrackerProfile::saveRightsFromPost($_POST);
 
-    if ($role_changed) {
-        // Changing role reapplies the preset; fine-tune via the matrix afterward.
-        $role = (string) ($_POST['role'] ?? PluginAuchanassettrackerRighthelper::ROLE_USER);
-        PluginAuchanassettrackerProfile::applyRightsForRole($profiles_id, $role);
-    } else {
-        // Save the editable GLPI-style rights matrix as posted.
-        PluginAuchanassettrackerProfile::saveRightsFromPost($_POST);
-    }
-
-    if ($result === 'error') {
+    if ($saved) {
         Session::addMessageAfterRedirect(
-            __('Unable to save role mapping.', 'auchanassettracker'),
-            false,
-            ERROR
+            __('Item successfully updated'),
+            true,
+            INFO
         );
     } else {
         Session::addMessageAfterRedirect(
-            __('Item successfully updated'),
+            __('No changes to save.', 'auchanassettracker'),
             true,
             INFO
         );
