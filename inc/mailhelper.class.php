@@ -162,24 +162,72 @@ class PluginAuchanassettrackerMailhelper
             $plain = $body . ($link !== '' ? "\n\n" . $link : '');
             $mail_subject = '[' . __('Auchan Asset Tracker', 'auchanassettracker') . '] ' . $subject;
 
-            if (class_exists('GLPIMailer', false)) {
-                $mmail = new GLPIMailer();
-                $mmail->AddAddress($email);
-                $mmail->Subject = $mail_subject;
-                if (method_exists($mmail, 'isHTML')) {
-                    $mmail->isHTML(true);
-                }
-                $mmail->Body = $html;
-                $mmail->AltBody = $plain;
-                @$mmail->Send();
-                return;
+            if (!self::sendViaGlpiMailer($email, $mail_subject, $html, $plain)) {
+                PluginAuchanassettrackerPluginlog::info(
+                    "Mail backend unavailable; in-app notice stored for $email — $subject"
+                );
             }
-
-            PluginAuchanassettrackerPluginlog::info(
-                "Mail backend unavailable; in-app notice stored for $email — $subject"
-            );
         } catch (Throwable $e) {
             PluginAuchanassettrackerPluginlog::exception($e, 'mail');
+        }
+    }
+
+    /**
+     * Send via GLPI 11 GLPIMailer (Symfony Mailer wrapper).
+     * Must allow autoload — class_exists(..., false) skipped loading and caused false "unavailable".
+     */
+    public static function sendViaGlpiMailer(
+        string $email,
+        string $subject,
+        string $html,
+        string $plain
+    ): bool {
+        global $CFG_GLPI;
+
+        // Autoload GLPIMailer (do NOT pass false — that skipped the class on GLPI 11).
+        if (!class_exists('GLPIMailer') && !class_exists(\GLPIMailer::class)) {
+            return false;
+        }
+
+        try {
+            $mmail = new GLPIMailer();
+
+            // Prefer Symfony Email API (no deprecation warnings).
+            if (method_exists($mmail, 'getEmail')) {
+                $symfony = $mmail->getEmail();
+                $from = (string) ($CFG_GLPI['from_email'] ?? $CFG_GLPI['admin_email'] ?? '');
+                $from_name = (string) ($CFG_GLPI['from_email_name'] ?? $CFG_GLPI['admin_email_name'] ?? '');
+                if ($from !== '' && method_exists($symfony, 'from')) {
+                    if ($from_name !== '' && class_exists(\Symfony\Component\Mime\Address::class)) {
+                        $symfony->from(new \Symfony\Component\Mime\Address($from, $from_name));
+                    } else {
+                        $symfony->from($from);
+                    }
+                }
+                $symfony->to($email);
+                $symfony->subject($subject);
+                $symfony->html($html);
+                $symfony->text($plain);
+            } else {
+                // Legacy PHPMailer-style wrappers.
+                $mmail->AddAddress($email);
+                $mmail->Subject = $subject;
+                $mmail->Body = $html;
+                $mmail->AltBody = $plain;
+            }
+
+            $ok = (bool) $mmail->send();
+            if (!$ok) {
+                $err = method_exists($mmail, 'getError') ? (string) ($mmail->getError() ?? '') : '';
+                PluginAuchanassettrackerPluginlog::info(
+                    'GLPIMailer send failed for ' . $email
+                    . ($err !== '' ? (': ' . $err) : '')
+                );
+            }
+            return $ok;
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'mail');
+            return false;
         }
     }
 
