@@ -249,10 +249,33 @@ if (!str_contains($rights, "haveRight('config', UPDATE)")) {
 $alloc = file_get_contents("$root/inc/allocation.class.php");
 if (!str_contains($alloc, 'aat-alert-columns') || !str_contains($alloc, 'View all')
     || !str_contains($alloc, 'iconForItemtype')
+    || !str_contains($alloc, 'row-cols-lg-4')
 ) {
     fail('allocation alerts missing columns / View all / icons');
 } else {
     ok('allocation alert columns');
+}
+if (!str_contains($alloc, 'recipient_loc')
+    || !str_contains($alloc, 'same location as the recipient')
+) {
+    fail('allocation stock must filter by recipient location');
+} else {
+    ok('allocation stock by recipient location');
+}
+$xfer_front = file_get_contents("$root/front/transfer.form.php");
+if (!str_contains($xfer_front, 'Transferred by')
+    || !str_contains($xfer_front, 'Approved by')
+    || !str_contains($xfer_front, 'aat-location-dropdown')
+) {
+    fail('transfer form missing actors / location dropdown wrap');
+} else {
+    ok('transfer actors + location dropdown');
+}
+$css = file_get_contents("$root/css/assettracker.css");
+if (!str_contains($css, 'aat-location-dropdown')) {
+    fail('css missing aat-location-dropdown hide-until-Select2');
+} else {
+    ok('css location dropdown pending');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {
