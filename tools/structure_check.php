@@ -207,8 +207,10 @@ if (!preg_match("/default\\s*=>\\s*\\[[^\\]]*RIGHT_EQUIPMENT\\s*=>\\s*0/s", $pro
 $rights = file_get_contents("$root/inc/righthelper.class.php");
 if (!str_contains($rights, 'getMappedRole')
     || !str_contains($rights, 'ROLE_SUPPORT_TECH')
+    || !str_contains($rights, 'canBulk')
+    || !str_contains($rights, "return '';")
 ) {
-    fail('righthelper missing role gates');
+    fail('righthelper missing role gates / no default end user');
 } else {
     ok('righthelper role gates');
 }
