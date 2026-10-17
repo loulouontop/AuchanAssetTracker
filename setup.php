@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.3');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.4');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -188,6 +188,7 @@ function plugin_init_auchanassettracker(): void
     // Top-level “Auchan Asset Tracker” menu (not under Assets).
     $PLUGIN_HOOKS['redefine_menus'][$plug] = 'plugin_auchanassettracker_redefine_menus';
     $PLUGIN_HOOKS['add_css'][$plug][] = 'css/assettracker.css';
+    $PLUGIN_HOOKS['add_javascript'][$plug][] = 'js/aat-forms.js';
 
     if (!Session::getLoginUserID()) {
         return;

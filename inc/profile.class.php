@@ -573,7 +573,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /** Config flag: one-time seed of Admin/Technician/Self-Service rights onto bundled profiles. */
-    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v2';
+    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v3';
 
     /**
      * Copy non-plugin ProfileRight rows from a template profile (create only).
@@ -771,14 +771,15 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             $role_mismatch = $existing === null
                 || (string) ($existing['role'] ?? '') !== $role;
 
-            // Seed GLPI core rights from Admin / Technician / Self-Service when the
-            // profile is new, or once on upgrade if still nearly empty (no uninstall needed).
+            // GLPI native rights: seed from Admin / Technician / Self-Service (changeable after).
+            // Re-seed once per upgrade flag so existing empty profiles pick up Admin/Technician
+            // without uninstalling.
             $seed_core = $created;
             if (!$seed_core && $force_rights) {
                 $already = class_exists('PluginAuchanassettrackerConfig', false)
                     ? PluginAuchanassettrackerConfig::get(self::CFG_CORE_RIGHTS_SEEDED)
                     : null;
-                if ($already !== '1' || self::countCoreRights($profiles_id) < 8) {
+                if ($already !== '1') {
                     $seed_core = true;
                 }
             }
@@ -802,13 +803,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                     'profiles_id' => $profiles_id,
                     'role'        => $role,
                 ]);
-            }
-
-            // Keep plugin module rights aligned with the role preset when they drift
-            // (e.g. End user still holding Equipment, Support tech still holding Transfer).
-            if ($created || $role_mismatch || $force_rights
-                || !self::pluginRightsMatchRole($profiles_id, $role)
-            ) {
+                // Plugin module ProfileRight bits only for CommonDBTM/Session helpers;
+                // tab visibility is role-based in Righthelper.
                 self::applyRightsForRole($profiles_id, $role);
             } else {
                 self::ensureRightsRowsForProfile(
@@ -902,15 +898,11 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 if ($mapping !== null) {
                     $role = (string) ($mapping['role'] ?? 'user');
                     $defaults = self::rightsFromLegacyRole($role);
-                } else {
-                    // Unmapped profiles default to End user (confirm receipt only).
-                    $defaults = self::rightsFromLegacyRole(
-                        PluginAuchanassettrackerRighthelper::ROLE_USER
-                    );
                 }
+                // Unmapped profiles: leave plugin rights at 0 (do not force End user).
             }
 
-            // Seed missing rows only (do not overwrite admin edits).
+            // Seed missing plugin right rows only (value 0 for unmapped / new rows).
             self::addDefaultProfileInfos($profiles_id, $defaults, false);
 
             // Super-Admin: keep full rights on every load (only profile with Config).

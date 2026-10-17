@@ -87,15 +87,25 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.3'")) {
-    fail('expected version 0.4.3');
+if (!str_contains($setup, "'0.4.4'")) {
+    fail('expected version 0.4.4');
 } else {
-    ok('version 0.4.3');
+    ok('version 0.4.4');
 }
 if (!str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup missing helpdesk_menu_entry');
 } else {
     ok('setup has helpdesk_menu_entry');
+}
+if (!str_contains($setup, 'aat-forms.js')) {
+    fail('setup missing aat-forms.js');
+} else {
+    ok('setup has aat-forms.js');
+}
+if (!is_readable("$root/js/aat-forms.js")) {
+    fail('js/aat-forms.js missing');
+} else {
+    ok('js/aat-forms.js present');
 }
 
 foreach ([

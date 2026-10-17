@@ -56,95 +56,82 @@ class PluginAuchanassettrackerRighthelper
         return $role;
     }
 
+    /**
+     * Plugin tabs / actions are driven by the mapped role (not inferred for every profile).
+     * Unmapped profiles (except Super-Admin) get no plugin tabs.
+     *
+     * - End user → Confirm receipt only
+     * - Support technician → New allocation
+     * - Location manager / Central admin → full plugin ops (location-scoped vs global)
+     * - Configuration → Super-Admin only
+     */
     public static function canSeeEquipment(): bool
     {
-        // End user: confirm receipt only — never show Equipment.
-        if (self::getMappedRole() === self::ROLE_USER) {
-            return false;
-        }
-        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, [
-            READ, READ_ASSIGNED, READ_OWNED,
-        ]);
+        $role = self::getCurrentRole();
+        return $role === self::ROLE_CENTRAL_ADMIN
+            || $role === self::ROLE_LOCATION_MANAGER;
     }
 
     public static function canSeeContainers(): bool
     {
-        if (self::getMappedRole() === self::ROLE_USER) {
-            return false;
-        }
-        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONTAINER, [
-            READ, READ_ASSIGNED, READ_OWNED,
-        ]);
+        return self::canSeeEquipment();
     }
 
     public static function canManageStock(): bool
     {
-        if (self::getMappedRole() === self::ROLE_USER) {
-            return false;
-        }
-        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, CREATE)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE);
+        return self::canSeeEquipment();
+    }
+
+    public static function canBulk(): bool
+    {
+        return self::canSeeEquipment();
     }
 
     public static function canAllocate(): bool
     {
-        if (self::getMappedRole() === self::ROLE_USER) {
-            return false;
-        }
-        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_ALLOCATION, [
-            READ, CREATE, UPDATE,
-        ]);
+        $role = self::getCurrentRole();
+        return $role === self::ROLE_CENTRAL_ADMIN
+            || $role === self::ROLE_LOCATION_MANAGER
+            || $role === self::ROLE_SUPPORT_TECH;
     }
 
     public static function canTransfer(): bool
     {
-        $role = self::getMappedRole();
-        // End user and Support technician must not see / run transfers.
-        if ($role === self::ROLE_USER || $role === self::ROLE_SUPPORT_TECH) {
-            return false;
-        }
-        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_TRANSFER, [
-            READ, CREATE, UPDATE,
-        ]);
+        $role = self::getCurrentRole();
+        return $role === self::ROLE_CENTRAL_ADMIN
+            || $role === self::ROLE_LOCATION_MANAGER;
     }
 
     public static function canConfirm(): bool
     {
-        return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONFIRM, [
-            READ, UPDATE, READ_OWNED, UPDATE_OWNED,
-        ]);
+        $role = self::getCurrentRole();
+        return $role === self::ROLE_USER
+            || $role === self::ROLE_SUPPORT_TECH
+            || $role === self::ROLE_LOCATION_MANAGER
+            || $role === self::ROLE_CENTRAL_ADMIN;
     }
 
     public static function canWriteOff(): bool
     {
-        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_OWNED)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE_ASSIGNED);
+        return self::canSeeEquipment();
     }
 
     public static function canChangeFinalStatus(): bool
     {
-        // Reintroduce: require Update all (not only owned/assigned).
-        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE);
+        // Final statuses / reintroduce: Central admin (or Super-Admin via role).
+        return self::getCurrentRole() === self::ROLE_CENTRAL_ADMIN;
     }
 
     /**
-     * Plugin Configuration menu — Super-Admin only.
-     * Bundled Central admin / Location manager profiles do not get RIGHT_CONFIG.
+     * Plugin Configuration — Super-Admin only (native GLPI config UPDATE).
      */
     public static function canConfigure(): bool
     {
-        // Native GLPI Super-Admin (or equivalent) always may open plugin config.
-        if (Session::haveRight('config', UPDATE)) {
-            return true;
-        }
-        return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, READ)
-            || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_CONFIG, UPDATE);
+        return Session::haveRight('config', UPDATE);
     }
 
     /**
-     * Global ops (all locations): bundled Central admin role, or Super-Admin.
+     * Global ops (all locations): Central admin role, or Super-Admin.
      */
     public static function isCentralAdmin(): bool
     {
@@ -156,9 +143,7 @@ class PluginAuchanassettrackerRighthelper
      */
     public static function isLocationManager(): bool
     {
-        return self::getCurrentRole() === self::ROLE_LOCATION_MANAGER
-            || self::canManageStock()
-            || self::canWriteOff();
+        return self::getCurrentRole() === self::ROLE_LOCATION_MANAGER;
     }
 
     /**
@@ -166,34 +151,25 @@ class PluginAuchanassettrackerRighthelper
      */
     public static function isSupportTech(): bool
     {
-        return self::getCurrentRole() === self::ROLE_SUPPORT_TECH
-            || self::canAllocate()
-            || self::canTransfer();
+        return self::getCurrentRole() === self::ROLE_SUPPORT_TECH;
     }
 
     /**
      * Active plugin role for the current GLPI profile.
+     * Empty string = no plugin role (unmapped profile).
      */
     public static function getCurrentRole(): string
     {
-        $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
-        if ($mapping !== null) {
-            $role = (string) ($mapping['role'] ?? '');
-            if ($role !== '' && isset(self::getRoles()[$role])) {
-                return $role;
-            }
+        $mapped = self::getMappedRole();
+        if ($mapped !== null) {
+            return $mapped;
         }
-        // Unmapped Super-Admin → central admin (global ops + config).
+        // Unmapped Super-Admin acts as central admin for plugin ops + config.
         if (Session::haveRight('config', UPDATE)) {
             return self::ROLE_CENTRAL_ADMIN;
         }
-        if (self::canManageStock()) {
-            return self::ROLE_LOCATION_MANAGER;
-        }
-        if (self::canAllocate()) {
-            return self::ROLE_SUPPORT_TECH;
-        }
-        return self::ROLE_USER;
+        // Do not treat every other unmapped profile as End user.
+        return '';
     }
 
     public static function hasPluginProfileMap(): bool
