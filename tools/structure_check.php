@@ -275,10 +275,13 @@ if (!str_contains($xfer_front, 'Transferred by')
 $xfer = file_get_contents("$root/inc/transfer.class.php");
 if (!str_contains($xfer, 'function dropdownDestinationLocation')
     || !str_contains($xfer, 'users_id_rejector')
+    || !str_contains($xfer, 'Location::dropdown')
+    || !str_contains($xfer, "'addicon'")
+    || !str_contains($xfer, 'destinationLocationsToExclude')
 ) {
-    fail('transfer missing destination Select2 helper / rejector');
+    fail('transfer missing native Location dropdown i/+ / exclude own site');
 } else {
-    ok('transfer destination Select2 + rejector');
+    ok('transfer destination Location i/+ + exclude');
 }
 $css = file_get_contents("$root/css/assettracker.css");
 if (!str_contains($css, 'aat-location-pending')

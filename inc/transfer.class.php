@@ -63,116 +63,110 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
     }
 
     /**
-     * Destination Location dropdown with immediate Select2 (no native ----- flash on refresh).
+     * Native Location dropdown (Select2 + i / +), excluding own / source sites.
      *
      * @param array{name?: string, value?: int, used?: list<int>, width?: string, display_emptychoice?: bool} $options
      */
     public static function dropdownDestinationLocation(array $options = []): void
     {
-        global $DB;
-
         $name = (string) ($options['name'] ?? 'locations_id_dest');
         $value = (int) ($options['value'] ?? 0);
         $width = (string) ($options['width'] ?? '100%');
+        $empty = array_key_exists('display_emptychoice', $options)
+            ? (bool) $options['display_emptychoice']
+            : ($value <= 0);
+
+        // Always hide: caller's exclusions + current user's location + scoped site.
         $used = [];
         if (isset($options['used']) && is_array($options['used'])) {
             foreach ($options['used'] as $uid) {
                 $uid = (int) $uid;
                 if ($uid > 0) {
-                    $used[$uid] = true;
+                    $used[$uid] = $uid;
                 }
             }
         }
-        $empty = array_key_exists('display_emptychoice', $options)
-            ? (bool) $options['display_emptychoice']
-            : ($value <= 0);
-        $rand = (int) ($options['rand'] ?? mt_rand());
-        $field_id = Html::cleanId('dropdown_' . $name . $rand);
-
-            $locations = [];
-        if ($DB->tableExists('glpi_locations')) {
-            $where = [];
-            if ($DB->fieldExists('glpi_locations', 'is_deleted')) {
-                $where['is_deleted'] = 0;
-            }
-            if (function_exists('getEntitiesRestrictCriteria')) {
-                $ent = getEntitiesRestrictCriteria('glpi_locations', '', '', true);
-                if (is_array($ent) && $ent !== []) {
-                    $where[] = $ent;
-                }
-            }
-            $req = [
-                'SELECT' => ['id', 'completename', 'name'],
-                'FROM'   => 'glpi_locations',
-                'ORDER'  => 'completename ASC',
-            ];
-            if ($where !== []) {
-                $req['WHERE'] = $where;
-            }
-            foreach ($DB->request($req) as $row) {
-                $lid = (int) ($row['id'] ?? 0);
-                if ($lid <= 0 || isset($used[$lid])) {
-                    continue;
-                }
-                $label = trim((string) ($row['completename'] ?? $row['name'] ?? ''));
-                if ($label === '') {
-                    $label = '#' . $lid;
-                }
-                $locations[$lid] = $label;
-            }
+        foreach (self::destinationLocationsToExclude() as $uid) {
+            $used[$uid] = $uid;
+        }
+        // Selected value must stay visible even if it would otherwise be excluded.
+        if ($value > 0) {
+            unset($used[$value]);
         }
 
-        if ($value > 0 && !isset($locations[$value]) && !isset($used[$value])) {
-            $label = Dropdown::getDropdownName('glpi_locations', $value);
-            $plain = trim(strip_tags((string) $label));
-            $locations[$value] = ($plain !== '' && $plain !== '&nbsp;' && $plain !== '-')
-                ? $plain
-                : ('#' . $value);
+        $opts = [
+            'name'                => $name,
+            'value'               => $value,
+            'width'               => $width,
+            'display_emptychoice' => $empty,
+            'comments'            => true,
+            'addicon'             => true,
+        ];
+        if ($used !== []) {
+            $opts['used'] = array_values($used);
         }
-
-        $width_js = json_encode($width, JSON_UNESCAPED_SLASHES);
-        $field_js = json_encode($field_id, JSON_UNESCAPED_SLASHES);
 
         echo "<div class='aat-location-dropdown aat-location-pending'>";
-        echo "<select name='" . Html::entities_deep($name) . "' id='"
-            . Html::entities_deep($field_id) . "' class='form-select aat-dest-location'"
-            . " style='width:" . Html::entities_deep($width) . "'>";
-        if ($empty) {
-            echo "<option value='0'>" . Html::entities_deep(Dropdown::EMPTY_VALUE) . "</option>";
-        }
-        foreach ($locations as $lid => $label) {
-            $sel = ((int) $lid === $value) ? " selected" : '';
-            echo "<option value='" . (int) $lid . "'" . $sel . ">"
-                . Html::entities_deep($label) . "</option>";
-        }
-        echo "</select></div>";
+        Location::dropdown($opts);
+        echo '</div>';
 
-        echo Html::scriptBlock(<<<JS
+        // Reveal when GLPI Select2 has bound (keep native i/+; do not re-init Select2).
+        echo Html::scriptBlock(<<<'JS'
 (function () {
-  function aatInitDestLocation() {
-    var \$sel = $('#' + {$field_js});
-    if (!\$sel.length || \$sel.data('aatSelect2Ready')) { return; }
-    if (typeof \$sel.select2 !== 'function') { return; }
-    if (\$sel.hasClass('select2-hidden-accessible')) {
-      try { \$sel.select2('destroy'); } catch (e) {}
+  function aatMarkDestLocationReady($wrap) {
+    if (!$wrap || !$wrap.length || $wrap.data('aatReady')) { return; }
+    var $sel = $wrap.find('select').first();
+    if ($sel.length && $sel.hasClass('select2-hidden-accessible')) {
+      $wrap.removeClass('aat-location-pending').addClass('aat-location-ready').data('aatReady', true);
+      return true;
     }
-    \$sel.select2({
-      width: {$width_js},
-      allowClear: false,
-      minimumResultsForSearch: 0,
-      dropdownAutoWidth: false
+    return false;
+  }
+  function aatWatchDestLocations() {
+    $('.aat-location-dropdown.aat-location-pending').each(function () {
+      var $wrap = $(this);
+      if (aatMarkDestLocationReady($wrap)) { return; }
+      var tries = 0;
+      var t = setInterval(function () {
+        tries++;
+        if (aatMarkDestLocationReady($wrap) || tries > 80) {
+          $wrap.removeClass('aat-location-pending').addClass('aat-location-ready');
+          clearInterval(t);
+        }
+      }, 50);
     });
-    \$sel.data('aatSelect2Ready', true);
-    \$sel.closest('.aat-location-dropdown')
-      .removeClass('aat-location-pending')
-      .addClass('aat-location-ready');
   }
   if (window.jQuery) {
-    aatInitDestLocation();
-    $(aatInitDestLocation);
+    aatWatchDestLocations();
+    $(aatWatchDestLocations);
   }
 })();
 JS);
+    }
+
+    /**
+     * Location IDs that must not appear as transfer destinations (own / scoped site).
+     *
+     * @return list<int>
+     */
+    public static function destinationLocationsToExclude(): array
+    {
+        $out = [];
+        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        if ($scope !== null && (int) $scope > 0) {
+            $out[] = (int) $scope;
+        }
+        $uid = (int) Session::getLoginUserID();
+        if ($uid > 0) {
+            $user = new User();
+            if ($user->getFromDB($uid)) {
+                $loc = (int) ($user->fields['locations_id'] ?? 0);
+                if ($loc > 0) {
+                    $out[] = $loc;
+                }
+            }
+        }
+        return array_values(array_unique($out));
     }
 
     /**
@@ -208,6 +202,14 @@ JS);
         if ($source === $locations_id_dest) {
             Session::addMessageAfterRedirect(
                 __('Destination must be different from source location.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+        if (in_array($locations_id_dest, self::destinationLocationsToExclude(), true)) {
+            Session::addMessageAfterRedirect(
+                __('Destination must be different from your location.', 'auchanassettracker'),
                 false,
                 ERROR
             );
