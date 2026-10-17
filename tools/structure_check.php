@@ -265,17 +265,28 @@ if (!str_contains($alloc, 'recipient_loc')
 $xfer_front = file_get_contents("$root/front/transfer.form.php");
 if (!str_contains($xfer_front, 'Transferred by')
     || !str_contains($xfer_front, 'Approved by')
-    || !str_contains($xfer_front, 'aat-location-dropdown')
+    || !str_contains($xfer_front, 'Rejected by')
+    || !str_contains($xfer_front, 'dropdownDestinationLocation')
 ) {
-    fail('transfer form missing actors / location dropdown wrap');
+    fail('transfer form missing actors / destination dropdown helper');
 } else {
     ok('transfer actors + location dropdown');
 }
-$css = file_get_contents("$root/css/assettracker.css");
-if (!str_contains($css, 'aat-location-dropdown')) {
-    fail('css missing aat-location-dropdown hide-until-Select2');
+$xfer = file_get_contents("$root/inc/transfer.class.php");
+if (!str_contains($xfer, 'function dropdownDestinationLocation')
+    || !str_contains($xfer, 'users_id_rejector')
+) {
+    fail('transfer missing destination Select2 helper / rejector');
 } else {
-    ok('css location dropdown pending');
+    ok('transfer destination Select2 + rejector');
+}
+$css = file_get_contents("$root/css/assettracker.css");
+if (!str_contains($css, 'aat-location-pending')
+    || !str_contains($css, '--bs-gutter-x: 2.5rem')
+) {
+    fail('css missing location pending / alert column gap');
+} else {
+    ok('css location pending + alert gap');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

@@ -205,10 +205,10 @@ select.aat-recipient-user.aat-recipient-pending {
   margin-bottom: 0;
 }
 
-/* 4 columns × up to 5 classic list links (Bootstrap row + CSS grid fallback) */
+/* 4 columns × up to 5 classic list links (Bootstrap row) */
 .aat-alert-columns.row {
-  --bs-gutter-x: 1.25rem;
-  --bs-gutter-y: 0.25rem;
+  --bs-gutter-x: 2.5rem;
+  --bs-gutter-y: 0.35rem;
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: flex-start;
@@ -217,6 +217,7 @@ select.aat-recipient-user.aat-recipient-pending {
 
 .aat-alert-columns .aat-alert-col-wrap {
   min-width: 0;
+  padding-right: 0.5rem;
 }
 
 ul.aat-alert-col {
@@ -230,17 +231,43 @@ ul.aat-alert-col .aat-alert-li {
   line-height: 1.35;
 }
 
-/* Destination location: hide bare <select> until Select2 binds (no grey ----- flash). */
-.aat-location-dropdown select:not(.select2-hidden-accessible) {
-  visibility: hidden !important;
-  pointer-events: none !important;
+/*
+ * Destination location: keep a GLPI-sized placeholder until our Select2 is ready.
+ * Avoids native <select> / ----- flash on refresh (same idea as recipient user).
+ */
+.aat-location-dropdown {
+  display: block;
+  position: relative;
   min-height: 38px;
 }
 
-.aat-location-dropdown {
+.aat-location-dropdown.aat-location-pending::before {
+  content: '';
   display: block;
-  min-height: 38px;
-  position: relative;
+  height: 38px;
+  border: 1px solid var(--tblr-border-color, #d0d0d0);
+  border-radius: 4px;
+  background: var(--tblr-bg-surface, #fff);
+  box-sizing: border-box;
+}
+
+.aat-location-dropdown.aat-location-pending > select,
+.aat-location-dropdown.aat-location-pending > .select2-container {
+  position: absolute !important;
+  left: -10000px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.aat-location-dropdown.aat-location-ready::before {
+  display: none !important;
+}
+
+.aat-location-dropdown .select2-container {
+  width: 100% !important;
 }
 
 ul.aat-alert-col .aat-alert-li a {

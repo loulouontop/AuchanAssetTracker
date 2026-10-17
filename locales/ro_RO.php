@@ -21,6 +21,8 @@ return [
     'Allocation history' => 'Istoric alocări',
     'Allocation rejected by user' => 'Alocare respinsă de utilizator',
     'Approved by' => 'Aprobat de',
+    'Rejected' => 'Respins',
+    'Rejected by' => 'Respins de',
     'Equipment must be at the same location as the recipient user.' => 'Echipamentul trebuie să fie în aceeași locație cu utilizatorul destinatar.',
     'Recipient user has no location set.' => 'Utilizatorul destinatar nu are locație setată.',
     'Transferred by' => 'Transferat de',

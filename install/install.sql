@@ -124,6 +124,7 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_transfers` (
     `locations_id_dest` INT UNSIGNED NOT NULL DEFAULT 0,
     `users_id_initiator` INT UNSIGNED NOT NULL DEFAULT 0,
     `users_id_validator` INT UNSIGNED NOT NULL DEFAULT 0,
+    `users_id_rejector` INT UNSIGNED NOT NULL DEFAULT 0,
     `transfer_status` VARCHAR(40) NOT NULL DEFAULT 'in_transit',
     `date_initiated` TIMESTAMP NULL DEFAULT NULL,
     `date_validated` TIMESTAMP NULL DEFAULT NULL,
