@@ -225,10 +225,20 @@ JS);
             }
             echo "</div>";
 
-            $available = PluginAuchanassettrackerEquipment::findByStatus(
-                PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
-                $scope
-            );
+            // Allocatable stock = Available at the recipient's GLPI location only.
+            $recipient_loc = 0;
+            $ru = new User();
+            if ($ru->getFromDB($preview_user)) {
+                $recipient_loc = (int) ($ru->fields['locations_id'] ?? 0);
+            }
+            $can_stock = $recipient_loc > 0
+                && PluginAuchanassettrackerRighthelper::canAccessLocation($recipient_loc);
+            $available = $can_stock
+                ? PluginAuchanassettrackerEquipment::findByStatus(
+                    PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
+                    $recipient_loc
+                )
+                : [];
 
             echo "<form method='post' action='" . Html::entities_deep(self::getFormURL()) . "'>";
             echo Html::hidden('users_id', ['value' => $preview_user]);
@@ -258,8 +268,11 @@ JS);
                     . "</td><td>" . Html::entities_deep((string) $cname) . "</td></tr>";
             }
             if ($shown === 0) {
+                $empty_msg = ($recipient_loc <= 0)
+                    ? __('Recipient user has no location set.', 'auchanassettracker')
+                    : __('No available stock with a container at this location.', 'auchanassettracker');
                 echo "<tr><td colspan='5' class='text-muted'>"
-                    . __('No available stock with a container at this location.', 'auchanassettracker')
+                    . Html::entities_deep($empty_msg)
                     . "</td></tr>";
             }
             echo "</tbody></table></div>";
@@ -352,6 +365,18 @@ JS);
         if (!PluginAuchanassettrackerRighthelper::canAccessRecipientUser($users_id_recipient)) {
             Session::addMessageAfterRedirect(
                 __('You can only allocate to users from your location.', 'auchanassettracker'),
+                false,
+                ERROR
+            );
+            return false;
+        }
+
+        $ru = new User();
+        if (!$ru->getFromDB($users_id_recipient)
+            || (int) ($ru->fields['locations_id'] ?? 0) !== $loc
+        ) {
+            Session::addMessageAfterRedirect(
+                __('Equipment must be at the same location as the recipient user.', 'auchanassettracker'),
                 false,
                 ERROR
             );
@@ -1021,17 +1046,18 @@ JS);
 
         echo "<div class='aat-alert-section'>";
         echo "<p class='mb-1 fw-semibold'>" . Html::entities_deep($title) . "</p>";
-        echo "<div class='aat-alert-columns'>";
+        // Bootstrap row + custom grid CSS (both) so columns stay horizontal in GLPI.
+        echo "<div class='aat-alert-columns row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2'>";
         foreach ($cols as $col_items) {
-            if ($col_items === []) {
-                echo "<div class='aat-alert-col' aria-hidden='true'></div>";
-                continue;
+            echo "<div class='col aat-alert-col-wrap'>";
+            if ($col_items !== []) {
+                echo "<ul class='aat-alert-col'>";
+                foreach ($col_items as $item) {
+                    echo self::formatAlertListItem($item);
+                }
+                echo "</ul>";
             }
-            echo "<ul class='aat-alert-col'>";
-            foreach ($col_items as $item) {
-                echo self::formatAlertListItem($item);
-            }
-            echo "</ul>";
+            echo "</div>";
         }
         echo "</div>";
 
@@ -1044,7 +1070,7 @@ JS);
                 . " data-bs-toggle='modal' data-bs-target='#" . Html::entities_deep($modal_id) . "'>"
                 . Html::entities_deep($view_all) . "</button>";
 
-            // Modal: same 4-column list layout for the full set.
+            // Modal: distribute round-robin across 4 columns.
             $modal_cols = array_fill(0, $columns, []);
             foreach ($items as $i => $item) {
                 $modal_cols[$i % $columns][] = $item;
@@ -1060,13 +1086,15 @@ JS);
                 . " aria-label='" . Html::entities_deep(__('Close')) . "'></button>";
             echo "</div>";
             echo "<div class='modal-body'>";
-            echo "<div class='aat-alert-columns aat-alert-columns-modal'>";
+            echo "<div class='aat-alert-columns aat-alert-columns-modal row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2'>";
             foreach ($modal_cols as $col_items) {
+                echo "<div class='col aat-alert-col-wrap'>";
                 echo "<ul class='aat-alert-col'>";
                 foreach ($col_items as $item) {
                     echo self::formatAlertListItem($item);
                 }
                 echo "</ul>";
+                echo "</div>";
             }
             echo "</div></div>";
             echo "<div class='modal-footer'>";

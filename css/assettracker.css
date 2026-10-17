@@ -205,24 +205,18 @@ select.aat-recipient-user.aat-recipient-pending {
   margin-bottom: 0;
 }
 
-/* 4 columns × up to 5 classic list links */
-.aat-alert-columns {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.25rem 1.25rem;
-  align-items: start;
+/* 4 columns × up to 5 classic list links (Bootstrap row + CSS grid fallback) */
+.aat-alert-columns.row {
+  --bs-gutter-x: 1.25rem;
+  --bs-gutter-y: 0.25rem;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start;
+  margin-bottom: 0;
 }
 
-@media (max-width: 991.98px) {
-  .aat-alert-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 575.98px) {
-  .aat-alert-columns {
-    grid-template-columns: 1fr;
-  }
+.aat-alert-columns .aat-alert-col-wrap {
+  min-width: 0;
 }
 
 ul.aat-alert-col {
@@ -234,6 +228,19 @@ ul.aat-alert-col {
 ul.aat-alert-col .aat-alert-li {
   margin: 0.15rem 0;
   line-height: 1.35;
+}
+
+/* Destination location: hide bare <select> until Select2 binds (no grey ----- flash). */
+.aat-location-dropdown select:not(.select2-hidden-accessible) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  min-height: 38px;
+}
+
+.aat-location-dropdown {
+  display: block;
+  min-height: 38px;
+  position: relative;
 }
 
 ul.aat-alert-col .aat-alert-li a {

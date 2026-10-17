@@ -117,6 +117,17 @@ if ($id > 0) {
         . "</p>";
     echo "<p><strong>" . __('Status') . ":</strong> "
         . Html::entities_deep($status_labels[$st] ?? $st) . "</p>";
+    echo "<p><strong>" . __('Transferred by', 'auchanassettracker') . ":</strong> "
+        . PluginAuchanassettrackerAllocation::userNameLink((int) ($tr->fields['users_id_initiator'] ?? 0))
+        . "</p>";
+    $validator_id = (int) ($tr->fields['users_id_validator'] ?? 0);
+    if ($validator_id > 0
+        || $st === PluginAuchanassettrackerTransfer::STATUS_COMPLETED
+    ) {
+        echo "<p><strong>" . __('Approved by', 'auchanassettracker') . ":</strong> "
+            . PluginAuchanassettrackerAllocation::userNameLink($validator_id)
+            . "</p>";
+    }
 
     if (trim((string) ($tr->fields['notes'] ?? '')) !== '') {
         echo "<p><strong>" . __('Notes') . ":</strong> "
@@ -138,14 +149,17 @@ if ($id > 0) {
         echo "<div class='mb-3'><label class='form-label'>"
             . __('Destination location', 'auchanassettracker') . $req . "</label>";
         $dest_opts = [
-            'name'  => 'locations_id_dest',
-            'value' => (int) $tr->fields['locations_id_dest'],
+            'name'                => 'locations_id_dest',
+            'value'               => (int) $tr->fields['locations_id_dest'],
+            'display_emptychoice' => false,
+            'width'               => '100%',
         ];
         if ($source > 0) {
             $dest_opts['used'] = [$source];
         }
+        echo "<div class='aat-location-dropdown'>";
         Location::dropdown($dest_opts);
-        echo "</div>";
+        echo "</div></div>";
         echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
         echo "<textarea name='notes' class='form-control' rows='2'>"
             . Html::entities_deep((string) ($tr->fields['notes'] ?? ''))
@@ -325,12 +339,18 @@ if ($id > 0) {
     echo "<div class='mb-3'><label class='form-label'>"
         . __('Destination location', 'auchanassettracker') . $req . "</label>";
     // Scoped profiles (location manager / location set): hide own location from destination.
-    $dest_opts = ['name' => 'locations_id_dest'];
+    // Hide bare <select> until Select2 binds (avoids grey ----- flash).
+    $dest_opts = [
+        'name'                => 'locations_id_dest',
+        'display_emptychoice' => true,
+        'width'               => '100%',
+    ];
     if ($scope !== null && (int) $scope > 0) {
         $dest_opts['used'] = [(int) $scope];
     }
+    echo "<div class='aat-location-dropdown'>";
     Location::dropdown($dest_opts);
-    echo "</div>";
+    echo "</div></div>";
     echo "<div class='mb-3'><label class='form-label'>" . __('Notes') . "</label>";
     echo "<textarea name='notes' class='form-control' rows='2'></textarea></div>";
 
