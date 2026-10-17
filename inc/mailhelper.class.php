@@ -191,18 +191,26 @@ class PluginAuchanassettrackerMailhelper
 
         try {
             $mmail = new GLPIMailer();
+            $from = self::resolveMailFrom();
+            if ($from['email'] === null || $from['email'] === '') {
+                PluginAuchanassettrackerPluginlog::info(
+                    'No From/Sender email in GLPI config (Setup → Notifications → Email followups:'
+                    . ' Admin email / From email). Cannot send to ' . $email
+                );
+                return false;
+            }
 
             // Prefer Symfony Email API (no deprecation warnings).
             if (method_exists($mmail, 'getEmail')) {
                 $symfony = $mmail->getEmail();
-                $from = (string) ($CFG_GLPI['from_email'] ?? $CFG_GLPI['admin_email'] ?? '');
-                $from_name = (string) ($CFG_GLPI['from_email_name'] ?? $CFG_GLPI['admin_email_name'] ?? '');
-                if ($from !== '' && method_exists($symfony, 'from')) {
-                    if ($from_name !== '' && class_exists(\Symfony\Component\Mime\Address::class)) {
-                        $symfony->from(new \Symfony\Component\Mime\Address($from, $from_name));
-                    } else {
-                        $symfony->from($from);
-                    }
+                self::applyFromToSymfonyEmail($symfony, $from['email'], $from['name']);
+                // Sender header: GLPIMailer may already set smtp_sender; ensure one exists.
+                $sender = trim((string) ($CFG_GLPI['smtp_sender'] ?? ''));
+                if ($sender === '') {
+                    $sender = $from['email'];
+                }
+                if (method_exists($symfony, 'sender') && $sender !== '') {
+                    $symfony->sender($sender);
                 }
                 $symfony->to($email);
                 $symfony->subject($subject);
@@ -210,6 +218,9 @@ class PluginAuchanassettrackerMailhelper
                 $symfony->text($plain);
             } else {
                 // Legacy PHPMailer-style wrappers.
+                if (method_exists($mmail, 'SetFrom') || method_exists($mmail, 'setFrom')) {
+                    $mmail->SetFrom($from['email'], (string) ($from['name'] ?? ''));
+                }
                 $mmail->AddAddress($email);
                 $mmail->Subject = $subject;
                 $mmail->Body = $html;
@@ -229,6 +240,67 @@ class PluginAuchanassettrackerMailhelper
             PluginAuchanassettrackerPluginlog::exception($e, 'mail');
             return false;
         }
+    }
+
+    /**
+     * Resolve From address the same way GLPI notifications do.
+     *
+     * @return array{email: ?string, name: ?string}
+     */
+    public static function resolveMailFrom(): array
+    {
+        global $CFG_GLPI;
+
+        $entity = null;
+        if (isset($_SESSION['glpiactive_entity'])) {
+            $entity = (int) $_SESSION['glpiactive_entity'];
+        }
+
+        if (class_exists('Config') && method_exists('Config', 'getEmailSender')) {
+            $sender = Config::getEmailSender($entity, false);
+            if (is_array($sender) && !empty($sender['email'])) {
+                return [
+                    'email' => (string) $sender['email'],
+                    'name'  => isset($sender['name']) ? (string) $sender['name'] : null,
+                ];
+            }
+        }
+
+        foreach (['from_email', 'admin_email', 'noreply_email'] as $key) {
+            $addr = trim((string) ($CFG_GLPI[$key] ?? ''));
+            if ($addr !== '') {
+                $name_key = $key . '_name';
+                $name = trim((string) ($CFG_GLPI[$name_key] ?? ''));
+                return [
+                    'email' => $addr,
+                    'name'  => $name !== '' ? $name : null,
+                ];
+            }
+        }
+
+        $smtp_sender = trim((string) ($CFG_GLPI['smtp_sender'] ?? ''));
+        if ($smtp_sender !== '') {
+            return ['email' => $smtp_sender, 'name' => null];
+        }
+
+        return ['email' => null, 'name' => null];
+    }
+
+    /**
+     * @param object $symfony Symfony\Component\Mime\Email
+     */
+    private static function applyFromToSymfonyEmail(object $symfony, string $from, ?string $from_name): void
+    {
+        if (!method_exists($symfony, 'from')) {
+            return;
+        }
+        if ($from_name !== null && $from_name !== ''
+            && class_exists(\Symfony\Component\Mime\Address::class)
+        ) {
+            $symfony->from(new \Symfony\Component\Mime\Address($from, $from_name));
+            return;
+        }
+        $symfony->from($from);
     }
 
     /**
