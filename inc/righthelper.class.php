@@ -40,8 +40,28 @@ class PluginAuchanassettrackerRighthelper
         return false;
     }
 
+    /**
+     * Role stored on the plugin profile mapping (null if unmapped).
+     */
+    public static function getMappedRole(): ?string
+    {
+        $mapping = PluginAuchanassettrackerProfile::getForCurrentProfile();
+        if ($mapping === null) {
+            return null;
+        }
+        $role = (string) ($mapping['role'] ?? '');
+        if ($role === '' || !isset(self::getRoles()[$role])) {
+            return null;
+        }
+        return $role;
+    }
+
     public static function canSeeEquipment(): bool
     {
+        // End user: confirm receipt only — never show Equipment.
+        if (self::getMappedRole() === self::ROLE_USER) {
+            return false;
+        }
         return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, [
             READ, READ_ASSIGNED, READ_OWNED,
         ]);
@@ -49,6 +69,9 @@ class PluginAuchanassettrackerRighthelper
 
     public static function canSeeContainers(): bool
     {
+        if (self::getMappedRole() === self::ROLE_USER) {
+            return false;
+        }
         return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_CONTAINER, [
             READ, READ_ASSIGNED, READ_OWNED,
         ]);
@@ -56,6 +79,9 @@ class PluginAuchanassettrackerRighthelper
 
     public static function canManageStock(): bool
     {
+        if (self::getMappedRole() === self::ROLE_USER) {
+            return false;
+        }
         return Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, CREATE)
             || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_EQUIPMENT, UPDATE)
             || Session::haveRight(PluginAuchanassettrackerProfile::RIGHT_BULK, CREATE);
@@ -63,6 +89,9 @@ class PluginAuchanassettrackerRighthelper
 
     public static function canAllocate(): bool
     {
+        if (self::getMappedRole() === self::ROLE_USER) {
+            return false;
+        }
         return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_ALLOCATION, [
             READ, CREATE, UPDATE,
         ]);
@@ -70,6 +99,11 @@ class PluginAuchanassettrackerRighthelper
 
     public static function canTransfer(): bool
     {
+        $role = self::getMappedRole();
+        // End user and Support technician must not see / run transfers.
+        if ($role === self::ROLE_USER || $role === self::ROLE_SUPPORT_TECH) {
+            return false;
+        }
         return self::haveAnyRight(PluginAuchanassettrackerProfile::RIGHT_TRANSFER, [
             READ, CREATE, UPDATE,
         ]);
@@ -156,7 +190,7 @@ class PluginAuchanassettrackerRighthelper
         if (self::canManageStock()) {
             return self::ROLE_LOCATION_MANAGER;
         }
-        if (self::canAllocate() || self::canTransfer()) {
+        if (self::canAllocate()) {
             return self::ROLE_SUPPORT_TECH;
         }
         return self::ROLE_USER;

@@ -924,35 +924,108 @@ JS);
 
         echo "<div class='alert alert-warning aat-alert-block'>";
         echo "<div class='aat-alert-title'>" . __('Active alerts', 'auchanassettracker') . "</div>";
+
         if ($overdue !== []) {
-            echo "<p class='mb-1 fw-semibold'>"
-                . __('Late confirmations (days)', 'auchanassettracker') . "</p>";
-            echo "<ul>";
+            $items = [];
             foreach ($overdue as $row) {
                 $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
                 $label = trim((string) ($row['equipment_name'] ?? ''));
                 if ($label === '') {
                     $label = '#' . $eid;
                 }
-                echo "<li><a href='" . $base . "/front/equipment.form.php?id=$eid'>"
-                    . Html::entities_deep($label) . "</a></li>";
+                $items[] = [
+                    'id'    => $eid,
+                    'label' => $label,
+                    'href'  => $base . '/front/equipment.form.php?id=' . $eid,
+                ];
             }
-            echo "</ul>";
+            self::renderAlertItemGrid(
+                __('Late confirmations (days)', 'auchanassettracker'),
+                $items,
+                'aat-overdue'
+            );
         }
+
         if ($needs_container !== []) {
-            echo "<p class='mb-1 fw-semibold'>"
-                . __('Needs a container (rejected)', 'auchanassettracker') . "</p>";
-            echo "<ul class='mb-0'>";
+            $items = [];
             foreach ($needs_container as $eq) {
+                $eid = (int) ($eq['id'] ?? 0);
                 $label = trim((string) ($eq['name'] ?? ''));
                 if ($label === '') {
-                    $label = '#' . (int) ($eq['id'] ?? 0);
+                    $label = '#' . $eid;
                 }
-                echo "<li><a href='" . $base . "/front/equipment.form.php?id=" . (int) $eq['id'] . "'>"
-                    . Html::entities_deep($label) . "</a></li>";
+                $items[] = [
+                    'id'    => $eid,
+                    'label' => $label,
+                    'href'  => $base . '/front/equipment.form.php?id=' . $eid,
+                ];
             }
-            echo "</ul>";
+            self::renderAlertItemGrid(
+                __('Needs a container (rejected)', 'auchanassettracker'),
+                $items,
+                'aat-needs-container'
+            );
         }
+
+        echo "</div>";
+    }
+
+    /**
+     * Compact 4-column alert grid; if more than 8 items, preview + Show all modal.
+     *
+     * @param list<array{id: int, label: string, href: string}> $items
+     */
+    public static function renderAlertItemGrid(string $title, array $items, string $uid): void
+    {
+        $total = count($items);
+        if ($total === 0) {
+            return;
+        }
+
+        $preview_limit = 8;
+        $preview = array_slice($items, 0, $preview_limit);
+        $modal_id = Html::cleanId($uid . '-modal-' . mt_rand());
+
+        echo "<div class='aat-alert-section'>";
+        echo "<p class='mb-1 fw-semibold'>" . Html::entities_deep($title) . "</p>";
+        echo "<div class='aat-alert-grid'>";
+        foreach ($preview as $item) {
+            echo "<a class='aat-alert-chip' href='" . Html::entities_deep($item['href']) . "'>"
+                . Html::entities_deep($item['label']) . "</a>";
+        }
+        echo "</div>";
+
+        if ($total > $preview_limit) {
+            $show_all = sprintf(
+                __('Show all (%d)', 'auchanassettracker'),
+                $total
+            );
+            echo "<button type='button' class='btn btn-sm btn-outline-secondary mt-2'"
+                . " data-bs-toggle='modal' data-bs-target='#" . Html::entities_deep($modal_id) . "'>"
+                . Html::entities_deep($show_all) . "</button>";
+
+            echo "<div class='modal fade' id='" . Html::entities_deep($modal_id) . "'"
+                . " tabindex='-1' aria-hidden='true'>";
+            echo "<div class='modal-dialog modal-lg modal-dialog-scrollable'>";
+            echo "<div class='modal-content'>";
+            echo "<div class='modal-header'>";
+            echo "<h5 class='modal-title'>" . Html::entities_deep($title) . "</h5>";
+            echo "<button type='button' class='btn-close' data-bs-dismiss='modal'"
+                . " aria-label='" . Html::entities_deep(__('Close')) . "'></button>";
+            echo "</div>";
+            echo "<div class='modal-body'>";
+            echo "<div class='aat-alert-grid aat-alert-grid-modal'>";
+            foreach ($items as $item) {
+                echo "<a class='aat-alert-chip' href='" . Html::entities_deep($item['href']) . "'>"
+                    . Html::entities_deep($item['label']) . "</a>";
+            }
+            echo "</div></div>";
+            echo "<div class='modal-footer'>";
+            echo "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>"
+                . Html::entities_deep(__('Close')) . "</button>";
+            echo "</div></div></div></div>";
+        }
+
         echo "</div>";
     }
 }

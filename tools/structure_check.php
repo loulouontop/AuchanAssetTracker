@@ -87,10 +87,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.1'")) {
-    fail('expected version 0.4.1');
+if (!str_contains($setup, "'0.4.2'")) {
+    fail('expected version 0.4.2');
 } else {
-    ok('version 0.4.1');
+    ok('version 0.4.2');
 }
 
 foreach ([
@@ -157,18 +157,64 @@ if (!str_contains($menu, 'MENU_TRANSFER')) {
 }
 
 $profile = file_get_contents("$root/inc/profile.class.php");
-foreach (['ensureBundledProfiles', 'getBundledProfiles', 'Location manager', 'End user', 'findOrCreateProfileByName'] as $needle) {
+foreach ([
+    'ensureBundledProfiles', 'getBundledProfiles', 'Location manager', 'End user',
+    'findOrCreateProfileByName', 'syncProfileLocalizedLabels', 'getProfileNameVariants',
+    'cloneCoreRightsFromTemplate', 'helpdesk', 'function showForm', 'getTabNameForItem',
+] as $needle) {
     if (!str_contains($profile, $needle)) {
         fail("profile missing $needle");
     } else {
         ok("profile has $needle");
     }
 }
+if (!is_readable("$root/front/profile.form.php")) {
+    fail('front/profile.form.php missing');
+} else {
+    ok('front/profile.form.php present');
+}
+if (!preg_match("/registerClass\\('PluginAuchanassettrackerProfile'\\s*,\\s*\\[[^\\]]*addtabon/", $setup)) {
+    fail('Profile addtabon must be registered');
+} else {
+    ok('Profile addtabon registered');
+}
+// End user: no equipment; technician: no transfer.
+if (!preg_match("/'support_tech'\\s*=>\\s*\\[[^\\]]*RIGHT_TRANSFER\\s*=>\\s*0/s", $profile)) {
+    fail('support_tech must have TRANSFER => 0');
+} else {
+    ok('support_tech has no transfer');
+}
+if (!preg_match("/default\\s*=>\\s*\\[[^\\]]*RIGHT_EQUIPMENT\\s*=>\\s*0/s", $profile)) {
+    fail('end user must have EQUIPMENT => 0');
+} else {
+    ok('end user has no equipment');
+}
 $rights = file_get_contents("$root/inc/righthelper.class.php");
+if (!str_contains($rights, 'getMappedRole')
+    || !str_contains($rights, 'ROLE_SUPPORT_TECH')
+) {
+    fail('righthelper missing role gates');
+} else {
+    ok('righthelper role gates');
+}
 if (!str_contains($rights, "haveRight('config', UPDATE)")) {
     fail('canConfigure should prefer Super-Admin config UPDATE');
 } else {
     ok('canConfigure Super-Admin gate');
+}
+$alloc = file_get_contents("$root/inc/allocation.class.php");
+if (!str_contains($alloc, 'aat-alert-grid') || !str_contains($alloc, 'Show all')) {
+    fail('allocation alerts missing grid / Show all');
+} else {
+    ok('allocation alert grid');
+}
+$ro = file_get_contents("$root/locales/ro_RO.php");
+foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {
+    if (!str_contains($ro, "'$msgid'")) {
+        fail("ro_RO missing msgid $msgid");
+    } else {
+        ok("ro_RO has $msgid");
+    }
 }
 
 if (str_contains($sql, 'auchanequipment')) {

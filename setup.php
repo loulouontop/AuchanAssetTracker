@@ -8,7 +8,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.1');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.2');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -199,7 +199,9 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
     Plugin::registerClass('PluginAuchanassettrackerConfirm');
     Plugin::registerClass('PluginAuchanassettrackerTransfer');
-    Plugin::registerClass('PluginAuchanassettrackerProfile');
+    Plugin::registerClass('PluginAuchanassettrackerProfile', [
+        'addtabon' => ['Profile'],
+    ]);
     Plugin::registerClass('PluginAuchanassettrackerLocationtab', [
         'addtabon' => ['Location'],
     ]);
