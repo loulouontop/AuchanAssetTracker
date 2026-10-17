@@ -275,13 +275,14 @@ if (!str_contains($xfer_front, 'Transferred by')
 $xfer = file_get_contents("$root/inc/transfer.class.php");
 if (!str_contains($xfer, 'function dropdownDestinationLocation')
     || !str_contains($xfer, 'users_id_rejector')
-    || !str_contains($xfer, 'Location::dropdown')
-    || !str_contains($xfer, "'addicon'")
+    || !str_contains($xfer, 'aat-location-pending')
+    || !str_contains($xfer, 'ti-plus')
+    || !str_contains($xfer, 'ti-info-circle')
     || !str_contains($xfer, 'destinationLocationsToExclude')
 ) {
-    fail('transfer missing native Location dropdown i/+ / exclude own site');
+    fail('transfer missing immediate Select2 dest dropdown i/+ / exclude own site');
 } else {
-    ok('transfer destination Location i/+ + exclude');
+    ok('transfer destination Select2 i/+ + exclude');
 }
 $css = file_get_contents("$root/css/assettracker.css");
 if (!str_contains($css, 'aat-location-pending')
