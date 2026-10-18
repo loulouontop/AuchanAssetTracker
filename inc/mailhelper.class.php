@@ -163,8 +163,9 @@ class PluginAuchanassettrackerMailhelper
             $mail_subject = '[' . __('Auchan Asset Tracker', 'auchanassettracker') . '] ' . $subject;
 
             if (!self::sendViaGlpiMailer($email, $mail_subject, $html, $plain)) {
+                // Detailed cause already logged (missing From, SMTP 554, etc.).
                 PluginAuchanassettrackerPluginlog::info(
-                    "Mail backend unavailable; in-app notice stored for $email — $subject"
+                    "In-app notice stored for $email (mail not delivered) — $subject"
                 );
             }
         } catch (Throwable $e) {
@@ -175,6 +176,9 @@ class PluginAuchanassettrackerMailhelper
     /**
      * Send via GLPI 11 GLPIMailer (Symfony Mailer wrapper).
      * Must allow autoload — class_exists(..., false) skipped loading and caused false "unavailable".
+     *
+     * SMTP errors like 554 Access denied are mail-server / GLPI SMTP config issues
+     * (Setup → Notifications → Email followups), not plugin logic.
      */
     public static function sendViaGlpiMailer(
         string $email,
@@ -186,6 +190,9 @@ class PluginAuchanassettrackerMailhelper
 
         // Autoload GLPIMailer (do NOT pass false — that skipped the class on GLPI 11).
         if (!class_exists('GLPIMailer') && !class_exists(\GLPIMailer::class)) {
+            PluginAuchanassettrackerPluginlog::info(
+                'GLPIMailer class not found — cannot send mail to ' . $email
+            );
             return false;
         }
 
@@ -231,8 +238,10 @@ class PluginAuchanassettrackerMailhelper
             if (!$ok) {
                 $err = method_exists($mmail, 'getError') ? (string) ($mmail->getError() ?? '') : '';
                 PluginAuchanassettrackerPluginlog::info(
-                    'GLPIMailer send failed for ' . $email
+                    'GLPIMailer SMTP rejected mail for ' . $email
+                    . ' (From=' . $from['email'] . ')'
                     . ($err !== '' ? (': ' . $err) : '')
+                    . ' — check Setup → Notifications → Email followups (SMTP auth, From must be allowed to send).'
                 );
             }
             return $ok;
