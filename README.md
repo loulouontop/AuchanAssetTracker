@@ -52,7 +52,7 @@ On install / upgrade the plugin creates four GLPI profiles (central interface) i
 | **Central admin** | `central_admin` | Full operations on **all** locations (stock, containers, allocation, transfers, write-off). |
 | **Location manager** | `location_manager` | Same operations, limited to the user’s GLPI **Location**. |
 | **Support technician** | `support_tech` | **New allocation** + service on assigned location (no transfers / stock receipt / bulk). Central interface; GLPI rights seeded from **Technician**. |
-| **End user** | `user` | **Confirm receipt** only. **Helpdesk** (simplified) interface; GLPI rights seeded from **Self-Service**. Default for new users. |
+| **End user** | `user` | **Confirm receipt** only. **Helpdesk** (simplified) interface; GLPI rights seeded from **Self-Service**. |
 
 Central admin / Location manager use the **central** interface and seed GLPI rights from **Admin**. Clients can still edit interface and rights under **Administration → Profiles**.
 
@@ -87,7 +87,7 @@ Assign users under **Administration → Users** (profile + Location for managers
 
 1. Copy this folder to `plugins/AuchanAssetTracker` (or your existing plugin folder name). Include the `public/` folder.
 2. **Setup → Plugins** → Install → Enable (or Upgrade if already installed).
-3. After enable, open **Administration → Profiles** — the four Auchan profiles should already exist. Assign users to them; set **Location** on each manager/tech user form. New users default to **End user**.
+3. After enable, open **Administration → Profiles** — the four Auchan profiles should already exist. Assign users to them; set **Location** on each manager/tech user form. End user is not set as the GLPI default profile for new users.
 4. Create locations and containers before receiving stock.
 5. Open a container → check URL (left) + QR (right) → print the label; open/scan the public URL (no login) to verify the shelf view.
 6. QR links use the host you open GLPI with (not a hardcoded localhost). Optionally set **Setup → General → URL of the application** as a fallback.

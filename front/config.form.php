@@ -23,6 +23,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_thresholds'])) {
     exit;
 }
 
+// Full-page final UI preview (no GLPI chrome) — opened from Config button.
+if (isset($_GET['preview_mail'])) {
+    include __DIR__ . '/mail.preview.php';
+    exit;
+}
+
 Html::header(
     __('Auchan Asset Tracker - configuration', 'auchanassettracker'),
     $_SERVER['PHP_SELF'],

@@ -233,8 +233,9 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     /**
      * Bundled GLPI profiles created by the plugin (English msgid → role).
      * Display name/comment use __() so they follow the active GLPI language.
-     * End user is the default profile for new GLPI users (helpdesk interface).
+     * End user uses helpdesk interface (confirm receipt only).
      * Other roles use central interface and clone core rights from Admin / Technician.
+     * None of the bundled profiles is marked as GLPI default for new users.
      *
      * @return array<string, array{
      *   name: string,
@@ -270,8 +271,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             ],
             PluginAuchanassettrackerRighthelper::ROLE_USER => [
                 'name'       => 'End user',
-                'comment'    => 'Auchan Asset Tracker — confirm receipt only. Default profile for new users.',
-                'is_default' => true,
+                'comment'    => 'Auchan Asset Tracker — confirm receipt only.',
+                'is_default' => false,
                 'interface'  => 'helpdesk',
                 'clone_from' => ['Self-Service', 'Self-service', 'Hotliner'],
             ],
@@ -428,17 +429,23 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Apply is_default flag (End user) exclusively on one profile.
+     * Sync GLPI is_default on a profile.
+     * When true: mark this profile as the exclusive default for new users.
+     * When false: clear is_default on this profile only (does not choose another default).
      */
     public static function setProfileAsDefault(int $profiles_id, bool $is_default): void
     {
         global $DB;
 
         if ($profiles_id <= 0
-            || !$is_default
             || !$DB->tableExists('glpi_profiles')
             || !$DB->fieldExists('glpi_profiles', 'is_default')
         ) {
+            return;
+        }
+
+        if (!$is_default) {
+            $DB->update('glpi_profiles', ['is_default' => 0], ['id' => $profiles_id]);
             return;
         }
 
