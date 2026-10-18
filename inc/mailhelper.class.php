@@ -213,7 +213,6 @@ class PluginAuchanassettrackerMailhelper
                 [__('Equipment'), 'Laptop-Demo-01'],
                 [__('Type'), __('Computer')],
                 [__('Serial number'), 'SN-DEMO-12345'],
-                [__('Technician', 'auchanassettracker'), $tech],
             ],
         ]);
     }
