@@ -185,39 +185,6 @@ class PluginAuchanassettrackerMailhelper
     }
 
     /**
-     * Sample allocation-pending email HTML for config preview (final UI).
-     */
-    public static function renderPreviewHtml(): string
-    {
-        $subject = __('Equipment awaiting confirmation', 'auchanassettracker');
-        $tech = self::formatUserDisplayName((int) Session::getLoginUserID());
-        if ($tech === '') {
-            $tech = __('Technician', 'auchanassettracker');
-        }
-        $greeting = sprintf(__('Hello %s,', 'auchanassettracker'), __('Recipient', 'auchanassettracker'));
-        $intro = sprintf(
-            __(
-                '%s has assigned equipment to you. It is awaiting your confirmation in GLPI. Please confirm or decline receipt of this equipment:',
-                'auchanassettracker'
-            ),
-            $tech
-        );
-        $link = self::absolutePluginUrl('/front/confirm.php');
-
-        return self::renderHtmlEmail($subject, $intro, $link, [
-            'badge'    => __('Confirm receipt', 'auchanassettracker'),
-            'greeting' => $greeting,
-            'intro'    => $intro,
-            'cta'      => __('Confirm or decline', 'auchanassettracker'),
-            'rows'     => [
-                [__('Equipment'), 'Laptop-Demo-01'],
-                [__('Type'), __('Computer')],
-                [__('Serial number'), 'SN-DEMO-12345'],
-            ],
-        ]);
-    }
-
-    /**
      * @param array{
      *   badge?: string,
      *   greeting?: string,

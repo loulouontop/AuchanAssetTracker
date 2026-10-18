@@ -269,41 +269,30 @@ if (!str_contains($mail, 'absolutePluginUrl')
 } else {
     ok('mailhelper absolute GLPI-root links');
 }
-if (!str_contains($mail, 'renderPreviewHtml')
-    || !str_contains($mail, 'Hello %s,')
+if (!str_contains($mail, 'Hello %s,')
     || !str_contains($mail, 'has assigned equipment')
 ) {
-    fail('mailhelper missing allocation email copy / preview');
+    fail('mailhelper missing allocation email copy');
 } else {
-    ok('mailhelper allocation copy + preview');
+    ok('mailhelper allocation copy');
 }
 if (preg_match("/\\?:\\s*'—'/", $mail) || preg_match("/\\?\\s*'—'\\s*:/", $mail)) {
     fail('mailhelper must not use em-dash placeholders for empty values');
 } else {
     ok('mailhelper blank empty table cells');
 }
-$config_class = file_get_contents("$root/inc/config.class.php");
-$config_front = file_get_contents("$root/front/config.form.php");
-if (!str_contains($config_class, 'Preview email template')
-    || !str_contains($config_class, 'preview_mail')
-    || !file_exists("$root/front/mail.preview.php")
+if (file_exists("$root/front/mail.preview.php")
+    || str_contains(file_get_contents("$root/inc/config.class.php"), 'Preview email template')
+    || str_contains(file_get_contents("$root/front/config.form.php"), 'preview_mail')
 ) {
-    fail('config must offer Preview email template (mail.preview.php)');
+    fail('email template preview must be removed');
 } else {
-    ok('config email template preview');
-}
-if (!str_contains($config_front, 'preview_mail')
-    || !str_contains($config_front, 'mail.preview.php')
-) {
-    fail('config.form.php must route preview_mail to mail.preview.php');
-} else {
-    ok('config.form.php preview_mail route');
+    ok('email template preview removed');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach ([
     'Hello %s,',
     'has assigned equipment to you',
-    'Preview email template',
     'Confirm or decline',
 ] as $msgid) {
     if (!str_contains($ro, $msgid)) {
