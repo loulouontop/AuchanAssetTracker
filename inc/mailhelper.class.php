@@ -54,7 +54,6 @@ class PluginAuchanassettrackerMailhelper
                 [__('Equipment'), $name],
                 [__('Type'), $type_label],
                 [__('Serial number'), $serial],
-                [__('Technician', 'auchanassettracker'), $tech_name],
             ],
         ]);
     }
