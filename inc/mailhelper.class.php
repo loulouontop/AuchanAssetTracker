@@ -520,7 +520,7 @@ class PluginAuchanassettrackerMailhelper
             . $rows_html . '</table>'
             . $cta_html . '
         </td></tr>
-        <tr><td style="padding:12px 20px 14px;background:#FFF5F5;border-top:1px solid #F3D6D6;font-size:12px;line-height:1.4;color:#5C5C5C;">'
+        <tr><td align="center" style="padding:12px 20px 14px;background:#FFF5F5;border-top:1px solid #F3D6D6;font-size:12px;line-height:1.4;color:#5C5C5C;text-align:center;">'
             . $footer . '
         </td></tr>
       </table>
