@@ -87,10 +87,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.1'")) {
-    fail('expected version 0.4.1');
+if (!str_contains($setup, "'0.4.2'")) {
+    fail('expected version 0.4.2');
 } else {
-    ok('version 0.4.1');
+    ok('version 0.4.2');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -209,6 +209,17 @@ if (!preg_match("/default\\s*=>\\s*\\[[^\\]]*RIGHT_EQUIPMENT\\s*=>\\s*0/s", $pro
     fail('end user must have EQUIPMENT => 0');
 } else {
     ok('end user has no equipment');
+}
+if (!preg_match(
+    "/ROLE_USER\\s*=>\\s*\\[[^\\]]*?'is_default'\\s*=>\\s*false/s",
+    $profile
+) && !preg_match(
+    "/'End user'[\\s\\S]*?'is_default'\\s*=>\\s*false/",
+    $profile
+)) {
+    fail('End user must not be GLPI default profile for new users');
+} else {
+    ok('End user is not GLPI default');
 }
 $confirm_front = file_get_contents("$root/front/confirm.php");
 $confirm_class = file_get_contents("$root/inc/confirm.class.php");
