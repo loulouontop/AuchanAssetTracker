@@ -54,7 +54,6 @@ class PluginAuchanassettrackerMailhelper
                 [__('Equipment'), $name],
                 [__('Type'), $type_label],
                 [__('Serial number'), $serial],
-                [__('Technician', 'auchanassettracker'), $tech_name],
             ],
         ]);
     }
@@ -214,7 +213,6 @@ class PluginAuchanassettrackerMailhelper
                 [__('Equipment'), 'Laptop-Demo-01'],
                 [__('Type'), __('Computer')],
                 [__('Serial number'), 'SN-DEMO-12345'],
-                [__('Technician', 'auchanassettracker'), $tech],
             ],
         ]);
     }
@@ -520,7 +518,7 @@ class PluginAuchanassettrackerMailhelper
             . $rows_html . '</table>'
             . $cta_html . '
         </td></tr>
-        <tr><td style="padding:12px 20px 14px;background:#FFF5F5;border-top:1px solid #F3D6D6;font-size:12px;line-height:1.4;color:#5C5C5C;">'
+        <tr><td align="center" style="padding:12px 20px 14px;background:#FFF5F5;border-top:1px solid #F3D6D6;font-size:12px;line-height:1.4;color:#5C5C5C;text-align:center;">'
             . $footer . '
         </td></tr>
       </table>
