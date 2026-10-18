@@ -126,22 +126,6 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
         echo "</div>";
         Html::closeForm();
 
-        $preview = Html::entities_deep(self::getFormURL() . '?preview_mail=1');
-        echo "<hr class='my-3'>";
-        echo "<div class='mb-2 fw-semibold'>"
-            . Html::entities_deep(__('Email template', 'auchanassettracker'))
-            . "</div>";
-        echo "<p class='form-text mb-2'>"
-            . Html::entities_deep(__(
-                'Preview shows the final email UI (sample allocation). Language follows the current GLPI language (EN / RO).',
-                'auchanassettracker'
-            ))
-            . "</p>";
-        echo "<a class='btn btn-outline-secondary' href='" . $preview . "' target='_blank' rel='noopener'>"
-            . "<i class='ti ti-mail'></i> "
-            . Html::entities_deep(__('Preview email template', 'auchanassettracker'))
-            . "</a>";
-
         PluginAuchanassettrackerMenu::endNativeFormCard();
         echo '</div></div>';
         return true;
