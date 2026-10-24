@@ -144,6 +144,19 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
+     * Reports (filter + CSV/Excel): Central admin, Location manager, Support technician.
+     */
+    public static function canViewReports(): bool
+    {
+        $role = self::getCurrentRole();
+        return in_array($role, [
+            self::ROLE_CENTRAL_ADMIN,
+            self::ROLE_LOCATION_MANAGER,
+            self::ROLE_SUPPORT_TECH,
+        ], true);
+    }
+
+    /**
      * Global ops (all locations): Central admin role, or Super-Admin.
      */
     public static function isCentralAdmin(): bool

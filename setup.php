@@ -1,14 +1,15 @@
 <?php
 /**
- * AuchanAssetTracker — GLPI 11 plugin (Sprint 4).
+ * AuchanAssetTracker — GLPI 11 plugin (Sprint 5).
  *
- * Stock, containers, allocation, transfers, service, write-off, QR labels. RO + EN.
+ * Stock, containers, allocation, transfers, service, write-off, QR labels,
+ * role dashboards, reports. RO + EN.
  *
  * @author    Lokmane Benaziza
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.4.1');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -69,6 +70,8 @@ function plugin_auchanassettracker_bootstrap(): void
         'transferitem',
         'tickethook',
         'qrhelper',
+        'dashboard',
+        'report',
         'menu',
         'mailhelper',
     ] as $file) {

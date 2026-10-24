@@ -567,16 +567,18 @@ function plugin_auchanassettracker_redefine_menus(array $menu): array
     $sector = PluginAuchanassettrackerMenu::SECTOR;
     $interface = (string) ($_SESSION['glpiactiveprofile']['interface'] ?? 'central');
 
-    // Helpdesk / simplified interface: single Confirm receipt entry (GLPI expects content => [true]).
+    // Helpdesk / simplified interface: dashboard home (pending + my gear; CTA to confirm).
     if ($interface === 'helpdesk') {
-        if (!PluginAuchanassettrackerRighthelper::canConfirm()) {
+        if (!PluginAuchanassettrackerRighthelper::canConfirm()
+            && PluginAuchanassettrackerRighthelper::getCurrentRole() === ''
+        ) {
             unset($menu[$sector]);
             return $menu;
         }
-        $confirm = plugin_auchanassettracker_web_dir(true) . '/front/confirm.php';
+        $dashboard = plugin_auchanassettracker_web_dir(true) . '/front/dashboard.php';
         $menu[$sector] = [
             'title'   => PluginAuchanassettrackerMenu::getMenuName(),
-            'default' => $confirm,
+            'default' => $dashboard,
             'icon'    => PluginAuchanassettrackerMenu::getIcon(),
             'content' => [true],
         ];
