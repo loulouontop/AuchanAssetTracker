@@ -1,7 +1,7 @@
 #!/usr/bin/env php
 <?php
 /**
- * Offline structure checks (no GLPI required) — Sprint 4 delivery.
+ * Offline structure checks (no GLPI required) — Sprint 5 delivery.
  */
 $root = dirname(__DIR__);
 $errors = 0;
@@ -25,9 +25,10 @@ foreach ([
     'inc/transfer.class.php', 'inc/transferitem.class.php', 'inc/tickethook.class.php',
     'inc/mailhelper.class.php', 'inc/config.class.php', 'inc/menu.class.php',
     'inc/qrhelper.class.php', 'inc/phpqrcode/qrlib.php',
+    'inc/dashboard.class.php', 'inc/report.class.php',
     'front/allocation.form.php', 'front/confirm.php', 'front/config.form.php',
     'front/transfer.php', 'front/transfer.form.php', 'front/equipment.form.php',
-    'front/container.qr.php',
+    'front/container.qr.php', 'front/dashboard.php', 'front/report.php',
     'public/qr.php', 'public/css/qrview.css',
     'ajax/containers.php', 'ajax/models.php', 'ajax/users.php',
     'css/assettracker.css', 'public/css/assettracker.css',
@@ -41,8 +42,7 @@ foreach ([
 }
 
 foreach ([
-    'inc/dashboard.class.php', 'inc/report.class.php',
-    'front/dashboard.php', 'front/report.php', 'front/container.qrview.php',
+    'front/container.qrview.php',
     'docs/README.md',
 ] as $rel) {
     if (file_exists("$root/$rel")) {
@@ -87,10 +87,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.4.1'")) {
-    fail('expected version 0.4.1');
+if (!str_contains($setup, "'0.5.0'")) {
+    fail('expected version 0.5.0');
 } else {
-    ok('version 0.4.1');
+    ok('version 0.5.0');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -127,19 +127,11 @@ foreach ([
     }
 }
 
-foreach (['transfer', 'transferitem', 'tickethook', 'qrhelper'] as $need) {
+foreach (['transfer', 'transferitem', 'tickethook', 'qrhelper', 'dashboard', 'report'] as $need) {
     if (!preg_match("/['\"]" . preg_quote($need, '/') . "['\"]/", $setup)) {
         fail("setup missing bootstrap $need");
     } else {
         ok("setup bootstraps $need");
-    }
-}
-
-foreach (['dashboard', 'report'] as $bad) {
-    if (preg_match("/['\"]" . preg_quote($bad, '/') . "['\"]/", $setup)) {
-        fail("setup still bootstraps $bad");
-    } else {
-        ok("setup omits $bad");
     }
 }
 
@@ -174,6 +166,11 @@ if (!str_contains($menu, 'MENU_TRANSFER')) {
     fail('menu missing Transfers');
 } else {
     ok('menu has Transfers');
+}
+if (!str_contains($menu, 'MENU_DASHBOARD') || !str_contains($menu, 'MENU_REPORT')) {
+    fail('menu missing Dashboard / Reports');
+} else {
+    ok('menu has Dashboard + Reports');
 }
 
 $profile = file_get_contents("$root/inc/profile.class.php");

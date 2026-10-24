@@ -144,6 +144,8 @@ return [
     'Equipment with issues' => 'Echipamente cu probleme',
     'Equipments' => 'Echipamente',
     'Export CSV' => 'Exportă CSV',
+    'Export Excel' => 'Exportă Excel',
+    'Period' => 'Perioadă',
     'Final reason' => 'Motiv final',
     'Fixed from your profile location.' => 'Fixat din locația profilului.',
     'In movement' => 'În mișcare',

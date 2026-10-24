@@ -1,0 +1,281 @@
+<?php
+
+include_once __DIR__ . '/_bootstrap.php';
+plugin_auchanassettracker_front_bootstrap();
+
+$role = PluginAuchanassettrackerRighthelper::getCurrentRole();
+$base = plugin_auchanassettracker_web_dir();
+$title = __('Dashboard', 'auchanassettracker');
+$is_helpdesk = Session::getCurrentInterface() === 'helpdesk';
+
+if ($is_helpdesk) {
+    Html::helpHeader($title, PluginAuchanassettrackerMenu::SECTOR);
+} else {
+    Html::header(
+        $title,
+        $_SERVER['PHP_SELF'],
+        PluginAuchanassettrackerMenu::SECTOR,
+        PluginAuchanassettrackerMenu::MENU_DASHBOARD
+    );
+}
+
+$role_label = PluginAuchanassettrackerRighthelper::getRoles()[$role]
+    ?? __('End user', 'auchanassettracker');
+
+echo "<div class='aat-page assettracker-dashboard'>";
+PluginAuchanassettrackerMenu::beginNativeFormCard($title, 'ti ti-dashboard');
+
+echo "<p class='text-muted mb-3'>" . sprintf(
+    __('Signed in as: %s', 'auchanassettracker'),
+    Html::entities_deep($role_label)
+) . '</p>';
+
+if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
+    $data = PluginAuchanassettrackerDashboard::getAdminData();
+    $ind = $data['indicators'];
+
+    echo "<div class='aat-indicators'>";
+    $cards = [
+        [
+            __('Total equipment', 'auchanassettracker'),
+            $ind['total'],
+            $base . '/front/equipment.php',
+        ],
+        [
+            __('Available', 'auchanassettracker'),
+            $ind['available'],
+            $base . '/front/equipment.php?criteria[0][field]=4&criteria[0][searchtype]=equals'
+                . '&criteria[0][value]=' . urlencode(PluginAuchanassettrackerEquipment::STATUS_AVAILABLE),
+        ],
+        [
+            __('Allocated', 'auchanassettracker'),
+            $ind['allocated'],
+            $base . '/front/equipment.php?criteria[0][field]=4&criteria[0][searchtype]=equals'
+                . '&criteria[0][value]=' . urlencode(PluginAuchanassettrackerEquipment::STATUS_ALLOCATED),
+        ],
+        [
+            __('In service', 'auchanassettracker'),
+            $ind['in_service'],
+            $base . '/front/equipment.php?criteria[0][field]=4&criteria[0][searchtype]=equals'
+                . '&criteria[0][value]=' . urlencode(PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE),
+        ],
+        [
+            __('In transit', 'auchanassettracker'),
+            $ind['in_transit'],
+            $base . '/front/equipment.php?criteria[0][field]=4&criteria[0][searchtype]=equals'
+                . '&criteria[0][value]=' . urlencode(PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT),
+        ],
+        [
+            __('Written off (30 days)', 'auchanassettracker'),
+            $ind['written_off_30'],
+            $base . '/front/equipment.php',
+        ],
+    ];
+    foreach ($cards as [$label, $val, $href]) {
+        echo "<a class='aat-card' href='" . Html::entities_deep($href) . "'>"
+            . "<div class='aat-card-value'>" . (int) $val . '</div>'
+            . "<div class='aat-card-label'>" . Html::entities_deep($label) . '</div></a>';
+    }
+    echo '</div>';
+
+    echo '<h2 class="mt-4">' . __('Active alerts', 'auchanassettracker') . '</h2>';
+    echo "<div class='aat-alerts'>";
+    foreach ($data['alerts']['service'] as $r) {
+        $eq_id = (int) ($r['id'] ?? 0);
+        $link = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        echo "<div class='aat-alert'><a href='" . Html::entities_deep($link) . "'>" . sprintf(
+            __('In service overtime: %s (%s) — %d days', 'auchanassettracker'),
+            Html::entities_deep($r['name'] ?? ''),
+            Html::entities_deep(Dropdown::getDropdownName('glpi_locations', (int) ($r['locations_id'] ?? 0))),
+            PluginAuchanassettrackerDashboard::daysSince($r['service_since'] ?? null)
+        ) . '</a></div>';
+    }
+    foreach ($data['alerts']['allocations'] as $r) {
+        echo "<div class='aat-alert'>" . sprintf(
+            __('Unconfirmed allocation: %s — %d days', 'auchanassettracker'),
+            Html::entities_deep($r['equipment_name'] ?? ''),
+            PluginAuchanassettrackerDashboard::daysSince($r['allocation_date'] ?? null)
+        ) . '</div>';
+    }
+    foreach ($data['alerts']['transfers'] as $r) {
+        $tid = (int) ($r['id'] ?? 0);
+        echo "<div class='aat-alert'><a href='"
+            . Html::entities_deep($base . '/front/transfer.form.php?id=' . $tid) . "'>" . sprintf(
+                __('Unvalidated transfer #%d to %s — %d days', 'auchanassettracker'),
+                $tid,
+                Html::entities_deep(Dropdown::getDropdownName('glpi_locations', (int) ($r['locations_id_dest'] ?? 0))),
+                PluginAuchanassettrackerDashboard::daysSince($r['date_initiated'] ?? null)
+            ) . '</a></div>';
+    }
+    if ($data['alerts']['service'] === []
+        && $data['alerts']['allocations'] === []
+        && $data['alerts']['transfers'] === []
+    ) {
+        echo '<p>' . __('No active alerts.', 'auchanassettracker') . '</p>';
+    }
+    echo '</div>';
+
+    echo '<h2 class="mt-4">' . __('Stock by location', 'auchanassettracker') . '</h2>';
+    echo "<div class='table-responsive'><table class='table table-hover table-striped'><thead><tr>"
+        . '<th>' . __('Location') . '</th>'
+        . '<th>' . __('Available', 'auchanassettracker') . '</th>'
+        . '<th>' . __('Allocated', 'auchanassettracker') . '</th>'
+        . '<th>' . __('In service', 'auchanassettracker') . '</th>'
+        . '<th>' . __('In transit', 'auchanassettracker') . '</th>'
+        . '</tr></thead><tbody>';
+    foreach ($data['stock_by_location'] as $row) {
+        $loc_name = Dropdown::getDropdownName('glpi_locations', (int) $row['locations_id']);
+        echo "<tr><td>" . Html::entities_deep($loc_name)
+            . '</td><td>' . (int) $row['available']
+            . '</td><td>' . (int) $row['allocated']
+            . '</td><td>' . (int) $row['in_service']
+            . '</td><td>' . (int) $row['in_transit'] . '</td></tr>';
+    }
+    if ($data['stock_by_location'] === []) {
+        echo "<tr><td colspan='5'>" . __('No data.', 'auchanassettracker') . '</td></tr>';
+    }
+    echo '</tbody></table></div>';
+
+    echo '<h2 class="mt-4">' . __('Recent activity', 'auchanassettracker') . '</h2>';
+    echo "<div class='table-responsive'><table class='table table-hover table-striped'><thead><tr>"
+        . '<th>' . __('Date') . '</th>'
+        . '<th>' . __('User') . '</th>'
+        . '<th>' . __('Action') . '</th>'
+        . '<th>' . __('Details') . '</th>'
+        . '</tr></thead><tbody>';
+    foreach ($data['recent'] as $r) {
+        echo '<tr><td>' . Html::entities_deep((string) ($r['date_creation'] ?? ''))
+            . '</td><td>' . Html::entities_deep(getUserName((int) ($r['users_id'] ?? 0)))
+            . '</td><td>' . Html::entities_deep((string) ($r['action'] ?? ''))
+            . '</td><td>' . Html::entities_deep((string) ($r['details'] ?? '')) . '</td></tr>';
+    }
+    if ($data['recent'] === []) {
+        echo "<tr><td colspan='4'>" . __('No data.', 'auchanassettracker') . '</td></tr>';
+    }
+    echo '</tbody></table></div>';
+
+} elseif (in_array($role, [
+    PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER,
+    PluginAuchanassettrackerRighthelper::ROLE_SUPPORT_TECH,
+], true)) {
+    $loc = (int) (PluginAuchanassettrackerRighthelper::getScopedLocationId() ?? 0);
+    $data = PluginAuchanassettrackerDashboard::getManagerData($loc);
+
+    echo "<div class='aat-manager-grid'>";
+    echo "<div class='aat-col'><h2>" . __('Technical room stock', 'auchanassettracker') . '</h2>';
+    echo "<div class='table-responsive'><table class='table table-hover table-striped'><thead><tr>"
+        . '<th>' . __('Container', 'auchanassettracker') . '</th>'
+        . '<th>' . __('Available', 'auchanassettracker') . '</th>'
+        . '</tr></thead><tbody>';
+    foreach ($data['containers'] as $c) {
+        echo "<tr><td><a href='" . Html::entities_deep($base . '/front/container.form.php?id=' . (int) $c['id']) . "'>"
+            . Html::entities_deep(($c['code'] ?? '') . ' — ' . ($c['name'] ?? ''))
+            . '</a></td><td>' . (int) ($c['available_count'] ?? 0) . '</td></tr>';
+    }
+    if ($data['containers'] === []) {
+        echo "<tr><td colspan='2'>"
+            . __('No containers yet. Create one before receiving equipment.', 'auchanassettracker')
+            . '</td></tr>';
+    }
+    echo '</tbody></table></div></div>';
+
+    echo "<div class='aat-col'><h2>" . __('To resolve today', 'auchanassettracker') . '</h2>';
+    foreach ($data['to_resolve']['transfers'] as $t) {
+        echo "<div class='aat-alert'><a href='"
+            . Html::entities_deep($base . '/front/transfer.form.php?id=' . (int) $t['id']) . "'>"
+            . sprintf(__('Transfer #%d awaiting validation', 'auchanassettracker'), (int) $t['id'])
+            . '</a></div>';
+    }
+    foreach ($data['to_resolve']['allocations'] as $a) {
+        echo "<div class='aat-alert'>" . sprintf(
+            __('Unconfirmed: %s (%d days)', 'auchanassettracker'),
+            Html::entities_deep($a['equipment_name'] ?? ''),
+            PluginAuchanassettrackerDashboard::daysSince($a['allocation_date'] ?? null)
+        ) . '</div>';
+    }
+    foreach ($data['to_resolve']['needs_container'] as $e) {
+        echo "<div class='aat-alert'><a href='"
+            . Html::entities_deep($base . '/front/equipment.form.php?id=' . (int) $e['id']) . "'>"
+            . sprintf(__('Needs container: %s', 'auchanassettracker'), Html::entities_deep($e['name'] ?? ''))
+            . '</a></div>';
+    }
+    if ($data['to_resolve']['transfers'] === []
+        && $data['to_resolve']['allocations'] === []
+        && $data['to_resolve']['needs_container'] === []
+    ) {
+        echo '<p>' . __('No active alerts.', 'auchanassettracker') . '</p>';
+    }
+
+    echo '<h2 class="mt-3">' . __('In movement', 'auchanassettracker') . '</h2>';
+    foreach ($data['in_movement']['in_service'] as $e) {
+        echo '<div>' . Html::entities_deep($e['name'] ?? '') . ' — '
+            . __('In service', 'auchanassettracker') . ' ('
+            . PluginAuchanassettrackerDashboard::daysSince($e['service_since'] ?? null) . 'd)</div>';
+    }
+    foreach ($data['in_movement']['in_transit_out'] as $e) {
+        echo '<div>' . Html::entities_deep($e['name'] ?? '') . ' — '
+            . __('In transit', 'auchanassettracker') . '</div>';
+    }
+    if ($data['in_movement']['in_service'] === [] && $data['in_movement']['in_transit_out'] === []) {
+        echo '<p class="text-muted">' . __('No data.', 'auchanassettracker') . '</p>';
+    }
+    echo '</div></div>';
+
+} else {
+    $data = PluginAuchanassettrackerDashboard::getUserData((int) Session::getLoginUserID());
+
+    if ($data['pending'] !== []) {
+        echo "<div class='aat-pending mb-3'><h2>" . __('Pending actions', 'auchanassettracker') . '</h2>';
+        echo '<p>' . sprintf(
+            __('You have %d equipment item(s) awaiting confirmation.', 'auchanassettracker'),
+            count($data['pending'])
+        ) . " <a class='btn btn-primary' href='" . Html::entities_deep($base . '/front/confirm.php') . "'>"
+            . __('Confirm receipt', 'auchanassettracker') . '</a></p></div>';
+    }
+
+    echo '<h2>' . __('My equipment', 'auchanassettracker') . '</h2>';
+    echo "<div class='table-responsive'><table class='table table-hover table-striped'><thead><tr>"
+        . '<th>' . __('Type') . '</th>'
+        . '<th>' . __('Model') . '</th>'
+        . '<th>' . __('Serial number') . '</th>'
+        . '<th>' . __('Status') . '</th>'
+        . '</tr></thead><tbody>';
+    $shown = 0;
+    foreach ($data['my_equipment'] as $e) {
+        if (($e['status'] ?? '') === PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION) {
+            continue;
+        }
+        $shown++;
+        $type_label = '';
+        $type_id = (int) ($e['plugin_auchanassettracker_equipmenttypes_id'] ?? 0);
+        if ($type_id > 0) {
+            $type_label = Dropdown::getDropdownName(
+                PluginAuchanassettrackerEquipmenttype::getTable(),
+                $type_id
+            );
+        } elseif (!empty($e['itemtype'])) {
+            $type_label = (string) $e['itemtype'];
+        }
+        $status = (string) ($e['status'] ?? PluginAuchanassettrackerEquipment::STATUS_ALLOCATED);
+        $status_label = method_exists('PluginAuchanassettrackerEquipment', 'getStatusLabel')
+            ? PluginAuchanassettrackerEquipment::getStatusLabel($status)
+            : $status;
+        echo '<tr><td>' . Html::entities_deep($type_label)
+            . '</td><td>' . Html::entities_deep((string) ($e['model'] ?? ''))
+            . '</td><td>' . Html::entities_deep((string) ($e['serial'] ?? ''))
+            . '</td><td>' . Html::entities_deep($status_label) . '</td></tr>';
+    }
+    if ($shown === 0) {
+        echo "<tr><td colspan='4'>" . __('No data.', 'auchanassettracker') . '</td></tr>';
+    }
+    echo '</tbody></table></div>';
+}
+
+PluginAuchanassettrackerMenu::endNativeFormCard();
+echo '</div>';
+
+if ($is_helpdesk) {
+    Html::helpFooter();
+} else {
+    Html::footer();
+}

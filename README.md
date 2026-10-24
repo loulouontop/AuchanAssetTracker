@@ -1,8 +1,8 @@
-# AuchanAssetTracker — Sprint 4
+# AuchanAssetTracker — Sprint 5
 
-GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, and write-off / lost / stolen.
+GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, write-off / lost / stolen, role dashboards, and reports.
 
-**Version:** 0.4.1 (Sprint 4)  
+**Version:** 0.5.0 (Sprint 5)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -43,6 +43,15 @@ GLPI plugin for IT equipment stock, physical containers with QR labels, allocati
 - Scan = view only; edits stay in desktop GLPI
 - Inactive / deleted containers → no data
 
+## Sprint 5 scope
+
+- Role dashboards (one home screen by role):
+  - **Central admin:** totals, active alerts, stock by location, last 15 moves (clickable)
+  - **Location manager / Support technician:** container stock, to resolve today, in movement
+  - **End user:** pending confirms + my gear
+- Reports with filters + **CSV / Excel** export: inventory by location, gear per user, movements by period, stock by type, issues (over thresholds), inventory by container
+- Config panel for the 3 alert thresholds (already present; Super-Admin only)
+
 ## Profiles (auto-created)
 
 On install / upgrade the plugin creates four GLPI profiles (central interface) if they do not already exist:
@@ -52,7 +61,7 @@ On install / upgrade the plugin creates four GLPI profiles (central interface) i
 | **Central admin** | `central_admin` | Full operations on **all** locations (stock, containers, allocation, transfers, write-off). |
 | **Location manager** | `location_manager` | Same operations, limited to the user’s GLPI **Location**. |
 | **Support technician** | `support_tech` | **New allocation** + service on assigned location (no transfers / stock receipt / bulk). Central interface; GLPI rights seeded from **Technician**. |
-| **End user** | `user` | **Confirm receipt** only. **Helpdesk** (simplified) interface; GLPI rights seeded from **Self-Service**. |
+| **End user** | `user` | **Dashboard** (pending + my gear) + **Confirm receipt**. **Helpdesk** (simplified) interface; GLPI rights seeded from **Self-Service**. |
 
 Central admin / Location manager use the **central** interface and seed GLPI rights from **Admin**. Clients can still edit interface and rights under **Administration → Profiles**.
 
@@ -68,15 +77,15 @@ Assign users under **Administration → Users** (profile + Location for managers
 - **Emails + in-app notices** → plugin `Mailhelper` on events (allocate pending, Did not receive, transfer reject). HTML Auchan template (RO-friendly). Not registered in Setup → Notifications / Notification templates (those are native GLPI `NotificationTarget` only).
 - **Quick test:** allocate Available gear to a user with email → recipient gets notice + mail; open Confirm on End user (simplified) and reject with comment → allocator gets notice + mail.
 
-## Upgrade from Sprint 3 / 0.4.0
+## Upgrade from Sprint 4 / 0.4.x
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.4.1**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, creates/updates the four profiles if missing, seeds GLPI rights from Admin/Technician/Self-Service once, then updates `glpi_plugins.version`. Profiles → Auchan Asset Tracker shows an editable rights matrix; End user helpdesk uses only the Auchan Asset Tracker menu (Confirm receipt) and stays on the simplified interface.
+2. Version becomes **0.5.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
-4. **No need to uninstall** or delete the four profiles — upgrade refreshes their GLPI rights/interface once.
-5. Log out and back in after upgrade (especially End user / Support technician).
-6. Check **Administration → Profiles** for **Central admin**, **Location manager**, **Support technician**, **End user**.
-7. Open a container → use **Download PDF label** / public URL. Clear browser cache / GLPI cache if needed.
+4. Log out and back in after upgrade.
+5. Open **Auchan Asset Tracker → Dashboard** (role home) and **Reports** (admin / manager / tech).
+6. Super-Admin: **Configuration** → confirm the 3 day thresholds still apply to Active alerts.
+7. Clear browser cache / GLPI cache if menu or CSS looks stale.
 
 ## Requirements
 

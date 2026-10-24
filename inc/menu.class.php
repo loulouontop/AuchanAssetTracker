@@ -9,12 +9,14 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
     public const SECTOR = 'auchanassettracker';
 
     /** Option keys under the Auchan Asset Tracker menu. */
+    public const MENU_DASHBOARD  = 'aat_dashboard';
     public const MENU_EQUIPMENT  = 'aat_equipment';
     public const MENU_CONTAINER  = 'aat_container';
     public const MENU_BULK       = 'aat_bulk';
     public const MENU_ALLOCATION = 'aat_allocation';
     public const MENU_TRANSFER   = 'aat_transfer';
     public const MENU_CONFIRM    = 'aat_confirm';
+    public const MENU_REPORT     = 'aat_report';
     public const MENU_CONFIG     = 'aat_config';
 
     public static function getIcon(): string
@@ -80,6 +82,13 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
 
         $base = plugin_auchanassettracker_web_dir(true);
         $content = [];
+
+        // Dashboard is the role-aware home for every logged-in plugin user.
+        $content[self::MENU_DASHBOARD] = [
+            'title' => __('Dashboard', 'auchanassettracker'),
+            'page'  => "$base/front/dashboard.php",
+            'icon'  => 'ti ti-dashboard',
+        ];
 
         // Hide tabs entirely when the profile has no related right (no "click then denied").
         if (PluginAuchanassettrackerRighthelper::canSeeEquipment()) {
@@ -151,6 +160,14 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             ];
         }
 
+        if (PluginAuchanassettrackerRighthelper::canViewReports()) {
+            $content[self::MENU_REPORT] = [
+                'title' => __('Reports', 'auchanassettracker'),
+                'page'  => "$base/front/report.php",
+                'icon'  => 'ti ti-report',
+            ];
+        }
+
         if (PluginAuchanassettrackerRighthelper::canConfigure()) {
             $content[self::MENU_CONFIG] = [
                 'title' => __('Configuration', 'auchanassettracker'),
@@ -163,18 +180,9 @@ class PluginAuchanassettrackerMenu extends CommonGLPI
             return false;
         }
 
-        $default = reset($content)['page'] ?? "$base/front/confirm.php";
-        if (isset($content[self::MENU_EQUIPMENT])) {
-            $default = $content[self::MENU_EQUIPMENT]['page'];
-        } elseif (isset($content[self::MENU_ALLOCATION])) {
-            $default = $content[self::MENU_ALLOCATION]['page'];
-        } elseif (isset($content[self::MENU_CONFIRM])) {
-            $default = $content[self::MENU_CONFIRM]['page'];
-        }
-
         return [
             'title'   => self::getMenuName(),
-            'page'    => $default,
+            'page'    => $content[self::MENU_DASHBOARD]['page'],
             'icon'    => self::getIcon(),
             'content' => $content,
         ];
