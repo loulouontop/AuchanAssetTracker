@@ -62,6 +62,7 @@ foreach ([
     'glpi_plugin_auchanassettracker_transferitems',
     'glpi_plugin_auchanassettracker_notices',
     'glpi_plugin_auchanassettracker_auditlogs',
+    'glpi_plugin_auchanassettracker_stockbylocations',
     'glpi_plugin_auchanassettracker_profiles',
     'glpi_plugin_auchanassettracker_configs',
     'final_reason',
