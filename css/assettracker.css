@@ -472,6 +472,14 @@ img.aat-qr-preview {
 }
 
 /* Sprint 5 — role dashboards */
+.aat-dashboard-page {
+  max-width: 100%;
+  margin: 0.75rem auto 2.5rem;
+  padding: 0 1rem 2rem;
+}
+.aat-dashboard-page > .aat-form-page {
+  max-width: none;
+}
 .assettracker-dashboard h2 {
   font-size: 1.1rem;
   margin-bottom: 0.75rem;
@@ -484,43 +492,73 @@ img.aat-qr-preview {
 }
 .aat-card {
   display: block;
-  background: var(--tblr-bg-surface, #fff);
-  border: 1px solid var(--tblr-border-color, #d7dde3);
-  border-radius: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   padding: 14px 16px;
   text-decoration: none;
   color: inherit;
-  transition: border-color .15s, box-shadow .15s;
+  transition: transform .12s ease, box-shadow .15s ease;
 }
 .aat-card:hover {
-  border-color: #0b3d2e;
-  box-shadow: 0 2px 8px rgba(11, 61, 46, .12);
   text-decoration: none;
   color: inherit;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
 }
 .aat-card-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #0b3d2e;
   line-height: 1.2;
 }
 .aat-card-label {
   font-size: .85rem;
-  color: var(--tblr-secondary, #555);
   margin-top: 4px;
+  opacity: .9;
 }
+.aat-card--total {
+  background: #e8f1ff;
+  border-color: #9ec5fe;
+}
+.aat-card--total .aat-card-value { color: #1a5fb4; }
+.aat-card--available {
+  background: #e6f4ea;
+  border-color: #8fd19e;
+}
+.aat-card--available .aat-card-value { color: #1b7a3d; }
+.aat-card--allocated {
+  background: #e7f7f5;
+  border-color: #7dcdc0;
+}
+.aat-card--allocated .aat-card-value { color: #0f766e; }
+.aat-card--in_service {
+  background: #fff4e5;
+  border-color: #f0b45a;
+}
+.aat-card--in_service .aat-card-value { color: #b45309; }
+.aat-card--in_transit {
+  background: #eef6fb;
+  border-color: #7eb6d6;
+}
+.aat-card--in_transit .aat-card-value { color: #0b6e99; }
+.aat-card--written_off {
+  background: #f3f4f6;
+  border-color: #c4c9d0;
+}
+.aat-card--written_off .aat-card-value { color: #4b5563; }
 .aat-alerts .aat-alert,
 .aat-manager-grid .aat-alert {
-  background: #fff8e6;
-  border-left: 4px solid #e6a700;
+  background: #fde8e8;
+  border-left: 4px solid #d63939;
+  color: #9b1c1c;
   padding: 8px 12px;
   margin-bottom: 8px;
   border-radius: 0 4px 4px 0;
 }
 .aat-alerts .aat-alert a,
 .aat-manager-grid .aat-alert a {
-  color: inherit;
+  color: #9b1c1c;
   text-decoration: none;
+  font-weight: 600;
 }
 .aat-alerts .aat-alert a:hover,
 .aat-manager-grid .aat-alert a:hover {
@@ -542,4 +580,11 @@ img.aat-qr-preview {
   border-left: 4px solid #206bc4;
   padding: 12px 16px;
   border-radius: 0 4px 4px 0;
+}
+.aat-dashboard-search {
+  margin-bottom: 1.5rem;
+}
+.aat-dashboard-search .search-header,
+.aat-dashboard-search .card.search-card {
+  margin-top: 0.25rem;
 }

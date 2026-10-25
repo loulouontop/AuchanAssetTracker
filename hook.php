@@ -499,6 +499,35 @@ function plugin_auchanassettracker_ensure_schema(): void
     }
 
     plugin_auchanassettracker_ensure_equipment_displayprefs();
+
+    // Sprint 5: stock-by-location summary table for dashboard Search.
+    $stock = 'glpi_plugin_auchanassettracker_stockbylocations';
+    if (!$DB->tableExists($stock)) {
+        try {
+            $DB->doQuery(
+                "CREATE TABLE IF NOT EXISTS `$stock` (
+                    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                    `locations_id` INT UNSIGNED NOT NULL DEFAULT 0,
+                    `available` INT NOT NULL DEFAULT 0,
+                    `allocated` INT NOT NULL DEFAULT 0,
+                    `in_service` INT NOT NULL DEFAULT 0,
+                    `in_transit` INT NOT NULL DEFAULT 0,
+                    `date_mod` TIMESTAMP NULL DEFAULT NULL,
+                    PRIMARY KEY (`id`),
+                    UNIQUE KEY `locations_id` (`locations_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            );
+        } catch (Throwable) {
+            // Ignore race / already created.
+        }
+    }
+
+    if (class_exists('PluginAuchanassettrackerAuditlog', false)) {
+        PluginAuchanassettrackerAuditlog::ensureDisplayPreferences();
+    }
+    if (class_exists('PluginAuchanassettrackerStockbylocation', false)) {
+        PluginAuchanassettrackerStockbylocation::ensureDisplayPreferences();
+    }
 }
 
 /**

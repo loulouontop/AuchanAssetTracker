@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, write-off / lost / stolen, role dashboards, and reports.
 
-**Version:** 0.5.0 (Sprint 5)  
+**Version:** 0.5.1 (Sprint 5)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 

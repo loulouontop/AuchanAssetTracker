@@ -9,7 +9,7 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.0');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.1');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -72,6 +72,7 @@ function plugin_auchanassettracker_bootstrap(): void
         'qrhelper',
         'dashboard',
         'report',
+        'stockbylocation',
         'menu',
         'mailhelper',
     ] as $file) {
@@ -206,6 +207,8 @@ function plugin_init_auchanassettracker(): void
     Plugin::registerClass('PluginAuchanassettrackerAllocation');
     Plugin::registerClass('PluginAuchanassettrackerConfirm');
     Plugin::registerClass('PluginAuchanassettrackerTransfer');
+    Plugin::registerClass('PluginAuchanassettrackerAuditlog');
+    Plugin::registerClass('PluginAuchanassettrackerStockbylocation');
     Plugin::registerClass('PluginAuchanassettrackerProfile', [
         'addtabon' => ['Profile'],
     ]);

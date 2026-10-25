@@ -176,6 +176,18 @@ CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_auditlogs` (
     KEY `date_creation` (`date_creation`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_stockbylocations` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `locations_id` INT UNSIGNED NOT NULL DEFAULT 0,
+    `available` INT NOT NULL DEFAULT 0,
+    `allocated` INT NOT NULL DEFAULT 0,
+    `in_service` INT NOT NULL DEFAULT 0,
+    `in_transit` INT NOT NULL DEFAULT 0,
+    `date_mod` TIMESTAMP NULL DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `locations_id` (`locations_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `glpi_plugin_auchanassettracker_profiles` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `profiles_id` INT UNSIGNED NOT NULL DEFAULT 0,
