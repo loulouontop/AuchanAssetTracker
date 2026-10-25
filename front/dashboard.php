@@ -77,8 +77,8 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     }
     echo '</div>';
 
-    echo '<h2 class="mt-4">' . __('Active alerts', 'auchanassettracker') . '</h2>';
-    echo "<div class='aat-alerts'>";
+    echo "<div class='aat-alerts aat-alert-section-block'>";
+    echo '<h2 class="aat-alert-heading">' . __('Active alerts', 'auchanassettracker') . '</h2>';
     foreach ($data['alerts']['service'] as $r) {
         $eq_id = (int) ($r['id'] ?? 0);
         $link = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
@@ -90,9 +90,14 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         ) . '</a></div>';
     }
     foreach ($data['alerts']['allocations'] as $r) {
+        $user = trim((string) ($r['recipient_name'] ?? ''));
+        if ($user === '') {
+            $user = trim(strip_tags((string) getUserName((int) ($r['users_id_recipient'] ?? 0))));
+        }
         echo "<div class='aat-alert'>" . sprintf(
-            __('Unconfirmed allocation: %s — %d days', 'auchanassettracker'),
+            __('Unconfirmed allocation: %s — %s — %d days', 'auchanassettracker'),
             Html::entities_deep($r['equipment_name'] ?? ''),
+            Html::entities_deep($user),
             PluginAuchanassettrackerDashboard::daysSince($r['allocation_date'] ?? null)
         ) . '</div>';
     }
@@ -161,7 +166,8 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     }
     echo '</tbody></table></div></div>';
 
-    echo "<div class='aat-col'><h2>" . __('To resolve today', 'auchanassettracker') . '</h2>';
+    echo "<div class='aat-col aat-alerts aat-alert-section-block'>";
+    echo '<h2 class="aat-alert-heading">' . __('To resolve today', 'auchanassettracker') . '</h2>';
     foreach ($data['to_resolve']['transfers'] as $t) {
         echo "<div class='aat-alert'><a href='"
             . Html::entities_deep($base . '/front/transfer.form.php?id=' . (int) $t['id']) . "'>"
@@ -169,9 +175,14 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
             . '</a></div>';
     }
     foreach ($data['to_resolve']['allocations'] as $a) {
+        $user = trim((string) ($a['recipient_name'] ?? ''));
+        if ($user === '') {
+            $user = trim(strip_tags((string) getUserName((int) ($a['users_id_recipient'] ?? 0))));
+        }
         echo "<div class='aat-alert'>" . sprintf(
-            __('Unconfirmed: %s (%d days)', 'auchanassettracker'),
+            __('Unconfirmed: %s — %s (%d days)', 'auchanassettracker'),
             Html::entities_deep($a['equipment_name'] ?? ''),
+            Html::entities_deep($user),
             PluginAuchanassettrackerDashboard::daysSince($a['allocation_date'] ?? null)
         ) . '</div>';
     }
@@ -188,31 +199,67 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         echo '<p>' . __('No active alerts.', 'auchanassettracker') . '</p>';
     }
 
-    echo '<h2 class="mt-3">' . __('In movement', 'auchanassettracker') . '</h2>';
+    echo '<h2 class="mt-3 aat-movement-heading">' . __('In movement', 'auchanassettracker') . '</h2>';
+    echo "<div class='aat-in-movement'>";
     foreach ($data['in_movement']['in_service'] as $e) {
-        echo '<div>' . Html::entities_deep($e['name'] ?? '') . ' — '
-            . __('In service', 'auchanassettracker') . ' ('
-            . PluginAuchanassettrackerDashboard::daysSince($e['service_since'] ?? null) . 'd)</div>';
+        $since = PluginAuchanassettrackerDashboard::formatSinceDate($e['since'] ?? null);
+        $days = PluginAuchanassettrackerDashboard::daysSince($e['since'] ?? null);
+        $eq_id = (int) ($e['id'] ?? 0);
+        $href = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        echo "<div class='aat-movement-row'><a href='" . Html::entities_deep($href) . "'>"
+            . Html::entities_deep($e['name'] ?? '') . '</a>'
+            . ' — ' . __('In service', 'auchanassettracker');
+        if ($since !== '') {
+            echo ' — ' . sprintf(__('since %s (%dd)', 'auchanassettracker'), Html::entities_deep($since), $days);
+        }
+        echo ' — ' . Html::entities_deep((string) ($e['service_label'] ?? __('Service', 'auchanassettracker')));
+        echo '</div>';
     }
     foreach ($data['in_movement']['in_transit_out'] as $e) {
-        echo '<div>' . Html::entities_deep($e['name'] ?? '') . ' — '
-            . __('In transit', 'auchanassettracker') . '</div>';
+        $since = PluginAuchanassettrackerDashboard::formatSinceDate($e['since'] ?? null);
+        $days = PluginAuchanassettrackerDashboard::daysSince($e['since'] ?? null);
+        $eq_id = (int) ($e['id'] ?? 0);
+        $href = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        $dest = trim(strip_tags((string) ($e['destination_label'] ?? '')));
+        echo "<div class='aat-movement-row'><a href='" . Html::entities_deep($href) . "'>"
+            . Html::entities_deep($e['name'] ?? '') . '</a>'
+            . ' — ' . __('In transit', 'auchanassettracker');
+        if ($since !== '') {
+            echo ' — ' . sprintf(__('since %s (%dd)', 'auchanassettracker'), Html::entities_deep($since), $days);
+        }
+        echo ' — ' . __('Destination', 'auchanassettracker') . ': ' . Html::entities_deep($dest);
+        echo '</div>';
     }
     if ($data['in_movement']['in_service'] === [] && $data['in_movement']['in_transit_out'] === []) {
         echo '<p class="text-muted">' . __('No data.', 'auchanassettracker') . '</p>';
     }
-    echo '</div></div>';
+    echo '</div></div></div>';
 
 } else {
     $data = PluginAuchanassettrackerDashboard::getUserData((int) Session::getLoginUserID());
 
     if ($data['pending'] !== []) {
-        echo "<div class='aat-pending mb-3'><h2>" . __('Pending actions', 'auchanassettracker') . '</h2>';
-        echo '<p>' . sprintf(
-            __('You have %d equipment item(s) awaiting confirmation.', 'auchanassettracker'),
+        echo "<div class='aat-pending mb-3'>";
+        echo "<div class='aat-pending-row'>";
+        echo "<div class='aat-pending-main'>";
+        echo '<h2>' . __('Pending actions', 'auchanassettracker') . '</h2>';
+        echo '<p class="mb-2">' . sprintf(
+            __('You have %d equipment awaiting confirmation.', 'auchanassettracker'),
             count($data['pending'])
-        ) . " <a class='btn btn-primary' href='" . Html::entities_deep($base . '/front/confirm.php') . "'>"
-            . __('Confirm receipt', 'auchanassettracker') . '</a></p></div>';
+        ) . '</p>';
+        echo "<ul class='aat-pending-equipment mb-0'>";
+        foreach ($data['pending'] as $p) {
+            $ename = trim((string) ($p['equipment_name'] ?? ''));
+            if ($ename === '') {
+                $ename = '#' . (int) ($p['plugin_auchanassettracker_equipments_id'] ?? 0);
+            }
+            echo '<li>' . Html::entities_deep($ename) . '</li>';
+        }
+        echo '</ul></div>';
+        echo "<div class='aat-pending-actions'>"
+            . "<a class='btn btn-primary' href='" . Html::entities_deep($base . '/front/confirm.php') . "'>"
+            . __('Confirm receipt', 'auchanassettracker') . '</a></div>';
+        echo '</div></div>';
     }
 
     echo '<h2>' . __('My equipment', 'auchanassettracker') . '</h2>';

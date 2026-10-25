@@ -545,6 +545,13 @@ img.aat-qr-preview {
   border-color: #c4c9d0;
 }
 .aat-card--written_off .aat-card-value { color: #4b5563; }
+.aat-alert-section-block {
+  margin-top: 1rem;
+}
+.aat-alert-heading {
+  color: #d63939 !important;
+  font-weight: 700;
+}
 .aat-alerts .aat-alert,
 .aat-manager-grid .aat-alert {
   background: #fde8e8;
@@ -564,6 +571,21 @@ img.aat-qr-preview {
 .aat-manager-grid .aat-alert a:hover {
   text-decoration: underline;
 }
+.aat-in-movement {
+  margin-top: 0.25rem;
+}
+.aat-movement-heading {
+  color: inherit;
+  font-weight: 700;
+}
+.aat-movement-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--tblr-border-color, #e6e8eb);
+  font-size: 0.95rem;
+}
+.aat-movement-row:last-child {
+  border-bottom: 0;
+}
 .aat-manager-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -580,6 +602,32 @@ img.aat-qr-preview {
   border-left: 4px solid #206bc4;
   padding: 12px 16px;
   border-radius: 0 4px 4px 0;
+}
+.aat-pending-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.aat-pending-main {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.aat-pending-main h2 {
+  margin-top: 0;
+}
+.aat-pending-equipment {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+.aat-pending-equipment li {
+  margin: 0.15rem 0;
+}
+.aat-pending-actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
 }
 .aat-dashboard-search {
   margin-bottom: 1.5rem;

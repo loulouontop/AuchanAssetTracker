@@ -780,6 +780,13 @@ JS);
             $row['locations_id'] = (int) ($eq->fields['locations_id'] ?? 0);
             $row['serial'] = $eq->fields['serial'] ?? '';
             $row['itemtype'] = $eq->fields['itemtype'] ?? '';
+            $row['recipient_name'] = PluginAuchanassettrackerAuditlog::userLogin(
+                (int) ($row['users_id_recipient'] ?? 0)
+            );
+            if ($row['recipient_name'] === '') {
+                $uid = (int) ($row['users_id_recipient'] ?? 0);
+                $row['recipient_name'] = $uid > 0 ? getUserName($uid) : '';
+            }
             $rows[] = $row;
         }
         return $rows;

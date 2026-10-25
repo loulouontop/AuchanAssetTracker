@@ -55,16 +55,7 @@ class PluginAuchanassettrackerDashboard
                     ? self::availableWithoutContainer($locations_id)
                     : [],
             ],
-            'in_movement' => [
-                'in_service' => PluginAuchanassettrackerEquipment::findByStatus(
-                    PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
-                    $loc_or_null
-                ),
-                'in_transit_out' => PluginAuchanassettrackerEquipment::findByStatus(
-                    PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT,
-                    $loc_or_null
-                ),
-            ],
+            'in_movement' => self::buildInMovement($loc_or_null),
             'alerts' => [
                 'service'     => PluginAuchanassettrackerTickethook::getOverdueInService($loc_or_null),
                 'allocations' => PluginAuchanassettrackerAllocation::getOverduePending($loc_or_null),
@@ -74,10 +65,113 @@ class PluginAuchanassettrackerDashboard
 
     public static function getUserData(int $users_id): array
     {
+        $pending = PluginAuchanassettrackerAllocation::getPendingForUser($users_id);
+        foreach ($pending as &$row) {
+            $eq = new PluginAuchanassettrackerEquipment();
+            $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
+            $row['equipment_name'] = '';
+            if ($eid > 0 && $eq->getFromDB($eid)) {
+                $row['equipment_name'] = (string) ($eq->fields['name'] ?? '');
+            }
+        }
+        unset($row);
+
         return [
-            'pending'      => PluginAuchanassettrackerAllocation::getPendingForUser($users_id),
+            'pending'      => $pending,
             'my_equipment' => PluginAuchanassettrackerAllocation::getCurrentGearForUser($users_id),
         ];
+    }
+
+    /**
+     * Equipment in service or in transit at a location, with since-date and destination/service.
+     *
+     * @return array{in_service: list<array<string, mixed>>, in_transit_out: list<array<string, mixed>>}
+     */
+    public static function buildInMovement(?int $locations_id): array
+    {
+        $in_service = PluginAuchanassettrackerEquipment::findByStatus(
+            PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
+            $locations_id
+        );
+        foreach ($in_service as &$e) {
+            $tid = (int) ($e['service_tickets_id'] ?? 0);
+            $e['since'] = (string) ($e['service_since'] ?? '');
+            $e['service_label'] = $tid > 0
+                ? sprintf(__('Ticket #%d', 'auchanassettracker'), $tid)
+                : __('Service', 'auchanassettracker');
+        }
+        unset($e);
+
+        $in_transit = PluginAuchanassettrackerEquipment::findByStatus(
+            PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT,
+            $locations_id
+        );
+        foreach ($in_transit as &$e) {
+            $info = self::findOpenTransferForEquipment((int) ($e['id'] ?? 0));
+            $e['since'] = (string) ($info['date_initiated'] ?? '');
+            $dest_id = (int) ($info['locations_id_dest'] ?? 0);
+            $e['destination_label'] = $dest_id > 0
+                ? Dropdown::getDropdownName('glpi_locations', $dest_id)
+                : __('Destination', 'auchanassettracker');
+            $e['transfer_id'] = (int) ($info['id'] ?? 0);
+        }
+        unset($e);
+
+        return [
+            'in_service'     => $in_service,
+            'in_transit_out' => $in_transit,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function findOpenTransferForEquipment(int $equipment_id): array
+    {
+        global $DB;
+
+        if ($equipment_id <= 0) {
+            return [];
+        }
+
+        $item_table = PluginAuchanassettrackerTransferitem::getTable();
+        if (!$DB->tableExists($item_table)) {
+            return [];
+        }
+
+        foreach ($DB->request([
+            'FROM'  => $item_table,
+            'WHERE' => ['plugin_auchanassettracker_equipments_id' => $equipment_id],
+            'ORDER' => 'id DESC',
+            'LIMIT' => 30,
+        ]) as $item) {
+            $tr = new PluginAuchanassettrackerTransfer();
+            $tid = (int) ($item['plugin_auchanassettracker_transfers_id'] ?? 0);
+            if ($tid > 0
+                && $tr->getFromDB($tid)
+                && ($tr->fields['transfer_status'] ?? '') === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT
+            ) {
+                return [
+                    'id'                => $tid,
+                    'locations_id_dest' => (int) ($tr->fields['locations_id_dest'] ?? 0),
+                    'date_initiated'    => (string) ($tr->fields['date_initiated'] ?? ''),
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    public static function formatSinceDate(?string $datetime): string
+    {
+        if (!$datetime) {
+            return '';
+        }
+        $t = strtotime($datetime);
+        if ($t === false) {
+            return '';
+        }
+        return date('Y-m-d', $t);
     }
 
     public static function countWrittenOffLastDays(int $days): int
