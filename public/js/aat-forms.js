@@ -43,18 +43,15 @@
 
   /**
    * If GLPI deferred setupAjaxDropdown, bind Select2 as soon as configs + select exist.
-   * Covers transfer destination + report location/user/container ajax dropdowns.
    * Safe no-op when already select2-hidden-accessible.
    */
   function aatKickDestLocationDropdowns() {
     if (typeof setupAjaxDropdown !== 'function' || !window.select2_configs) {
       return;
     }
-    var wraps = document.querySelectorAll(
-      '.aat-location-dropdown, .aat-report-dropdown, .aat-container-dropdown'
-    );
+    var wraps = document.querySelectorAll('.aat-location-dropdown');
     for (var i = 0; i < wraps.length; i++) {
-      var sel = wraps[i].querySelector('select.form-select, select');
+      var sel = wraps[i].querySelector('select.form-select');
       if (!sel || !sel.id) {
         continue;
       }
