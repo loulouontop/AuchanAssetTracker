@@ -485,20 +485,31 @@ if (!str_contains($js, 'aatSyncTransferBulkPanel')
 } else {
     ok('aat-forms.js transfer bulk panel sync');
 }
-if (!str_contains($js, 'aatHideDashboardSearchChrome')
-    || !str_contains($js, 'saved_searches')
-) {
-    fail('aat-forms.js must hide dashboard Search chrome + saved search');
+if (!str_contains($js, 'aatHideDashboardSearchChrome')) {
+    fail('aat-forms.js must hide dashboard Search chrome extras');
 } else {
-    ok('aat-forms.js hides dashboard Search chrome');
+    ok('aat-forms.js hides dashboard Search chrome extras');
+}
+if (str_contains($js, "form[name=\"search\"]")
+    || str_contains($js, '.saved_searches')
+) {
+    fail('aat-forms.js must not hide search-by / saved searches');
+} else {
+    ok('aat-forms.js keeps search-by + saved searches');
 }
 if (!str_contains($css, 'font-weight: 700 !important')
     || !str_contains($css, 'color: #000 !important')
-    || !str_contains($css, 'form[name="search"]')
 ) {
-    fail('css missing bold alert titles / black alert text / hide search form');
+    fail('css missing bold alert titles / black alert text');
 } else {
-    ok('css alert titles + black text + hide search form');
+    ok('css alert titles + black text');
+}
+if (str_contains($css, 'form[name="search"]')
+    || str_contains($css, '.saved_searches')
+) {
+    fail('css must not hide search-by / saved searches');
+} else {
+    ok('css keeps search-by + saved searches');
 }
 if (str_contains($css, '.search-controls .primary-controls')
     && preg_match('/\.aat-dashboard-search \.search-controls \.primary-controls[\s\S]{0,80}display:\s*none/', $css)
