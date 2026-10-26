@@ -637,6 +637,9 @@ $(function () {
   function aatContainerField() {
     var $f = $('.aat-native-container-field .aat-container-field').first();
     if (!$f.length) {
+      $f = $('.aat-report-container-field').first();
+    }
+    if (!$f.length) {
       $f = $('.aat-container-field').first();
     }
     return $f;
@@ -673,14 +676,15 @@ $(function () {
       return;
     }
     locId = parseInt(locId, 10) || 0;
+    var $sel = $field.find('select').first();
+    var fieldName = ($sel.length && $sel.attr('name'))
+      ? $sel.attr('name')
+      : 'plugin_auchanassettracker_containers_id';
     var current = 0;
     if (preferId && parseInt(preferId, 10) > 0) {
       current = parseInt(preferId, 10);
-    } else if (keepValue) {
-      current = parseInt(
-        $field.find('select[name="plugin_auchanassettracker_containers_id"]').val(),
-        10
-      ) || 0;
+    } else if (keepValue && $sel.length) {
+      current = parseInt($sel.val(), 10) || 0;
     }
     var width = $field.attr('data-aat-width') || '220px';
     window.aatContainerRefreshSeq = (window.aatContainerRefreshSeq || 0) + 1;
@@ -695,7 +699,8 @@ $(function () {
         display: 'dropdown',
         locations_id: locId,
         value: current,
-        width: width
+        width: width,
+        name: fieldName
       },
       dataType: 'html'
     }).done(function (html) {
@@ -723,11 +728,12 @@ $(function () {
   };
 
   // After native + modal closes, refresh list (new shelf appears).
+  // Match transfer field name and report form name (containers_id).
   $(document)
     .off('hidden.bs.modal.aatContainerAdd')
     .on(
       'hidden.bs.modal.aatContainerAdd',
-      '[id^="add_dropdown_plugin_auchanassettracker_containers_id"]',
+      '[id^="add_dropdown_plugin_auchanassettracker_containers_id"], [id^="add_dropdown_containers_id"]',
       function () {
         var loc = $('select[name="locations_id"]').filter(':visible').last().val()
           || $('input[name="locations_id"]').last().val()

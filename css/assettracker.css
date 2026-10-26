@@ -786,6 +786,60 @@ img.aat-qr-preview {
 .aat-report-form .aat-report-period-field label {
   margin-bottom: 0.25rem;
 }
+/*
+ * Report dropdowns (type / location / user / container): hide bare <select>
+ * until Select2 binds — same anti-flash as transfer destination / container.
+ * Prevents native ----- + browser menu flash on page refresh.
+ */
+.aat-report-form .aat-report-dropdown select:not(.select2-hidden-accessible),
+.aat-report-form .aat-location-dropdown select:not(.select2-hidden-accessible),
+.aat-report-form .aat-container-dropdown select:not(.select2-hidden-accessible) {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  min-height: 38px;
+  width: 100% !important;
+}
+.aat-report-form .aat-report-dropdown .select2-container,
+.aat-report-form .aat-report-field .select2-container {
+  width: 100% !important;
+  max-width: 100%;
+}
+.aat-report-form .aat-report-dropdown .select2-selection--single,
+.aat-report-form .aat-report-field .select2-selection--single {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+/* User / type with optional comments btn-group: Select2 fills remaining space. */
+.aat-report-form .aat-report-dropdown .btn-group {
+  width: 100% !important;
+  max-width: 100%;
+  display: inline-flex !important;
+}
+.aat-report-form .aat-report-dropdown .btn-group > .select2-container {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none;
+}
+/* Location / container keep btn-group (i / +) — Select2 shares the row. */
+.aat-report-form .aat-location-dropdown .btn-group,
+.aat-report-form .aat-container-dropdown .btn-group,
+.aat-report-form .aat-report-container-field .btn-group {
+  width: 100% !important;
+  max-width: 100%;
+}
+.aat-report-form .aat-location-dropdown .select2-container,
+.aat-report-form .aat-container-dropdown .select2-container {
+  width: calc(100% - 72px) !important;
+  min-width: 0 !important;
+  max-width: calc(100% - 72px);
+}
+.aat-report-form .aat-location-dropdown select.form-select:not(.select2-hidden-accessible),
+.aat-report-form .aat-container-dropdown select:not(.select2-hidden-accessible) {
+  width: calc(100% - 72px) !important;
+  min-width: 0;
+}
 .aat-report-form .aat-report-period {
   grid-column: 1 / -1;
   display: grid;
@@ -799,6 +853,13 @@ img.aat-qr-preview {
   max-width: none;
   min-width: 0;
 }
+/* Native GLPI Html::showDateField (flatpickr) — full width of period cell. */
+.aat-report-form .aat-report-period-field .input-group,
+.aat-report-form .aat-report-period-field input[type="text"],
+.aat-report-form .aat-report-period-field input.form-control {
+  width: 100%;
+  max-width: none;
+}
 .aat-report-form .aat-report-period-arrow {
   display: flex;
   align-items: center;
@@ -811,11 +872,6 @@ img.aat-qr-preview {
   line-height: 1;
   user-select: none;
 }
-.aat-report-form .aat-report-date {
-  width: 100%;
-  max-width: none;
-  min-height: 2.5rem;
-}
 .aat-report-form .aat-report-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -825,6 +881,9 @@ img.aat-qr-preview {
   margin-top: 0.25rem;
 }
 .aat-report-form .aat-req-mark[hidden] {
+  display: none !important;
+}
+.aat-report-form #aat-report-container-wrap[hidden] {
   display: none !important;
 }
 @media (max-width: 767.98px) {

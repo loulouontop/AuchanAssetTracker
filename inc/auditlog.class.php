@@ -230,6 +230,10 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
             'updates'    => __('Updated fields', 'auchanassettracker'),
             'by_sender'  => __('By sender', 'auchanassettracker'),
             'code'       => __('Code', 'auchanassettracker'),
+            'type'       => __('Report type', 'auchanassettracker'),
+            'format'     => __('Format', 'auchanassettracker'),
+            'filename'   => __('Filename', 'auchanassettracker'),
+            'rows'       => __('Rows', 'auchanassettracker'),
         ];
         if (isset($map[$key])) {
             return $map[$key];
@@ -400,6 +404,23 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
 
         if ($key === 'itemtype') {
             return Html::entities_deep(PluginAuchanassettrackerEquipment::getItemtypeLabel($value));
+        }
+
+        if ($key === 'type' && class_exists('PluginAuchanassettrackerReport')) {
+            $types = PluginAuchanassettrackerReport::getTypes();
+            if (isset($types[$value])) {
+                return Html::entities_deep((string) $types[$value]);
+            }
+        }
+
+        if ($key === 'format') {
+            $fmt = strtolower($value);
+            if ($fmt === 'excel') {
+                return Html::entities_deep(__('Excel', 'auchanassettracker'));
+            }
+            if ($fmt === 'csv') {
+                return Html::entities_deep(__('CSV', 'auchanassettracker'));
+            }
         }
 
         if ($key === 'items_id' && ctype_digit($value)) {

@@ -26,6 +26,7 @@ class PluginAuchanassettrackerReport
     public static function getRequiredFilters(string $type): array
     {
         return match ($type) {
+            'inventory_location'  => ['locations_id'],
             'inventory_container' => ['locations_id', 'containers_id'],
             'equipment_user'      => ['users_id'],
             'movements'           => ['date_from', 'date_to'],
@@ -122,6 +123,55 @@ class PluginAuchanassettrackerReport
     {
         $ext = preg_replace('/[^a-z0-9]+/i', '', $ext) ?: 'csv';
         return 'report-' . date('Y-m-d_H-i-s') . '.' . strtolower($ext);
+    }
+
+    /**
+     * Audit + plugin log entry for a generated CSV / Excel document (same trail as other actions).
+     *
+     * @param array<string, mixed> $filters
+     * @param array{headers?: list<mixed>, rows?: list<list<mixed>>} $report
+     */
+    public static function logExport(
+        string $type,
+        string $format,
+        string $filename,
+        array $filters,
+        array $report
+    ): void {
+        $format = strtolower($format) === 'excel' ? 'excel' : 'csv';
+        $parts = [
+            'type=' . $type,
+            'format=' . $format,
+            'filename=' . $filename,
+            'rows=' . count($report['rows'] ?? []),
+        ];
+        $loc = (int) ($filters['locations_id'] ?? 0);
+        if ($loc > 0) {
+            $parts[] = 'location=' . $loc;
+        }
+        $uid = (int) ($filters['users_id'] ?? 0);
+        if ($uid > 0) {
+            $parts[] = 'user=' . $uid;
+        }
+        $cid = (int) ($filters['containers_id'] ?? 0);
+        if ($cid > 0) {
+            $parts[] = 'container=' . $cid;
+        }
+        $from = trim((string) ($filters['date_from'] ?? ''));
+        $to = trim((string) ($filters['date_to'] ?? ''));
+        if ($from !== '') {
+            $parts[] = 'from=' . $from;
+        }
+        if ($to !== '') {
+            $parts[] = 'to=' . $to;
+        }
+
+        PluginAuchanassettrackerAuditlog::record(
+            'report_export',
+            self::class,
+            0,
+            implode(' ', $parts)
+        );
     }
 
     /**

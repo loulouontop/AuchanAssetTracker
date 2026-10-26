@@ -579,17 +579,32 @@ if (!str_contains($report_front, 'aat-required')
     || !str_contains($report_front, 'aat-report-actions')
     || !str_contains($report_front, 'export_csv')
     || !str_contains($report_front, 'export_excel')
+    || !str_contains($report_front, 'aat-report-container-wrap')
+    || !str_contains($report_front, 'Html::showDateField')
+    || !str_contains($report_front, 'aat-location-dropdown')
 ) {
-    fail('report form missing required marks / period arrow / export buttons');
+    fail('report form missing required marks / period / container gate / GLPI dates / dropdown wrappers');
 } else {
-    ok('report form layout + required marks + export buttons');
+    ok('report form layout + required marks + export + container gate + GLPI dates');
+}
+if (!preg_match("/inventory_location'\s*=>\s*\['locations_id'\]/", $report_cls)) {
+    fail('inventory_location must require locations_id');
+} else {
+    ok('inventory_location requires locations_id');
 }
 if (!str_contains($report_cls, 'exportFilename')
     || !str_contains($report_cls, 'exportMetaLines')
+    || !str_contains($report_cls, 'logExport')
+    || !str_contains($report_cls, "'report_export'")
 ) {
-    fail('report class missing export filename / meta header helpers');
+    fail('report class missing export filename / meta header / audit logExport');
 } else {
-    ok('report export filename + meta header');
+    ok('report export filename + meta header + audit logExport');
+}
+if (!str_contains($report_front, 'logExport')) {
+    fail('report front must call logExport on CSV/Excel generation');
+} else {
+    ok('report front logs document generation');
 }
 if (!str_contains($audit, 'PluginAuchanassettrackerPluginlog::info')) {
     fail('auditlog::record must mirror into plugin log file');
@@ -617,17 +632,19 @@ if (str_contains($report_cls, "__('Entity')")
 }
 if (!str_contains($js, 'aatSyncReportRequiredMarks')
     || !str_contains($js, 'aatValidateReportForm')
+    || !str_contains($js, 'aatSyncReportContainerVisibility')
 ) {
-    fail('aat-forms.js missing report required-field sync');
+    fail('aat-forms.js missing report required-field / container visibility sync');
 } else {
-    ok('aat-forms.js report required-field sync');
+    ok('aat-forms.js report required-field + container visibility sync');
 }
 if (!str_contains($css, '.aat-report-form')
     || !str_contains($css, '.aat-report-period')
+    || !str_contains($css, 'aat-report-form .aat-report-dropdown select:not(.select2-hidden-accessible)')
 ) {
-    fail('css missing report form layout');
+    fail('css missing report form layout / Select2 anti-flash');
 } else {
-    ok('css report form layout');
+    ok('css report form layout + Select2 anti-flash');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by', 'Please select a report type.', 'User is required for this report.'] as $msgid) {
