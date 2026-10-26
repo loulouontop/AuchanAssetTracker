@@ -136,10 +136,13 @@ class PluginAuchanassettrackerRighthelper
     }
 
     /**
-     * Plugin Configuration — Super-Admin only (native GLPI config UPDATE).
+     * Plugin Configuration — Central admin role, or Super-Admin (GLPI config UPDATE).
      */
     public static function canConfigure(): bool
     {
+        if (self::isCentralAdmin()) {
+            return true;
+        }
         return Session::haveRight('config', UPDATE);
     }
 

@@ -54,13 +54,15 @@ class PluginAuchanassettrackerConfig extends CommonDBTM
 
     public static function canCreate(): bool
     {
-        return Session::haveRight(self::$rightname, UPDATE)
+        return PluginAuchanassettrackerRighthelper::canConfigure()
+            || Session::haveRight(self::$rightname, UPDATE)
             || Session::haveRight(self::$rightname, CREATE);
     }
 
     public static function canUpdate(): bool
     {
-        return Session::haveRight(self::$rightname, UPDATE);
+        return PluginAuchanassettrackerRighthelper::canConfigure()
+            || Session::haveRight(self::$rightname, UPDATE);
     }
 
     public function canCreateItem(): bool

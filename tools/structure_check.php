@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.1'")) {
-    fail('expected version 0.5.1');
+if (!str_contains($setup, "'0.5.0'")) {
+    fail('expected version 0.5.0');
 } else {
-    ok('version 0.5.1');
+    ok('version 0.5.0');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -311,10 +311,12 @@ if (!str_contains($rights, 'getMappedRole')
 } else {
     ok('righthelper role gates');
 }
-if (!str_contains($rights, "haveRight('config', UPDATE)")) {
-    fail('canConfigure should prefer Super-Admin config UPDATE');
+if (!str_contains($rights, 'isCentralAdmin')
+    || !str_contains($rights, "haveRight('config', UPDATE)")
+) {
+    fail('canConfigure should allow Central admin or Super-Admin');
 } else {
-    ok('canConfigure Super-Admin gate');
+    ok('canConfigure Central admin / Super-Admin gate');
 }
 $alloc = file_get_contents("$root/inc/allocation.class.php");
 if (!str_contains($alloc, 'aat-alert-columns') || !str_contains($alloc, 'View all')

@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, write-off / lost / stolen, role dashboards, and reports.
 
-**Version:** 0.5.1 (Sprint 5)  
+**Version:** 0.5.0 (Sprint 5)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -50,7 +50,7 @@ GLPI plugin for IT equipment stock, physical containers with QR labels, allocati
   - **Location manager / Support technician:** container stock, to resolve today, in movement
   - **End user:** pending confirms + my gear
 - Reports with filters + **CSV / Excel** export: inventory by location, gear per user, movements by period, stock by type, issues (over thresholds), inventory by container
-- Config panel for the 3 alert thresholds (already present; Super-Admin only)
+- Config panel for the 3 alert thresholds (Central admin)
 
 ## Profiles (auto-created)
 
@@ -65,7 +65,7 @@ On install / upgrade the plugin creates four GLPI profiles (central interface) i
 
 Central admin / Location manager use the **central** interface and seed GLPI rights from **Admin**. Clients can still edit interface and rights under **Administration → Profiles**.
 
-**Plugin Configuration** (alert thresholds) is available to **Super-Admin** only — not to the Central admin profile.
+**Plugin Configuration** (alert thresholds) is available to **Central admin** (and Super-Admin).
 
 **Administration → Profiles → Auchan Asset Tracker** shows an editable rights matrix (no Role dropdown). Bundled profiles keep an internal role for location scope.  
 Profile names/comments follow the active GLPI language (EN / RO).  
@@ -84,7 +84,7 @@ Assign users under **Administration → Users** (profile + Location for managers
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
 4. Log out and back in after upgrade.
 5. Open **Auchan Asset Tracker → Dashboard** (role home) and **Reports** (admin / manager / tech).
-6. Super-Admin: **Configuration** → confirm the 3 day thresholds still apply to Active alerts.
+6. Central admin: **Configuration** → confirm the 3 day thresholds still apply to Active alerts.
 7. Clear browser cache / GLPI cache if menu or CSS looks stale.
 
 ## Requirements

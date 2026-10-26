@@ -313,7 +313,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     /**
      * Map legacy role string → per-right bitmasks.
      *
-     * Config (RIGHT_CONFIG) is never granted via roles — Super-Admin only.
+     * Config (RIGHT_CONFIG): Central admin (+ Super-Admin via initProfile).
      *
      * @return array<string, int>
      */
@@ -323,10 +323,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         $names = self::getRightNames();
         $zero = array_fill_keys($names, 0);
 
-        // Config (RIGHT_CONFIG) is applied only for Super-Admin in initProfile.
-
         return match ($role) {
-            // Global ops (all locations); configuration stays Super-Admin-only.
+            // Global ops (all locations) including plugin Configuration.
             'central_admin' => [
                 self::RIGHT_EQUIPMENT  => $full,
                 self::RIGHT_CONTAINER  => $full,
@@ -334,7 +332,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 self::RIGHT_ALLOCATION => $full,
                 self::RIGHT_TRANSFER   => $full,
                 self::RIGHT_CONFIRM    => $full,
-                self::RIGHT_CONFIG     => 0,
+                self::RIGHT_CONFIG     => READ | UPDATE | CREATE,
             ] + $zero,
             // Own location: receipt, stock, containers, allocation, transfer, write-off.
             'location_manager' => [
@@ -912,7 +910,7 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             // Seed missing plugin right rows only (value 0 for unmapped / new rows).
             self::addDefaultProfileInfos($profiles_id, $defaults, false);
 
-            // Super-Admin: keep full rights on every load (only profile with Config).
+            // Super-Admin: keep full rights on every load.
             if ($isSuper) {
                 foreach ($rightNames as $name) {
                     $DB->update('glpi_profilerights', [
@@ -924,6 +922,27 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                     if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
                         $_SESSION['glpiactiveprofile'][$name] = $full;
                     }
+                }
+            }
+
+            // Central admin: ensure Configuration rights (menu + save thresholds).
+            $mapping = self::getForProfileId($profiles_id);
+            if (!$isSuper
+                && $mapping !== null
+                && (string) ($mapping['role'] ?? '') === 'central_admin'
+            ) {
+                $cfg_rights = READ | UPDATE | CREATE;
+                self::addDefaultProfileInfos($profiles_id, [
+                    self::RIGHT_CONFIG => $cfg_rights,
+                ], true);
+                $DB->update('glpi_profilerights', [
+                    'rights' => $cfg_rights,
+                ], [
+                    'profiles_id' => $profiles_id,
+                    'name'        => self::RIGHT_CONFIG,
+                ]);
+                if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
+                    $_SESSION['glpiactiveprofile'][self::RIGHT_CONFIG] = $cfg_rights;
                 }
             }
 
