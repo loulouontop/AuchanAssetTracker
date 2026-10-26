@@ -121,7 +121,7 @@ echo "<form method='get' action='" . Html::entities_deep($base . '/front/report.
 echo "<div class='aat-report-grid'>";
 
 // Report type — always mandatory.
-echo "<div class='aat-report-field aat-report-dropdown' data-aat-filter='type'>";
+echo "<div class='aat-report-field' data-aat-filter='type'>";
 echo "<label class='form-label'>"
     . __('Report type', 'auchanassettracker') . $req . '</label>';
 $type_choices = ['' => Dropdown::EMPTY_VALUE] + $types;
@@ -142,8 +142,8 @@ if ($scope !== null) {
     echo '<div class="form-control-plaintext">' . Html::entities_deep($loc_name) . '</div>';
     echo Html::hidden('locations_id', ['value' => (int) $scope]);
 } else {
-    // Same wrapper as transfer dest — hides raw <select> until Select2 binds.
-    echo "<div class='aat-location-dropdown aat-report-dropdown'>";
+    // Transfer-proven wrapper: hide bare <select> until Select2 binds.
+    echo "<div class='aat-location-dropdown'>";
     Location::dropdown([
         'name'                => 'locations_id',
         'value'               => $filters['locations_id'],
@@ -154,11 +154,10 @@ if ($scope !== null) {
 }
 echo '</div>';
 
-// User — required for equipment_user (Select2 anti-flash via aat-report-dropdown).
+// User — required for equipment_user.
 echo "<div class='aat-report-field' data-aat-filter='users_id'>";
 echo "<label class='form-label'>" . __('User')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
-echo "<div class='aat-report-dropdown'>";
 User::dropdown([
     'name'                => 'users_id',
     'value'               => $filters['users_id'],
@@ -166,7 +165,7 @@ User::dropdown([
     'display_emptychoice' => true,
     'width'               => '100%',
 ]);
-echo '</div></div>';
+echo '</div>';
 
 // Container — hidden until a location is chosen; options follow that location.
 $loc_for_container = (int) $filters['locations_id'];
@@ -175,7 +174,7 @@ echo "<div class='aat-report-field' data-aat-filter='containers_id' id='aat-repo
     . ($show_container ? '' : ' hidden') . ">";
 echo "<label class='form-label'>" . __('Container', 'auchanassettracker')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
-echo "<span class='aat-container-field aat-report-container-field aat-report-dropdown' data-aat-width='100%'>";
+echo "<span class='aat-container-field aat-report-container-field' data-aat-width='100%'>";
 PluginAuchanassettrackerContainer::dropdownWithActions([
     'name'      => 'containers_id',
     'value'     => $show_container ? $filters['containers_id'] : 0,
@@ -190,31 +189,27 @@ PluginAuchanassettrackerContainer::dropdownWithActions([
 ]);
 echo '</span></div>';
 
-// Period: native GLPI date fields, half-width From | → | To.
-$date_from = $filters['date_from'] !== ''
-    ? $filters['date_from']
-    : date('Y-m-d', strtotime('-30 days'));
-$date_to = $filters['date_to'] !== '' ? $filters['date_to'] : date('Y-m-d');
+// Period: HTML date inputs (From | → | To) — same as previous working layout.
 echo "<div class='aat-report-period' data-aat-filter='period'>";
 echo "<div class='aat-report-period-field aat-report-period-from'>";
 echo "<label class='form-label'>" . __('From')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
-Html::showDateField('date_from', [
-    'value'       => $date_from,
-    'maybeempty'  => true,
-    'canedit'     => true,
-    'display'     => true,
+echo Html::input('date_from', [
+    'type'  => 'date',
+    'value' => $filters['date_from'] !== ''
+        ? $filters['date_from']
+        : date('Y-m-d', strtotime('-30 days')),
+    'class' => 'form-control aat-report-date',
 ]);
 echo '</div>';
 echo "<div class='aat-report-period-arrow' aria-hidden='true'><span>→</span></div>";
 echo "<div class='aat-report-period-field aat-report-period-to'>";
 echo "<label class='form-label'>" . __('To')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
-Html::showDateField('date_to', [
-    'value'       => $date_to,
-    'maybeempty'  => true,
-    'canedit'     => true,
-    'display'     => true,
+echo Html::input('date_to', [
+    'type'  => 'date',
+    'value' => $filters['date_to'] !== '' ? $filters['date_to'] : date('Y-m-d'),
+    'class' => 'form-control aat-report-date',
 ]);
 echo '</div>';
 echo '</div>';

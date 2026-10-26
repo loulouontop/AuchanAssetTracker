@@ -580,12 +580,12 @@ if (!str_contains($report_front, 'aat-required')
     || !str_contains($report_front, 'export_csv')
     || !str_contains($report_front, 'export_excel')
     || !str_contains($report_front, 'aat-report-container-wrap')
-    || !str_contains($report_front, 'Html::showDateField')
+    || !str_contains($report_front, 'aat-report-date')
     || !str_contains($report_front, 'aat-location-dropdown')
 ) {
-    fail('report form missing required marks / period / container gate / GLPI dates / dropdown wrappers');
+    fail('report form missing required marks / period / container gate / date inputs / location wrapper');
 } else {
-    ok('report form layout + required marks + export + container gate + GLPI dates');
+    ok('report form layout + required marks + export + container gate + dates');
 }
 if (!preg_match("/inventory_location'\s*=>\s*\['locations_id'\]/", $report_cls)) {
     fail('inventory_location must require locations_id');
@@ -640,11 +640,11 @@ if (!str_contains($js, 'aatSyncReportRequiredMarks')
 }
 if (!str_contains($css, '.aat-report-form')
     || !str_contains($css, '.aat-report-period')
-    || !str_contains($css, 'aat-report-form .aat-report-dropdown select:not(.select2-hidden-accessible)')
+    || !str_contains($css, '.aat-report-date')
 ) {
-    fail('css missing report form layout / Select2 anti-flash');
+    fail('css missing report form layout');
 } else {
-    ok('css report form layout + Select2 anti-flash');
+    ok('css report form layout');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by', 'Please select a report type.', 'User is required for this report.'] as $msgid) {
