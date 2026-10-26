@@ -107,25 +107,6 @@
     return parseInt(sel.value || '0', 10) || 0;
   }
 
-  function aatSyncTransferCheckAll(form) {
-    if (!form) {
-      return;
-    }
-    var boxes = form.querySelectorAll('.aat-item-check');
-    var checked = 0;
-    for (var i = 0; i < boxes.length; i++) {
-      if (boxes[i].checked) {
-        checked++;
-      }
-    }
-    var master = form.querySelector('.aat-check-all');
-    if (master) {
-      master.checked = boxes.length > 0 && checked === boxes.length;
-      master.indeterminate = checked > 0 && checked < boxes.length;
-    }
-    return checked;
-  }
-
   function aatSyncTransferBulkPanel(form) {
     if (!form) {
       return;
@@ -143,7 +124,8 @@
         row.classList.remove('is-selected');
       }
     }
-    aatSyncTransferCheckAll(form);
+    // Do NOT rewrite .aat-check-all from row checks — select-all stays as the
+    // user left it until they click it again.
     var panel = form.querySelector('.aat-transfer-bulk-panel');
     if (!panel) {
       return;
@@ -174,10 +156,13 @@
     for (var i = 0; i < boxes.length; i++) {
       boxes[i].checked = !!on;
     }
+    var master = form.querySelector('.aat-check-all');
+    if (master) {
+      master.checked = !!on;
+      master.indeterminate = false;
+    }
     if (form.classList.contains('aat-transfer-validate-form')) {
       aatSyncTransferBulkPanel(form);
-    } else {
-      aatSyncTransferCheckAll(form);
     }
   }
 
@@ -194,12 +179,10 @@
       aatApplyCheckAll(form, !!el.checked);
       return;
     }
-    if (el.classList.contains('aat-item-check')) {
-      if (form.classList.contains('aat-transfer-validate-form')) {
-        aatSyncTransferBulkPanel(form);
-      } else {
-        aatSyncTransferCheckAll(form);
-      }
+    // Individual row check: update bulk panel only; leave select-all alone.
+    if (el.classList.contains('aat-item-check')
+        && form.classList.contains('aat-transfer-validate-form')) {
+      aatSyncTransferBulkPanel(form);
     }
   }, true);
 
@@ -250,15 +233,9 @@
   });
 
   document.addEventListener('DOMContentLoaded', function () {
-    var forms = document.querySelectorAll(
-      '.aat-transfer-validate-form, .aat-transfer-create-form, .aat-transfer-edit-form'
-    );
+    var forms = document.querySelectorAll('.aat-transfer-validate-form');
     for (var i = 0; i < forms.length; i++) {
-      if (forms[i].classList.contains('aat-transfer-validate-form')) {
-        aatSyncTransferBulkPanel(forms[i]);
-      } else {
-        aatSyncTransferCheckAll(forms[i]);
-      }
+      aatSyncTransferBulkPanel(forms[i]);
     }
   });
 

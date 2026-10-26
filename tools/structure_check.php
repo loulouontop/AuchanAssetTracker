@@ -464,9 +464,9 @@ if (!str_contains($audit, 'isEmptyDetailValue')
 if (!str_contains($xfer_front, 'bulk_container_id')
     || !str_contains($xfer_front, 'aat-transfer-bulk-panel')
     || !str_contains($xfer_front, 'aat-transfer-validate-actions')
-    || !str_contains($xfer_front, 'container[')
+    || !str_contains($xfer_front, 'container[$eid]')
     || !str_contains($xfer_front, 'Container for selected items')
-    || !str_contains($xfer_front, 'dropdownOptionsForLocation')
+    || !str_contains($xfer_front, 'dropdownWithActions')
 ) {
     fail('transfer validate missing mixed per-row + bulk containers');
 } else {
@@ -514,12 +514,18 @@ if (str_contains($js, "form[name=\"search\"]")
 } else {
     ok('aat-forms.js keeps search-by + saved searches');
 }
-if (!str_contains($js, 'aatApplyCheckAll')
-    || !str_contains($js, 'aatSyncTransferCheckAll')
-) {
-    fail('aat-forms.js missing select-all sync for create/edit/validate');
+if (!str_contains($js, 'aatApplyCheckAll')) {
+    fail('aat-forms.js missing select-all apply');
 } else {
-    ok('aat-forms.js select-all sync');
+    ok('aat-forms.js select-all apply');
+}
+// Select-all must only drive children; row checks must not rewrite the master.
+if (str_contains($js, 'aatSyncTransferCheckAll')
+    || preg_match('/checked === boxes\.length/', $js)
+) {
+    fail('aat-forms.js must not rewrite select-all from individual row checks');
+} else {
+    ok('aat-forms.js leaves select-all alone on row checks');
 }
 if (!str_contains($css, 'font-weight: 700 !important')
     || !str_contains($css, 'color: #000 !important')
@@ -552,10 +558,12 @@ if (str_contains($css, '.search-controls .primary-controls')
 if (!str_contains($dash, 'aat_show_isolated')
     || !str_contains($dash, 'aat-dashboard-critical-css')
     || !str_contains($dash, 'plugin_auchanassettracker_emit_assets')
+    || !str_contains($dash, 'search-container')
+    || !str_contains($dash, 'data-glpi-search-container')
 ) {
-    fail('dashboard missing isolated dual Search + critical CSS / asset emit');
+    fail('dashboard missing isolated dual Search + search-container wrapper + critical CSS');
 } else {
-    ok('dashboard isolated Search + critical CSS');
+    ok('dashboard isolated Search + search-container + critical CSS');
 }
 if (!str_contains($dashc, 'resolveServiceTicketId')) {
     fail('dashboard missing resolveServiceTicketId for In movement tickets');

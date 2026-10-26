@@ -321,9 +321,6 @@ if ($id > 0) {
             ))
             . '</p>';
 
-        // Plain <select> per row (fast). One Select2 only on the shared bulk panel.
-        $container_opts = PluginAuchanassettrackerContainer::dropdownOptionsForLocation($dest);
-
         echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
         echo "<thead><tr>"
             . "<th style='width:2.5rem'><input type='checkbox' class='form-check-input aat-check-all'"
@@ -341,13 +338,17 @@ if ($id > 0) {
                 . " name='equipment_ids[]' value='" . $eid . "' data-eid='" . $eid . "'></td>"
                 . '<td>' . Html::entities_deep($eq->fields['name'] ?? '')
                 . '</td><td>' . Html::entities_deep($eq->fields['serial'] ?? '')
-                . '</td><td><span class="aat-row-container">';
-            echo "<select class='form-select' name='container[" . $eid . "]' style='min-width:180px;max-width:260px'>";
-            foreach ($container_opts as $cid => $label) {
-                echo "<option value='" . (int) $cid . "'>"
-                    . Html::entities_deep((string) $label) . '</option>';
-            }
-            echo '</select>';
+                . '</td><td><span class="aat-row-container aat-container-field" data-aat-width="220px">';
+            // Same native GLPI CommonDropdown (+ i / +) as the shared bulk picker.
+            PluginAuchanassettrackerContainer::dropdownWithActions([
+                'name'      => "container[$eid]",
+                'condition' => [
+                    'locations_id' => $dest,
+                    'is_active'    => 1,
+                    'is_deleted'   => 0,
+                ],
+                'width' => '220px',
+            ]);
             echo '</span></td></tr>';
         }
         echo '</tbody></table></div>';
