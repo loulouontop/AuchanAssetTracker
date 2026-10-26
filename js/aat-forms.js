@@ -169,4 +169,81 @@
       boxes[i].checked = !!el.checked;
     }
   });
+
+  /**
+   * Dashboard Search embeds: strip refresh / download / columns / map|table
+   * controls that CSS alone may miss across GLPI 11 markup variants.
+   */
+  function aatHideDashboardSearchChrome(root) {
+    root = root || document;
+    var scopes = [];
+    if (root.querySelectorAll) {
+      scopes = Array.prototype.slice.call(
+        root.querySelectorAll('.aat-dashboard-search, [data-aat-hide-search-chrome="1"]')
+      );
+    }
+    if (root.classList
+        && (root.classList.contains('aat-dashboard-search')
+            || root.getAttribute('data-aat-hide-search-chrome') === '1')) {
+      scopes = [root];
+    }
+    var iconHints = [
+      'ti-refresh', 'ti-file-download', 'ti-file-export', 'ti-download',
+      'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal',
+      'ti-device-floppy'
+    ];
+    var titleRe = /refresh|download|export|map|table|select.*(item|column|default)|afficher|télécharger|actualiser/i;
+
+    for (var s = 0; s < scopes.length; s++) {
+      var scope = scopes[s];
+      if (!scope || !scope.querySelectorAll) {
+        continue;
+      }
+      var secondary = scope.querySelectorAll('.secondary-controls, .display_prefs_btn, .display-prefs, .export_to_dropdown, #export_to_dropdown, .export_dropdown');
+      for (var i = 0; i < secondary.length; i++) {
+        secondary[i].style.display = 'none';
+      }
+      var nodes = scope.querySelectorAll('a, button, .btn, [data-bs-toggle]');
+      for (var j = 0; j < nodes.length; j++) {
+        var n = nodes[j];
+        var tip = [
+          n.getAttribute('title') || '',
+          n.getAttribute('aria-label') || '',
+          n.getAttribute('data-bs-original-title') || '',
+          n.getAttribute('href') || '',
+          n.getAttribute('name') || ''
+        ].join(' ');
+        var hide = titleRe.test(tip) || /as_map|display_type|export/.test(tip);
+        if (!hide) {
+          for (var k = 0; k < iconHints.length; k++) {
+            if (n.querySelector && n.querySelector('.' + iconHints[k])) {
+              hide = true;
+              break;
+            }
+            if (n.classList && n.classList.contains(iconHints[k])) {
+              hide = true;
+              break;
+            }
+          }
+        }
+        if (hide) {
+          n.style.display = 'none';
+        }
+      }
+    }
+  }
+
+  function aatScheduleHideSearchChrome() {
+    aatHideDashboardSearchChrome(document);
+    // Search widgets may paint after DOMContentLoaded.
+    setTimeout(function () { aatHideDashboardSearchChrome(document); }, 50);
+    setTimeout(function () { aatHideDashboardSearchChrome(document); }, 300);
+    setTimeout(function () { aatHideDashboardSearchChrome(document); }, 1000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', aatScheduleHideSearchChrome);
+  } else {
+    aatScheduleHideSearchChrome();
+  }
 })();

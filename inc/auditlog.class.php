@@ -234,40 +234,56 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
             . Html::entities_deep($label) . '</a>';
     }
 
+    /** @var array<int, string> */
+    private static $equipment_link_cache = [];
+    /** @var array<int, string> */
+    private static $location_link_cache = [];
+    /** @var array<int, string> */
+    private static $container_link_cache = [];
+
     private static function equipmentLink(int $eid): string
     {
         if ($eid <= 0) {
             return '';
         }
+        if (isset(self::$equipment_link_cache[$eid])) {
+            return self::$equipment_link_cache[$eid];
+        }
         $eq = new PluginAuchanassettrackerEquipment();
         if (!$eq->getFromDB($eid)) {
-            return Html::entities_deep('#' . $eid);
+            return self::$equipment_link_cache[$eid] = Html::entities_deep('#' . $eid);
         }
         $name = trim((string) ($eq->fields['name'] ?? ''));
         if ($name === '') {
             $name = '#' . $eid;
         }
         $url = PluginAuchanassettrackerEquipment::getFormURLWithID($eid);
-        return self::linkHtml($url, $name);
+        return self::$equipment_link_cache[$eid] = self::linkHtml($url, $name);
     }
 
     private static function locationLink(int $lid): string
     {
         if ($lid <= 0) {
-            return '—';
+            return '';
+        }
+        if (isset(self::$location_link_cache[$lid])) {
+            return self::$location_link_cache[$lid];
         }
         $name = trim(strip_tags((string) Dropdown::getDropdownName('glpi_locations', $lid)));
         if ($name === '' || $name === '&nbsp;' || $name === '-') {
             $name = '#' . $lid;
         }
         $url = Location::getFormURLWithID($lid);
-        return self::linkHtml($url, $name);
+        return self::$location_link_cache[$lid] = self::linkHtml($url, $name);
     }
 
     private static function containerLink(int $cid): string
     {
         if ($cid <= 0) {
-            return '—';
+            return '';
+        }
+        if (isset(self::$container_link_cache[$cid])) {
+            return self::$container_link_cache[$cid];
         }
         $name = trim(strip_tags((string) Dropdown::getDropdownName(
             PluginAuchanassettrackerContainer::getTable(),
@@ -277,7 +293,7 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
             $name = '#' . $cid;
         }
         $url = PluginAuchanassettrackerContainer::getFormURLWithID($cid);
-        return self::linkHtml($url, $name);
+        return self::$container_link_cache[$cid] = self::linkHtml($url, $name);
     }
 
     private static function userLink(int $uid): string
@@ -306,18 +322,42 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
         return self::linkHtml($url, $label);
     }
 
+    /**
+     * Empty / zero FK values should be omitted from details (not shown as 0 / —).
+     */
+    private static function isEmptyDetailValue(string $key, string $value): bool
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '—' || strtolower($value) === 'null') {
+            return true;
+        }
+        // Hide missing FKs / ids (container=0, location=0, items_id=0, …).
+        if ($value === '0'
+            && in_array($key, [
+                'container', 'location', 'locations_id', 'from', 'to', 'dest',
+                'equipment', 'user', 'users_id', 'ticket', 'items_id', 'items',
+                'plugin_auchanassettracker_containers_id',
+            ], true)
+        ) {
+            return true;
+        }
+        return false;
+    }
+
     private static function formatDetailValueHtml(string $key, string $value): string
     {
         $value = trim($value);
-        if ($value === '' || $value === '0') {
-            return $value === '0' ? '0' : '—';
+        if (self::isEmptyDetailValue($key, $value)) {
+            return '';
         }
 
         if (in_array($key, ['location', 'from', 'to', 'dest', 'locations_id'], true) && ctype_digit($value)) {
             return self::locationLink((int) $value);
         }
 
-        if ($key === 'container' && ctype_digit($value)) {
+        if (in_array($key, ['container', 'plugin_auchanassettracker_containers_id'], true)
+            && ctype_digit($value)
+        ) {
             return self::containerLink((int) $value);
         }
 
@@ -354,7 +394,7 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
                     $links[] = self::equipmentLink($eid);
                 }
             }
-            return $links !== [] ? implode(', ', $links) : '—';
+            return $links !== [] ? implode(', ', $links) : '';
         }
 
         if ($value === 'by_sender') {
@@ -362,6 +402,33 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
         }
 
         return Html::entities_deep($value);
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    private static function formatUpdatedFieldsPart(array $fields): string
+    {
+        $labels = [];
+        foreach ($fields as $f) {
+            $f = trim((string) $f);
+            if ($f === '' || ctype_digit($f)) {
+                continue;
+            }
+            // Skip noisy internal ids / raw status codes in the field list.
+            if (in_array($f, [
+                'status', 'items_id', 'itemtype', 'users_id', 'id', 'date_mod',
+                'date_creation', 'entities_id', 'is_recursive', 'is_deleted',
+            ], true)) {
+                continue;
+            }
+            $labels[] = self::formatDetailKey($f);
+        }
+        if ($labels === []) {
+            return '';
+        }
+        return Html::entities_deep(__('Updated fields', 'auchanassettracker') . ': '
+            . implode(', ', $labels));
     }
 
     /**
@@ -375,78 +442,105 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
         $row_itemtype = (string) ($row['itemtype'] ?? '');
         $row_items_id = (int) ($row['items_id'] ?? 0);
 
-        // Equipment-centric actions: lead with equipment name.
-        $eq_prefix = '';
-        if ($row_items_id > 0
-            && ($row_itemtype === PluginAuchanassettrackerEquipment::class
+        $prefix = '';
+        if ($row_items_id > 0) {
+            if ($row_itemtype === PluginAuchanassettrackerEquipment::class
                 || $row_itemtype === 'PluginAuchanassettrackerEquipment'
-                || str_contains($action, 'equipment_'))
-        ) {
-            $eq_prefix = self::equipmentLink($row_items_id);
+                || str_starts_with($action, 'equipment_')
+            ) {
+                $prefix = self::equipmentLink($row_items_id);
+            } elseif ($row_itemtype === PluginAuchanassettrackerContainer::class
+                || $row_itemtype === 'PluginAuchanassettrackerContainer'
+                || str_starts_with($action, 'container_')
+            ) {
+                $prefix = self::containerLink($row_items_id);
+            }
         }
 
         $raw = trim($details);
         if ($raw === '') {
-            return $eq_prefix;
+            return $prefix;
         }
 
         $json = json_decode($raw, true);
         if (is_array($json)) {
             $parts = [];
-            if ($eq_prefix !== '') {
-                $parts[] = $eq_prefix;
+            if ($prefix !== '') {
+                $parts[] = $prefix;
             }
-            if (isset($json['updates']) && is_array($json['updates'])) {
-                $labels = [];
-                foreach ($json['updates'] as $f) {
-                    $f = (string) $f;
-                    // Skip noisy internal ids / raw status codes in the field list.
-                    if (in_array($f, ['status', 'items_id', 'itemtype', 'users_id'], true)) {
-                        continue;
-                    }
-                    $labels[] = self::formatDetailKey($f);
+
+            // Legacy container_update stored a bare list of field names → show as Updated fields.
+            $is_list = $json !== [] && array_keys($json) === range(0, count($json) - 1);
+            if ($is_list) {
+                $upd = self::formatUpdatedFieldsPart(array_map('strval', $json));
+                if ($upd !== '') {
+                    $parts[] = $upd;
                 }
-                if ($labels !== []) {
-                    $parts[] = Html::entities_deep(__('Updated fields', 'auchanassettracker') . ': '
-                        . implode(', ', $labels));
+                return implode(' · ', array_filter($parts, static fn ($p) => $p !== ''));
+            }
+
+            if (isset($json['updates']) && is_array($json['updates'])) {
+                $upd = self::formatUpdatedFieldsPart(array_map('strval', $json['updates']));
+                if ($upd !== '') {
+                    $parts[] = $upd;
                 }
                 unset($json['updates']);
             }
-            // Drop raw status / numeric ids from equipment_update JSON body.
-            unset($json['status'], $json['items_id'], $json['itemtype']);
+
+            // Equipment / container updates: only the field list (no status / ids / extras).
+            if (str_starts_with($action, 'equipment_update')
+                || str_starts_with($action, 'container_update')
+            ) {
+                return implode(' · ', array_filter($parts, static fn ($p) => $p !== ''));
+            }
+
+            unset($json['status'], $json['items_id']);
             foreach ($json as $key => $val) {
+                $key = (string) $key;
                 if (is_array($val)) {
                     $val = implode(', ', array_map('strval', $val));
                 }
-                $parts[] = Html::entities_deep(self::formatDetailKey((string) $key) . ': ')
-                    . self::formatDetailValueHtml((string) $key, (string) $val);
+                $val = (string) $val;
+                if (self::isEmptyDetailValue($key, $val)) {
+                    continue;
+                }
+                $rendered = self::formatDetailValueHtml($key, $val);
+                if ($rendered === '') {
+                    continue;
+                }
+                $parts[] = Html::entities_deep(self::formatDetailKey($key) . ': ') . $rendered;
             }
             return implode(' · ', array_filter($parts, static fn ($p) => $p !== ''));
         }
 
         if (preg_match_all('/(\w+)=([^\s]*)/u', $raw, $matches, PREG_SET_ORDER)) {
             $parts = [];
-            if ($eq_prefix !== '') {
-                $parts[] = $eq_prefix;
+            if ($prefix !== '') {
+                $parts[] = $prefix;
             }
             foreach ($matches as $m) {
                 $key = (string) ($m[1] ?? '');
                 $val = trim((string) ($m[2] ?? ''), " \t\"'");
-                // Skip bare asset class + numeric id pair; show type name instead of FQCN.
                 if ($key === 'items_id') {
                     continue;
                 }
                 if ($key === 'status' && str_starts_with($action, 'equipment_update')) {
                     continue;
                 }
-                $parts[] = Html::entities_deep(self::formatDetailKey($key) . ': ')
-                    . self::formatDetailValueHtml($key, $val);
+                if (self::isEmptyDetailValue($key, $val)) {
+                    continue;
+                }
+                $rendered = self::formatDetailValueHtml($key, $val);
+                if ($rendered === '') {
+                    continue;
+                }
+                $parts[] = Html::entities_deep(self::formatDetailKey($key) . ': ') . $rendered;
             }
             return implode(' · ', array_filter($parts, static fn ($p) => $p !== ''));
         }
 
         $plain = Html::entities_deep($raw);
-        return $eq_prefix !== '' ? ($eq_prefix . ' · ' . $plain) : $plain;
+        return $prefix !== '' ? ($prefix . ' · ' . $plain) : $plain;
     }
 
     public static function getSpecificValueToDisplay($field, $values, array $options = [])

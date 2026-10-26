@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.1'")) {
-    fail('expected version 0.5.1');
+if (!str_contains($setup, "'0.5.2'")) {
+    fail('expected version 0.5.2');
 } else {
-    ok('version 0.5.1');
+    ok('version 0.5.2');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -416,6 +416,28 @@ if (!str_contains($dashc, 'syncInServiceFromGlpiAssets')) {
 } else {
     ok('dashboard syncInServiceFromGlpiAssets');
 }
+$stock = file_get_contents("$root/inc/stockbylocation.class.php");
+if (!str_contains($stock, 'aat_stockbylocation_rebuilt_at')
+    || !str_contains($stock, 'GROUP BY')
+) {
+    fail('stockbylocation rebuild must be throttled + aggregated');
+} else {
+    ok('stockbylocation throttled rebuild');
+}
+if (!str_contains($rights, "haveRight('config', UPDATE)")
+    || !preg_match('/function getCurrentRole.*?haveRight\(\'config\',\s*UPDATE\)/s', $rights)
+) {
+    fail('Super-Admin (config UPDATE) must map to Central admin role');
+} else {
+    ok('Super-Admin maps to Central admin');
+}
+if (!str_contains($dash, '_n(')
+    || !str_contains($dash, 'You have %d equipments awaiting confirmation.')
+) {
+    fail('dashboard pending must pluralize equipment/equipments');
+} else {
+    ok('dashboard pending pluralization');
+}
 $audit = file_get_contents("$root/inc/auditlog.class.php");
 foreach (['formatActionLabel', 'formatDetailsHtml'] as $needle) {
     if (!str_contains($audit, $needle)) {
@@ -423,6 +445,14 @@ foreach (['formatActionLabel', 'formatDetailsHtml'] as $needle) {
     } else {
         ok("auditlog has $needle");
     }
+}
+if (!str_contains($audit, 'isEmptyDetailValue')
+    || !str_contains($audit, 'formatUpdatedFieldsPart')
+    || !str_contains($audit, 'array_keys($json) === range')
+) {
+    fail('audit details must hide empty FKs and fix list updates');
+} else {
+    ok('audit details empty/list handling');
 }
 if (!str_contains($xfer_front, 'bulk_container_id')
     || !str_contains($xfer_front, 'aat-transfer-bulk-container')
@@ -443,6 +473,11 @@ if (!str_contains($js, 'bulk_container_id')) {
     fail('aat-forms.js missing bulk_container_id handler');
 } else {
     ok('aat-forms.js bulk container handler');
+}
+if (!str_contains($js, 'aatHideDashboardSearchChrome')) {
+    fail('aat-forms.js must hide dashboard Search chrome');
+} else {
+    ok('aat-forms.js hides dashboard Search chrome');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

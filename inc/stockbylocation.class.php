@@ -65,8 +65,10 @@ class PluginAuchanassettrackerStockbylocation extends CommonDBTM
 
     /**
      * Rebuild summary rows from current equipment stock.
+     * Throttled: skip when a rebuild ran recently so Search sort/filter
+     * reloads do not TRUNCATE+rescan on every click (Gateway 504).
      */
-    public static function rebuild(): void
+    public static function rebuild(bool $force = false): void
     {
         global $DB;
 
@@ -76,26 +78,88 @@ class PluginAuchanassettrackerStockbylocation extends CommonDBTM
             return;
         }
 
+        $ttl = 120; // seconds
+        $now_ts = time();
+        if (!$force) {
+            $last = (int) ($_SESSION['aat_stockbylocation_rebuilt_at'] ?? 0);
+            if ($last > 0 && ($now_ts - $last) < $ttl) {
+                return;
+            }
+            // Also skip if table already has fresh rows (another request rebuilt).
+            try {
+                foreach ($DB->request([
+                    'SELECT' => ['date_mod'],
+                    'FROM'   => $table,
+                    'ORDER'  => 'date_mod DESC',
+                    'LIMIT'  => 1,
+                ]) as $row) {
+                    $dm = strtotime((string) ($row['date_mod'] ?? ''));
+                    if ($dm !== false && ($now_ts - $dm) < $ttl) {
+                        $_SESSION['aat_stockbylocation_rebuilt_at'] = $dm;
+                        return;
+                    }
+                    break;
+                }
+            } catch (Throwable $e) {
+                // Continue with rebuild.
+            }
+        }
+
         $counts = [];
-        foreach ($DB->request([
-            'FROM'  => $eq,
-            'WHERE' => ['is_deleted' => 0],
-        ]) as $row) {
-            $lid = (int) ($row['locations_id'] ?? 0);
-            if ($lid <= 0) {
-                continue;
+        // Aggregate in SQL — much cheaper than loading every equipment row in PHP.
+        $sql = 'SELECT `locations_id`, `status`, COUNT(*) AS `cpt`'
+            . ' FROM `' . str_replace('`', '``', $eq) . '`'
+            . ' WHERE `is_deleted` = 0 AND `locations_id` > 0'
+            . ' GROUP BY `locations_id`, `status`';
+        $aggregated = false;
+        try {
+            $result = $DB->doQuery($sql);
+            if ($result) {
+                $aggregated = true;
+                while ($row = $result->fetch_assoc()) {
+                    $lid = (int) ($row['locations_id'] ?? 0);
+                    if ($lid <= 0) {
+                        continue;
+                    }
+                    if (!isset($counts[$lid])) {
+                        $counts[$lid] = [
+                            'available'  => 0,
+                            'allocated'  => 0,
+                            'in_service' => 0,
+                            'in_transit' => 0,
+                        ];
+                    }
+                    $st = (string) ($row['status'] ?? '');
+                    if (isset($counts[$lid][$st])) {
+                        $counts[$lid][$st] = (int) ($row['cpt'] ?? 0);
+                    }
+                }
             }
-            if (!isset($counts[$lid])) {
-                $counts[$lid] = [
-                    'available'  => 0,
-                    'allocated'  => 0,
-                    'in_service' => 0,
-                    'in_transit' => 0,
-                ];
-            }
-            $st = (string) ($row['status'] ?? '');
-            if (isset($counts[$lid][$st])) {
-                $counts[$lid][$st]++;
+        } catch (Throwable $e) {
+            $aggregated = false;
+        }
+        if (!$aggregated) {
+            foreach ($DB->request([
+                'SELECT' => ['locations_id', 'status'],
+                'FROM'   => $eq,
+                'WHERE'  => ['is_deleted' => 0],
+            ]) as $row) {
+                $lid = (int) ($row['locations_id'] ?? 0);
+                if ($lid <= 0) {
+                    continue;
+                }
+                if (!isset($counts[$lid])) {
+                    $counts[$lid] = [
+                        'available'  => 0,
+                        'allocated'  => 0,
+                        'in_service' => 0,
+                        'in_transit' => 0,
+                    ];
+                }
+                $st = (string) ($row['status'] ?? '');
+                if (isset($counts[$lid][$st])) {
+                    $counts[$lid][$st]++;
+                }
             }
         }
 
@@ -116,6 +180,7 @@ class PluginAuchanassettrackerStockbylocation extends CommonDBTM
                 'date_mod'     => $now,
             ]);
         }
+        $_SESSION['aat_stockbylocation_rebuilt_at'] = $now_ts;
     }
 
     public function rawSearchOptions()

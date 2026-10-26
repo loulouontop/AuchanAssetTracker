@@ -631,14 +631,13 @@ img.aat-qr-preview {
   border-radius: 0 4px 4px 0;
 }
 .aat-pending-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
 }
 .aat-pending-main {
-  flex: 1 1 220px;
   min-width: 0;
 }
 .aat-pending-main h2 {
@@ -652,9 +651,23 @@ img.aat-qr-preview {
   margin: 0.15rem 0;
 }
 .aat-pending-actions {
-  flex: 0 0 auto;
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
   align-self: center;
+  flex: 0 0 auto;
+  margin-left: 0;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .aat-pending-row {
+    grid-template-columns: 1fr;
+  }
+  .aat-pending-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: end;
+  }
 }
 .aat-dashboard-search {
   margin-bottom: 1.5rem;
@@ -663,33 +676,67 @@ img.aat-qr-preview {
 .aat-dashboard-search .card.search-card {
   margin-top: 0.25rem;
 }
-/* Hide GLPI Search chrome not useful on the dashboard embeds
-   (select columns / refresh / download / table|map). */
+/* Hide GLPI Search chrome on dashboard embeds
+   (select columns / refresh / download / table|map). Broad selectors —
+   GLPI 11 markup varies by version; JS also strips these nodes. */
+.aat-dashboard-search .secondary-controls,
 .aat-dashboard-search .search-controls .secondary-controls,
 .aat-dashboard-search .card-header.search-header .secondary-controls,
+.aat-dashboard-search .display-prefs,
+.aat-dashboard-search .display_prefs_btn,
+.aat-dashboard-search .btn.display-prefs,
 .aat-dashboard-search .search-footer .list_footer_controls .dropdown,
 .aat-dashboard-search .search-footer .export_to_dropdown,
 .aat-dashboard-search #export_to_dropdown,
+.aat-dashboard-search .export_dropdown,
 .aat-dashboard-search .search-footer .btn-group,
-.aat-dashboard-search .search-controls a[href*="as_map"],
-.aat-dashboard-search .search-controls button[name="as_map"],
-.aat-dashboard-search .search-controls .ti-refresh,
-.aat-dashboard-search .search-controls .ti-file-download,
-.aat-dashboard-search .search-controls .ti-map,
-.aat-dashboard-search .search-controls .ti-table,
-.aat-dashboard-search .search-controls .ti-adjustments,
-.aat-dashboard-search .search-controls .ti-device-floppy,
-.aat-dashboard-search .search-controls .ti-refresh,
-.aat-dashboard-search .search-controls button:has(.ti-refresh),
-.aat-dashboard-search .search-controls button:has(.ti-file-download),
-.aat-dashboard-search .search-controls button:has(.ti-map),
-.aat-dashboard-search .search-controls button:has(.ti-table),
-.aat-dashboard-search .search-controls button:has(.ti-adjustments),
-.aat-dashboard-search .search-controls a:has(.ti-adjustments),
-.aat-dashboard-search .search-controls a:has(.ti-device-floppy),
-.aat-dashboard-search .search-controls a:has(.ti-file-download),
-.aat-dashboard-search .search-controls a:has(.ti-map),
-.aat-dashboard-search .search-controls a:has(.ti-table) {
+.aat-dashboard-search .search-controls .btn-group,
+.aat-dashboard-search .card-header .btn-group,
+.aat-dashboard-search a[href*="as_map"],
+.aat-dashboard-search button[name="as_map"],
+.aat-dashboard-search button[name="display"],
+.aat-dashboard-search .ti-refresh,
+.aat-dashboard-search .ti-file-download,
+.aat-dashboard-search .ti-file-export,
+.aat-dashboard-search .ti-download,
+.aat-dashboard-search .ti-map,
+.aat-dashboard-search .ti-table,
+.aat-dashboard-search .ti-adjustments,
+.aat-dashboard-search .ti-adjustments-horizontal,
+.aat-dashboard-search .ti-device-floppy,
+.aat-dashboard-search button:has(.ti-refresh),
+.aat-dashboard-search button:has(.ti-file-download),
+.aat-dashboard-search button:has(.ti-file-export),
+.aat-dashboard-search button:has(.ti-download),
+.aat-dashboard-search button:has(.ti-map),
+.aat-dashboard-search button:has(.ti-table),
+.aat-dashboard-search button:has(.ti-adjustments),
+.aat-dashboard-search button:has(.ti-adjustments-horizontal),
+.aat-dashboard-search button:has(.ti-device-floppy),
+.aat-dashboard-search a:has(.ti-adjustments),
+.aat-dashboard-search a:has(.ti-adjustments-horizontal),
+.aat-dashboard-search a:has(.ti-device-floppy),
+.aat-dashboard-search a:has(.ti-file-download),
+.aat-dashboard-search a:has(.ti-file-export),
+.aat-dashboard-search a:has(.ti-download),
+.aat-dashboard-search a:has(.ti-map),
+.aat-dashboard-search a:has(.ti-table),
+.aat-dashboard-search a:has(.ti-refresh),
+.aat-dashboard-search [title*="Refresh" i],
+.aat-dashboard-search [title*="Download" i],
+.aat-dashboard-search [title*="Export" i],
+.aat-dashboard-search [title*="map" i],
+.aat-dashboard-search [title*="Select default items" i],
+.aat-dashboard-search [title*="Select items to show" i],
+.aat-dashboard-search [aria-label*="Refresh" i],
+.aat-dashboard-search [aria-label*="Download" i],
+.aat-dashboard-search [aria-label*="Export" i],
+.aat-dashboard-search [aria-label*="map" i],
+.aat-dashboard-search [data-bs-original-title*="Refresh" i],
+.aat-dashboard-search [data-bs-original-title*="Download" i],
+.aat-dashboard-search [data-bs-original-title*="Export" i],
+.aat-dashboard-search [data-bs-original-title*="map" i],
+.aat-dashboard-search [data-bs-original-title*="Select" i] {
   display: none !important;
 }
 .aat-transfer-bulk-container {

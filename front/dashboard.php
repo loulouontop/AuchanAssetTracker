@@ -142,7 +142,8 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
 
     // Native GLPI Search: filter / sort / saved searches / rows per page / pagination.
     echo '<h2 class="mt-4">' . __('Stock by location', 'auchanassettracker') . '</h2>';
-    echo "<div class='aat-dashboard-search'>";
+    echo "<div class='aat-dashboard-search' data-aat-hide-search-chrome='1'>";
+    // Throttled rebuild — avoids full rescan on every sort click (504).
     PluginAuchanassettrackerStockbylocation::rebuild();
     PluginAuchanassettrackerStockbylocation::ensureDisplayPreferences();
     // Do not force sort/order on every render — that breaks ASC↔DESC column toggles.
@@ -152,13 +153,23 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     echo '</div>';
 
     echo '<h2 class="mt-4">' . __('Recent activity', 'auchanassettracker') . '</h2>';
-    echo "<div class='aat-dashboard-search'>";
+    echo "<div class='aat-dashboard-search' data-aat-hide-search-chrome='1'>";
     PluginAuchanassettrackerAuditlog::ensureDisplayPreferences();
+    // Keep page light so sort/filter does not Gateway-timeout formatting details.
+    $prev_list_limit = $_SESSION['glpilist_limit'] ?? null;
+    if (!isset($_GET['glpilist_limit']) && !isset($_REQUEST['glpilist_limit'])) {
+        $_SESSION['glpilist_limit'] = 15;
+    }
     Search::showList(PluginAuchanassettrackerAuditlog::class, [
         'showmassiveactions' => false,
         // Date, User, Action, Details — no Item type column.
         'forcetoview'        => [2, 3, 4, 5],
     ]);
+    if ($prev_list_limit === null) {
+        unset($_SESSION['glpilist_limit']);
+    } else {
+        $_SESSION['glpilist_limit'] = $prev_list_limit;
+    }
     echo '</div>';
 
 } elseif (in_array($role, [
@@ -259,13 +270,19 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     $data = PluginAuchanassettrackerDashboard::getUserData((int) Session::getLoginUserID());
 
     if ($data['pending'] !== []) {
+        $pending_count = count($data['pending']);
         echo "<div class='aat-pending mb-3'>";
         echo "<div class='aat-pending-row'>";
         echo "<div class='aat-pending-main'>";
         echo '<h2>' . __('Pending actions', 'auchanassettracker') . '</h2>';
         echo '<p class="mb-2">' . sprintf(
-            __('You have %d equipment awaiting confirmation.', 'auchanassettracker'),
-            count($data['pending'])
+            _n(
+                'You have %d equipment awaiting confirmation.',
+                'You have %d equipments awaiting confirmation.',
+                $pending_count,
+                'auchanassettracker'
+            ),
+            $pending_count
         ) . '</p>';
         echo "<ul class='aat-pending-equipment mb-0'>";
         foreach ($data['pending'] as $p) {
