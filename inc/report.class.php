@@ -18,6 +18,61 @@ class PluginAuchanassettrackerReport
     }
 
     /**
+     * Extra filters required once a report type is chosen (report type itself is always required).
+     * Other filters stay optional and still narrow results when set.
+     *
+     * @return list<string>
+     */
+    public static function getRequiredFilters(string $type): array
+    {
+        return match ($type) {
+            'inventory_container' => ['locations_id', 'containers_id'],
+            'equipment_user'      => ['users_id'],
+            'movements'           => ['date_from', 'date_to'],
+            default               => [],
+        };
+    }
+
+    /**
+     * @return list<string> Human-readable validation errors (empty = ok).
+     */
+    public static function validate(string $type, array $filters): array
+    {
+        $errors = [];
+        $types = self::getTypes();
+        if ($type === '' || !isset($types[$type])) {
+            $errors[] = __('Please select a report type.', 'auchanassettracker');
+            return $errors;
+        }
+
+        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        foreach (self::getRequiredFilters($type) as $field) {
+            if ($field === 'locations_id' && $scope !== null) {
+                // Scoped roles already have a fixed location.
+                continue;
+            }
+            $val = $filters[$field] ?? null;
+            if ($field === 'date_from' || $field === 'date_to') {
+                if (!is_string($val) || trim($val) === '') {
+                    $errors[] = __('Period is required for this report.', 'auchanassettracker');
+                    break;
+                }
+                continue;
+            }
+            if ((int) $val <= 0) {
+                $errors[] = match ($field) {
+                    'users_id'      => __('User is required for this report.', 'auchanassettracker'),
+                    'containers_id' => __('Container is required for this report.', 'auchanassettracker'),
+                    'locations_id'  => __('Location is required for this report.', 'auchanassettracker'),
+                    default         => __('Please fill the required filters.', 'auchanassettracker'),
+                };
+            }
+        }
+
+        return array_values(array_unique($errors));
+    }
+
+    /**
      * @return array{headers: list<string>, rows: list<list<string>>}
      */
     public static function run(string $type, array $filters): array
@@ -84,18 +139,35 @@ class PluginAuchanassettrackerReport
         return $xml;
     }
 
-    private static function inventoryByLocation(array $filters): array
+    /**
+     * Common optional filters for equipment-based reports.
+     *
+     * @return array<string, mixed>
+     */
+    private static function equipmentWhere(array $filters, array $extra = []): array
     {
-        global $DB;
+        $where = array_merge(['is_deleted' => 0], $extra);
 
-        $where = ['is_deleted' => 0];
-        if (!empty($filters['locations_id'])) {
-            $where['locations_id'] = (int) $filters['locations_id'];
-        }
         $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
         if ($scope !== null) {
             $where['locations_id'] = $scope;
+        } elseif (!empty($filters['locations_id'])) {
+            $where['locations_id'] = (int) $filters['locations_id'];
         }
+
+        if (!empty($filters['users_id'])) {
+            $where['users_id'] = (int) $filters['users_id'];
+        }
+        if (!empty($filters['containers_id'])) {
+            $where['plugin_auchanassettracker_containers_id'] = (int) $filters['containers_id'];
+        }
+
+        return $where;
+    }
+
+    private static function inventoryByLocation(array $filters): array
+    {
+        global $DB;
 
         $headers = [
             __('ID'),
@@ -110,17 +182,14 @@ class PluginAuchanassettrackerReport
         $rows = [];
         foreach ($DB->request([
             'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
-            'WHERE' => $where,
+            'WHERE' => self::equipmentWhere($filters),
             'ORDER' => 'locations_id ASC, name ASC',
         ]) as $r) {
             $rows[] = [
                 (string) $r['id'],
                 (string) $r['name'],
                 (string) ($r['serial'] ?? ''),
-                Dropdown::getDropdownName(
-                    PluginAuchanassettrackerEquipmenttype::getTable(),
-                    (int) $r['plugin_auchanassettracker_equipmenttypes_id']
-                ),
+                PluginAuchanassettrackerEquipment::getItemtypeLabel((string) ($r['itemtype'] ?? '')),
                 PluginAuchanassettrackerEquipment::getStatusLabel((string) $r['status']),
                 Dropdown::getDropdownName('glpi_locations', (int) $r['locations_id']),
                 Dropdown::getDropdownName(
@@ -138,37 +207,36 @@ class PluginAuchanassettrackerReport
         global $DB;
 
         $uid = (int) ($filters['users_id'] ?? 0);
-        $where = ['is_deleted' => 0];
-        if ($uid > 0) {
-            $where['users_id'] = $uid;
-        } else {
-            $where[] = ['users_id' => ['>', 0]];
-        }
-
-        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        if ($scope !== null) {
-            $where['locations_id'] = $scope;
-        }
+        $extra = $uid > 0
+            ? ['users_id' => $uid]
+            : [['users_id' => ['>', 0]]];
 
         $headers = [
             __('User'),
             __('Equipment'),
             __('Serial number'),
+            __('Type'),
             __('Status'),
-            __('Allocation date', 'auchanassettracker'),
+            __('Location'),
+            __('Container', 'auchanassettracker'),
         ];
         $rows = [];
         foreach ($DB->request([
             'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
-            'WHERE' => $where,
-            'ORDER' => 'users_id ASC',
+            'WHERE' => self::equipmentWhere($filters, $extra),
+            'ORDER' => 'users_id ASC, name ASC',
         ]) as $r) {
             $rows[] = [
                 getUserName((int) $r['users_id']),
                 (string) $r['name'],
                 (string) ($r['serial'] ?? ''),
+                PluginAuchanassettrackerEquipment::getItemtypeLabel((string) ($r['itemtype'] ?? '')),
                 PluginAuchanassettrackerEquipment::getStatusLabel((string) $r['status']),
-                (string) ($r['date_mod'] ?? ''),
+                Dropdown::getDropdownName('glpi_locations', (int) $r['locations_id']),
+                Dropdown::getDropdownName(
+                    PluginAuchanassettrackerContainer::getTable(),
+                    (int) $r['plugin_auchanassettracker_containers_id']
+                ),
             ];
         }
         return ['headers' => $headers, 'rows' => $rows];
@@ -181,114 +249,133 @@ class PluginAuchanassettrackerReport
         $from = (string) ($filters['date_from'] ?? date('Y-m-d', strtotime('-30 days')));
         $to   = (string) ($filters['date_to'] ?? date('Y-m-d'));
 
+        $where = [
+            ['date_creation' => ['>=', $from . ' 00:00:00']],
+            ['date_creation' => ['<=', $to . ' 23:59:59']],
+        ];
+        if (!empty($filters['users_id'])) {
+            $where['users_id'] = (int) $filters['users_id'];
+        }
+
         $headers = [__('Date'), __('Action'), __('User'), __('Entity'), __('Details')];
         $rows = [];
         foreach ($DB->request([
             'FROM'  => PluginAuchanassettrackerAuditlog::getTable(),
-            'WHERE' => [
-                ['date_creation' => ['>=', $from . ' 00:00:00']],
-                ['date_creation' => ['<=', $to . ' 23:59:59']],
-            ],
+            'WHERE' => $where,
             'ORDER' => 'date_creation DESC',
             'LIMIT' => 5000,
         ]) as $r) {
             $rows[] = [
                 (string) $r['date_creation'],
-                (string) $r['action'],
+                PluginAuchanassettrackerAuditlog::formatActionLabel((string) ($r['action'] ?? '')),
                 getUserName((int) $r['users_id']),
                 (string) $r['itemtype'] . ' #' . $r['items_id'],
-                (string) ($r['details'] ?? ''),
+                strip_tags((string) ($r['details'] ?? '')),
             ];
         }
         return ['headers' => $headers, 'rows' => $rows];
     }
 
+    /**
+     * Stock counts by GLPI asset type (Computer, Monitor, custom assets, …).
+     */
     private static function stockByType(array $filters): array
     {
         global $DB;
 
-        $where = [
-            'status'     => PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
-            'is_deleted' => 0,
+        $headers = [
+            __('Type'),
+            __('Location'),
+            __('Quantity'),
         ];
-        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
-        if ($scope !== null) {
-            $where['locations_id'] = $scope;
-        } elseif (!empty($filters['locations_id'])) {
-            $where['locations_id'] = (int) $filters['locations_id'];
-        }
-
-        $headers = [__('Type'), __('Location'), __('Quantity')];
         $rows = [];
         $agg = [];
         foreach ($DB->request([
             'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
-            'WHERE' => $where,
+            'WHERE' => self::equipmentWhere($filters),
         ]) as $r) {
-            $key = (int) $r['plugin_auchanassettracker_equipmenttypes_id'] . ':' . (int) $r['locations_id'];
+            $itemtype = (string) ($r['itemtype'] ?? '');
+            if ($itemtype === '') {
+                $itemtype = '—';
+            }
+            $loc = (int) ($r['locations_id'] ?? 0);
+            $key = $itemtype . ':' . $loc;
             if (!isset($agg[$key])) {
                 $agg[$key] = [
-                    'type' => (int) $r['plugin_auchanassettracker_equipmenttypes_id'],
-                    'loc'  => (int) $r['locations_id'],
-                    'cpt'  => 0,
+                    'itemtype' => $itemtype,
+                    'loc'      => $loc,
+                    'cpt'      => 0,
                 ];
             }
             $agg[$key]['cpt']++;
         }
+
+        uasort($agg, static function (array $a, array $b): int {
+            $la = PluginAuchanassettrackerEquipment::getItemtypeLabel((string) $a['itemtype']);
+            $lb = PluginAuchanassettrackerEquipment::getItemtypeLabel((string) $b['itemtype']);
+            $cmp = strcasecmp($la, $lb);
+            return $cmp !== 0 ? $cmp : ($a['loc'] <=> $b['loc']);
+        });
+
         foreach ($agg as $r) {
+            $label = ((string) $r['itemtype'] === '—')
+                ? '—'
+                : PluginAuchanassettrackerEquipment::getItemtypeLabel((string) $r['itemtype']);
             $rows[] = [
-                Dropdown::getDropdownName(
-                    PluginAuchanassettrackerEquipmenttype::getTable(),
-                    $r['type']
-                ),
-                Dropdown::getDropdownName('glpi_locations', $r['loc']),
+                $label,
+                Dropdown::getDropdownName('glpi_locations', (int) $r['loc']),
                 (string) $r['cpt'],
             ];
         }
         return ['headers' => $headers, 'rows' => $rows];
     }
 
+    /**
+     * All equipment currently In service (optional location / user / container filters).
+     */
     private static function issues(array $filters): array
     {
-        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        global $DB;
+
         $headers = [
-            __('Issue type', 'auchanassettracker'),
-            __('Equipment'),
+            __('Name'),
+            __('Serial number'),
+            __('Type'),
             __('Location'),
-            __('Days', 'auchanassettracker'),
+            __('Container', 'auchanassettracker'),
+            __('User'),
+            __('Status'),
         ];
         $rows = [];
-
-        foreach (PluginAuchanassettrackerTickethook::getOverdueInService($scope) as $r) {
+        foreach ($DB->request([
+            'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
+            'WHERE' => self::equipmentWhere($filters, [
+                'status' => PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
+            ]),
+            'ORDER' => 'locations_id ASC, name ASC',
+        ]) as $r) {
             $rows[] = [
-                __('In service overtime', 'auchanassettracker'),
-                (string) ($r['name'] ?? ''),
-                Dropdown::getDropdownName('glpi_locations', (int) ($r['locations_id'] ?? 0)),
-                (string) PluginAuchanassettrackerDashboard::daysSince($r['service_since'] ?? null),
+                (string) $r['name'],
+                (string) ($r['serial'] ?? ''),
+                PluginAuchanassettrackerEquipment::getItemtypeLabel((string) ($r['itemtype'] ?? '')),
+                Dropdown::getDropdownName('glpi_locations', (int) $r['locations_id']),
+                Dropdown::getDropdownName(
+                    PluginAuchanassettrackerContainer::getTable(),
+                    (int) $r['plugin_auchanassettracker_containers_id']
+                ),
+                !empty($r['users_id']) ? getUserName((int) $r['users_id']) : '',
+                PluginAuchanassettrackerEquipment::getStatusLabel(
+                    PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE
+                ),
             ];
         }
-        foreach (PluginAuchanassettrackerAllocation::getOverduePending($scope) as $r) {
-            $rows[] = [
-                __('Unconfirmed allocation', 'auchanassettracker'),
-                (string) ($r['equipment_name'] ?? ''),
-                Dropdown::getDropdownName('glpi_locations', (int) ($r['locations_id'] ?? 0)),
-                (string) PluginAuchanassettrackerDashboard::daysSince($r['allocation_date'] ?? null),
-            ];
-        }
-        foreach (PluginAuchanassettrackerTransfer::getOverdue($scope) as $r) {
-            $rows[] = [
-                __('Unvalidated transfer', 'auchanassettracker'),
-                '#' . $r['id'],
-                Dropdown::getDropdownName('glpi_locations', (int) $r['locations_id_dest']),
-                (string) PluginAuchanassettrackerDashboard::daysSince($r['date_initiated'] ?? null),
-            ];
-        }
-
         return ['headers' => $headers, 'rows' => $rows];
     }
 
     private static function inventoryByContainer(array $filters): array
     {
+        global $DB;
+
         $cid = (int) ($filters['containers_id'] ?? 0);
         $headers = [
             __('Container', 'auchanassettracker'),
@@ -296,23 +383,42 @@ class PluginAuchanassettrackerReport
             __('Name'),
             __('Serial number'),
             __('Model'),
+            __('Status'),
         ];
         $rows = [];
         if ($cid <= 0) {
             return ['headers' => $headers, 'rows' => $rows];
         }
 
+        // Optional location must match the container when both are set.
+        $loc = (int) ($filters['locations_id'] ?? 0);
+        $scope = PluginAuchanassettrackerRighthelper::getScopedLocationId();
+        if ($scope !== null) {
+            $loc = (int) $scope;
+        }
+        if ($loc > 0) {
+            $c = new PluginAuchanassettrackerContainer();
+            if (!$c->getFromDB($cid) || (int) ($c->fields['locations_id'] ?? 0) !== $loc) {
+                return ['headers' => $headers, 'rows' => $rows];
+            }
+        }
+
         $cname = Dropdown::getDropdownName(PluginAuchanassettrackerContainer::getTable(), $cid);
-        foreach (PluginAuchanassettrackerEquipment::listInContainer($cid) as $r) {
+        $where = self::equipmentWhere($filters, [
+            'plugin_auchanassettracker_containers_id' => $cid,
+        ]);
+        foreach ($DB->request([
+            'FROM'  => PluginAuchanassettrackerEquipment::getTable(),
+            'WHERE' => $where,
+            'ORDER' => 'itemtype ASC, name ASC, serial ASC, id ASC',
+        ]) as $r) {
             $rows[] = [
                 $cname,
-                Dropdown::getDropdownName(
-                    PluginAuchanassettrackerEquipmenttype::getTable(),
-                    (int) $r['plugin_auchanassettracker_equipmenttypes_id']
-                ),
+                PluginAuchanassettrackerEquipment::getItemtypeLabel((string) ($r['itemtype'] ?? '')),
                 (string) $r['name'],
                 (string) ($r['serial'] ?? ''),
                 (string) ($r['model'] ?? ''),
+                PluginAuchanassettrackerEquipment::getStatusLabel((string) ($r['status'] ?? '')),
             ];
         }
         return ['headers' => $headers, 'rows' => $rows];
