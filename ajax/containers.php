@@ -44,10 +44,16 @@ if ($locations_id > 0 && PluginAuchanassettrackerRighthelper::canAccessLocation(
     $value = 0;
 }
 
+// Allow report (and other) forms to keep their own field name.
+$name = (string) ($_GET['name'] ?? 'plugin_auchanassettracker_containers_id');
+if (!preg_match('/^[A-Za-z0-9_\[\]]+$/', $name)) {
+    $name = 'plugin_auchanassettracker_containers_id';
+}
+
 if ($display !== 'json') {
     header('Content-Type: text/html; charset=UTF-8');
     PluginAuchanassettrackerContainer::dropdownWithActions([
-        'name'          => 'plugin_auchanassettracker_containers_id',
+        'name'          => $name,
         'value'         => $value,
         'condition'     => $condition,
         'width'         => $width,

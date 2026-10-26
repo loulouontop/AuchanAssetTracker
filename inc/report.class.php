@@ -26,6 +26,7 @@ class PluginAuchanassettrackerReport
     public static function getRequiredFilters(string $type): array
     {
         return match ($type) {
+            'inventory_location'  => ['locations_id'],
             'inventory_container' => ['locations_id', 'containers_id'],
             'equipment_user'      => ['users_id'],
             'movements'           => ['date_from', 'date_to'],
