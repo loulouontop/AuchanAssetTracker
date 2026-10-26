@@ -786,23 +786,31 @@ img.aat-qr-preview {
 .aat-report-form .aat-report-period-field label {
   margin-bottom: 0.25rem;
 }
-/* Report location/container: fill the grid cell; keep existing Select2 anti-flash. */
-.aat-report-form .aat-location-dropdown,
+/* Report container: fill the grid cell. */
 .aat-report-form .aat-container-field,
 .aat-report-form .aat-container-dropdown {
   width: 100%;
   max-width: 100%;
 }
-.aat-report-form .aat-location-dropdown .btn-group,
 .aat-report-form .aat-container-dropdown .btn-group {
   width: 100% !important;
   max-width: 100%;
 }
-.aat-report-form .aat-location-dropdown .select2-container,
 .aat-report-form .aat-container-dropdown .select2-container {
   width: calc(100% - 72px) !important;
   min-width: 0 !important;
   max-width: calc(100% - 72px);
+}
+/*
+ * Reports: never hide location/container <select>s.
+ * Global anti-flash (visibility:hidden until Select2) left these blank on refresh
+ * because Select2 often does not bind on this page the same way as Transfer.
+ */
+.aat-report-form .aat-location-dropdown select,
+.aat-report-form .aat-container-dropdown select,
+.aat-report-form .aat-container-field select {
+  visibility: visible !important;
+  pointer-events: auto !important;
 }
 .aat-report-form .aat-report-period {
   grid-column: 1 / -1;

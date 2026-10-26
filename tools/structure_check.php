@@ -581,11 +581,17 @@ if (!str_contains($report_front, 'aat-required')
     || !str_contains($report_front, 'export_excel')
     || !str_contains($report_front, 'aat-report-container-wrap')
     || !str_contains($report_front, 'aat-report-date')
-    || !str_contains($report_front, 'aat-location-dropdown')
 ) {
-    fail('report form missing required marks / period / container gate / date inputs / location wrapper');
+    fail('report form missing required marks / period / container gate / date inputs');
 } else {
     ok('report form layout + required marks + export + container gate + dates');
+}
+if (str_contains($css, '.aat-report-form .aat-container-dropdown select')
+    && str_contains($css, 'visibility: visible !important')
+) {
+    ok('css report form does not hide location/container selects');
+} else {
+    fail('css must keep report location/container selects visible');
 }
 if (!preg_match("/inventory_location'\s*=>\s*\['locations_id'\]/", $report_cls)) {
     fail('inventory_location must require locations_id');
