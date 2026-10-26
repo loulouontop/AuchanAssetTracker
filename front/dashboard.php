@@ -36,10 +36,10 @@ echo '<style id="aat-dashboard-critical-css">'
     . '.aat-dashboard-page a.aat-card.aat-card--written_off{background:#f3f4f6!important;border-color:#c4c9d0!important}'
     . '.aat-dashboard-page a.aat-card.aat-card--written_off .aat-card-value{color:#4b5563!important}'
     . '.aat-dashboard-page .aat-alerts .aat-alert,.aat-dashboard-page .aat-manager-grid .aat-alert{'
-    . 'background:#fde8e8!important;border-left:4px solid #d63939!important;color:#9b1c1c!important;font-weight:400!important}'
+    . 'background:#fde8e8!important;border-left:4px solid #d63939!important;color:#000!important;font-weight:400!important}'
     . '.aat-dashboard-page .aat-alerts .aat-alert a,.aat-dashboard-page .aat-manager-grid .aat-alert a{'
-    . 'color:#9b1c1c!important;font-weight:400!important}'
-    . '.aat-dashboard-page .aat-alert-heading{color:inherit!important;font-weight:inherit!important}'
+    . 'color:#000!important;font-weight:400!important}'
+    . '.aat-dashboard-page .aat-alert-heading{color:inherit!important;font-weight:700!important}'
     . '</style>';
 PluginAuchanassettrackerMenu::beginNativeFormCard($title, 'ti ti-dashboard');
 
@@ -237,13 +237,19 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         $days = PluginAuchanassettrackerDashboard::daysSince($e['since'] ?? null);
         $eq_id = (int) ($e['id'] ?? 0);
         $href = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        $tid = (int) ($e['service_tickets_id'] ?? 0);
         echo "<div class='aat-movement-row'><a href='" . Html::entities_deep($href) . "'>"
             . Html::entities_deep($e['name'] ?? '') . '</a>'
             . ' — ' . __('In service', 'auchanassettracker');
         if ($since !== '') {
             echo ' — ' . sprintf(__('since %s (%dd)', 'auchanassettracker'), Html::entities_deep($since), $days);
         }
-        echo ' — ' . Html::entities_deep((string) ($e['service_label'] ?? __('Service', 'auchanassettracker')));
+        if ($tid > 0) {
+            $ticket_url = Ticket::getFormURLWithID($tid);
+            echo ' — <a href="' . Html::entities_deep($ticket_url) . '">'
+                . Html::entities_deep(sprintf(__('Ticket #%d', 'auchanassettracker'), $tid))
+                . '</a>';
+        }
         echo '</div>';
     }
     foreach ($data['in_movement']['in_transit_out'] as $e) {
