@@ -84,8 +84,8 @@
   }
 
   /**
-   * Transfer validation: shared container dropdown appears only when items
-   * are selected; backend applies that one container to all selected IDs.
+   * Transfer forms: select-all + validate mixed containers
+   * (checked → bottom bulk picker; unchecked → per-row dropdown).
    */
   function aatReadBulkContainerId(form) {
     var bulk = form.querySelector('[name="bulk_container_id"]');
@@ -93,6 +93,17 @@
       return 0;
     }
     return parseInt(bulk.value || '0', 10) || 0;
+  }
+
+  function aatReadRowContainerId(row) {
+    if (!row) {
+      return 0;
+    }
+    var sel = row.querySelector('select[name^="container["]');
+    if (!sel) {
+      return 0;
+    }
+    return parseInt(sel.value || '0', 10) || 0;
   }
 
   function aatSyncTransferBulkPanel(form) {
@@ -130,13 +141,21 @@
     }
   }
 
+  function aatIsTransferCheckForm(form) {
+    return !!(form && form.classList && (
+      form.classList.contains('aat-transfer-validate-form')
+      || form.classList.contains('aat-transfer-create-form')
+      || form.classList.contains('aat-transfer-edit-form')
+    ));
+  }
+
   document.addEventListener('change', function (e) {
     var el = e.target;
     if (!el || !el.classList) {
       return;
     }
-    var form = el.closest('.aat-transfer-validate-form');
-    if (!form) {
+    var form = el.closest('form');
+    if (!aatIsTransferCheckForm(form)) {
       return;
     }
     if (el.classList.contains('aat-check-all')) {
@@ -144,21 +163,24 @@
       for (var i = 0; i < boxes.length; i++) {
         boxes[i].checked = !!el.checked;
       }
-      aatSyncTransferBulkPanel(form);
+      if (form.classList.contains('aat-transfer-validate-form')) {
+        aatSyncTransferBulkPanel(form);
+      }
       return;
     }
-    if (el.classList.contains('aat-item-check')) {
+    if (el.classList.contains('aat-item-check')
+        && form.classList.contains('aat-transfer-validate-form')) {
       aatSyncTransferBulkPanel(form);
     }
   });
 
-  // Clicking the row (not just the checkbox) toggles selection.
+  // Clicking the validate row (not inputs) toggles selection.
   document.addEventListener('click', function (e) {
     var row = e.target.closest('.aat-transfer-validate-form tr.aat-item-row');
     if (!row) {
       return;
     }
-    if (e.target.closest('input, a, button, select, .select2-container')) {
+    if (e.target.closest('input, a, button, select, .select2-container, .aat-row-container')) {
       return;
     }
     var check = row.querySelector('.aat-item-check');
@@ -179,20 +201,19 @@
       return;
     }
     var boxes = form.querySelectorAll('.aat-item-check');
-    var selected = form.querySelectorAll('.aat-item-check:checked');
-    if (!selected.length) {
-      e.preventDefault();
-      window.alert(form.getAttribute('data-aat-select-items')
-        || 'Select at least one equipment item.');
-      return;
+    var selectedCount = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      var row = boxes[i].closest('tr');
+      if (boxes[i].checked) {
+        selectedCount++;
+      } else if (aatReadRowContainerId(row) <= 0) {
+        e.preventDefault();
+        window.alert(form.getAttribute('data-aat-row-missing')
+          || 'Each unselected item needs its own destination container.');
+        return;
+      }
     }
-    if (boxes.length && selected.length !== boxes.length) {
-      e.preventDefault();
-      window.alert(form.getAttribute('data-aat-select-all')
-        || 'Select all equipment items and one container to validate the transfer.');
-      return;
-    }
-    if (aatReadBulkContainerId(form) <= 0) {
+    if (selectedCount > 0 && aatReadBulkContainerId(form) <= 0) {
       e.preventDefault();
       window.alert(form.getAttribute('data-aat-bulk-missing')
         || 'Select a container for the selected equipment.');
@@ -207,8 +228,8 @@
   });
 
   /**
-   * Dashboard Search embeds: strip refresh / download / columns / map|table
-   * controls that CSS alone may miss across GLPI 11 markup variants.
+   * Dashboard Search embeds: hide search-by / saved search / download /
+   * refresh / columns / map — keep column sort working.
    */
   function aatHideDashboardSearchChrome(root) {
     root = root || document;
@@ -226,9 +247,9 @@
     var iconHints = [
       'ti-refresh', 'ti-file-download', 'ti-file-export', 'ti-download',
       'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal',
-      'ti-device-floppy', 'ti-bookmark', 'ti-search'
+      'ti-device-floppy', 'ti-bookmark'
     ];
-    var titleRe = /refresh|download|export|map|table|saved\s*search|save\s*current\s*search|search\s*criteria|select.*(item|column|default)|afficher|télécharger|actualiser|recherch/i;
+    var titleRe = /refresh|download|export|map|table|saved\s*search|save\s*current\s*search|search\s*criteria|select.*(item|column|default)|afficher|télécharger|actualiser/i;
 
     for (var s = 0; s < scopes.length; s++) {
       var scope = scopes[s];
@@ -236,7 +257,7 @@
         continue;
       }
       var secondary = scope.querySelectorAll(
-        '.secondary-controls, .primary-controls, .display_prefs_btn, .display-prefs,'
+        '.secondary-controls, .display_prefs_btn, .display-prefs,'
         + ' .export_to_dropdown, #export_to_dropdown, .export_dropdown,'
         + ' form[name="search"], form.search-form, .search-form, .search_form,'
         + ' .saved_searches, .savedsearches, .saved-searches, .search_actions'

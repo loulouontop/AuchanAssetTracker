@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.3'")) {
-    fail('expected version 0.5.3');
+if (!str_contains($setup, "'0.5.0'")) {
+    fail('expected version 0.5.0 (do not bump for UX patches)');
 } else {
-    ok('version 0.5.3');
+    ok('version 0.5.0');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -456,12 +456,20 @@ if (!str_contains($audit, 'isEmptyDetailValue')
 }
 if (!str_contains($xfer_front, 'bulk_container_id')
     || !str_contains($xfer_front, 'aat-transfer-bulk-panel')
-    || !str_contains($xfer_front, 'equipment_ids[]')
+    || !str_contains($xfer_front, 'aat-transfer-validate-actions')
+    || !str_contains($xfer_front, 'container[$eid]')
     || !str_contains($xfer_front, 'Container for selected items')
 ) {
-    fail('transfer validate missing shared bulk container panel');
+    fail('transfer validate missing mixed per-row + bulk containers');
 } else {
-    ok('transfer shared bulk container panel');
+    ok('transfer mixed per-row + bulk containers');
+}
+if (!str_contains($xfer_front, 'aat-transfer-create-form')
+    || !str_contains($xfer_front, 'aat-check-all')
+) {
+    fail('new transfer missing select-all');
+} else {
+    ok('new transfer has select-all');
 }
 $js = file_get_contents("$root/js/aat-forms.js");
 $pjs = file_get_contents("$root/public/js/aat-forms.js");
@@ -491,6 +499,18 @@ if (!str_contains($css, 'font-weight: 700 !important')
     fail('css missing bold alert titles / black alert text / hide search form');
 } else {
     ok('css alert titles + black text + hide search form');
+}
+if (str_contains($css, '.search-controls .primary-controls')
+    && preg_match('/\.aat-dashboard-search \.search-controls \.primary-controls[\s\S]{0,80}display:\s*none/', $css)
+) {
+    fail('css must not hide primary-controls (breaks sort-by)');
+} else {
+    ok('css keeps sort-by primary-controls');
+}
+if (!str_contains($dashc, 'resolveServiceTicketId')) {
+    fail('dashboard missing resolveServiceTicketId for In movement tickets');
+} else {
+    ok('dashboard resolveServiceTicketId');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

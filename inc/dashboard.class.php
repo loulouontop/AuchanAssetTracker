@@ -97,12 +97,20 @@ class PluginAuchanassettrackerDashboard
             $locations_id
         );
         foreach ($in_service as &$e) {
-            $tid = (int) ($e['service_tickets_id'] ?? 0);
+            $stored_tid = (int) ($e['service_tickets_id'] ?? 0);
+            $tid = self::resolveServiceTicketId($e);
             $e['since'] = (string) ($e['service_since'] ?? $e['date_mod'] ?? '');
             $e['service_tickets_id'] = $tid;
             $e['service_label'] = $tid > 0
                 ? sprintf(__('Ticket #%d', 'auchanassettracker'), $tid)
                 : '';
+            // Persist resolved ticket when the row was healed from GLPI without FK.
+            $eid = (int) ($e['id'] ?? 0);
+            if ($tid > 0 && $stored_tid <= 0 && $eid > 0) {
+                PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
+                    'service_tickets_id' => $tid,
+                ]);
+            }
         }
         unset($e);
 
@@ -179,6 +187,86 @@ class PluginAuchanassettrackerDashboard
     }
 
     /**
+     * Ticket that put this equipment In service (stored FK, else linked Item_Ticket / audit).
+     *
+     * @param array<string, mixed> $eq_row
+     */
+    public static function resolveServiceTicketId(array $eq_row): int
+    {
+        global $DB;
+
+        $tid = (int) ($eq_row['service_tickets_id'] ?? 0);
+        if ($tid > 0) {
+            return $tid;
+        }
+
+        $itemtype = (string) ($eq_row['itemtype'] ?? '');
+        $items_id = (int) ($eq_row['items_id'] ?? 0);
+        if ($itemtype !== '' && $items_id > 0 && $DB->tableExists('glpi_items_tickets')) {
+            foreach ($DB->request([
+                'SELECT' => ['tickets_id'],
+                'FROM'   => 'glpi_items_tickets',
+                'WHERE'  => [
+                    'itemtype' => $itemtype,
+                    'items_id' => $items_id,
+                ],
+                'ORDER'  => 'id DESC',
+                'LIMIT'  => 10,
+            ]) as $link) {
+                $candidate = (int) ($link['tickets_id'] ?? 0);
+                if ($candidate <= 0) {
+                    continue;
+                }
+                // Prefer a still-open / not-closed ticket when possible.
+                $ticket = new Ticket();
+                if ($ticket->getFromDB($candidate)) {
+                    $status = (int) ($ticket->fields['status'] ?? 0);
+                    // CommonITILObject: SOLVED=5, CLOSED=6 (prefer open tickets).
+                    $closed_like = [5, 6];
+                    if (defined('Ticket::SOLVED')) {
+                        $closed_like[] = (int) constant('Ticket::SOLVED');
+                    }
+                    if (defined('Ticket::CLOSED')) {
+                        $closed_like[] = (int) constant('Ticket::CLOSED');
+                    }
+                    if (!in_array($status, array_values(array_unique($closed_like)), true)) {
+                        return $candidate;
+                    }
+                    if ($tid <= 0) {
+                        $tid = $candidate;
+                    }
+                }
+            }
+            if ($tid > 0) {
+                return $tid;
+            }
+        }
+
+        // Fallback: last equipment_in_service audit detail "ticket=123".
+        $eid = (int) ($eq_row['id'] ?? 0);
+        $audit = PluginAuchanassettrackerAuditlog::getTable();
+        if ($eid > 0 && $DB->tableExists($audit)) {
+            foreach ($DB->request([
+                'SELECT' => ['details'],
+                'FROM'   => $audit,
+                'WHERE'  => [
+                    'action'   => 'equipment_in_service',
+                    'items_id' => $eid,
+                ],
+                'ORDER'  => 'id DESC',
+                'LIMIT'  => 5,
+            ]) as $row) {
+                $details = (string) ($row['details'] ?? '');
+                if (preg_match('/ticket=(\d+)/', $details, $m)) {
+                    return (int) $m[1];
+                }
+            }
+        }
+
+        return $tid;
+    }
+
+    /**
      * If another plugin/GLPI set the linked asset state to In service / maintenance,
      * mirror that onto plugin equipment so “In movement” stays accurate.
      */
@@ -223,12 +311,17 @@ class PluginAuchanassettrackerDashboard
             if ($eid <= 0) {
                 continue;
             }
-            PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
+            $patch = [
                 'status'        => PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
                 'service_since' => (string) ($row['service_since'] ?? '') !== ''
                     ? (string) $row['service_since']
                     : $now,
-            ]);
+            ];
+            $tid = self::resolveServiceTicketId($row);
+            if ($tid > 0 && (int) ($row['service_tickets_id'] ?? 0) <= 0) {
+                $patch['service_tickets_id'] = $tid;
+            }
+            PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, $patch);
         }
     }
 

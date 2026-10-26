@@ -472,10 +472,11 @@ img.aat-qr-preview {
 }
 
 /* Sprint 5 — role dashboards */
+/* No extra outer margin — keeps the blue bookmark ribbon aligned like other forms. */
 .aat-dashboard-page {
   max-width: 100%;
-  margin: 0.75rem auto 2.5rem;
-  padding: 0 1rem 2rem;
+  margin: 0;
+  padding: 0;
 }
 .aat-dashboard-page > .aat-form-page {
   max-width: none;
@@ -676,13 +677,10 @@ img.aat-qr-preview {
 .aat-dashboard-search .card.search-card {
   margin-top: 0.25rem;
 }
-/* Hide GLPI Search chrome on dashboard embeds
-   (search-by / saved search / columns / refresh / download / map|table). */
+/* Hide search-by + saved search (+ download/refresh/columns/map). Keep sort. */
 .aat-dashboard-search .secondary-controls,
 .aat-dashboard-search .search-controls .secondary-controls,
 .aat-dashboard-search .card-header.search-header .secondary-controls,
-.aat-dashboard-search .search-controls .primary-controls,
-.aat-dashboard-search .card-header.search-header .primary-controls,
 .aat-dashboard-search .display-prefs,
 .aat-dashboard-search .display_prefs_btn,
 .aat-dashboard-search .btn.display-prefs,
@@ -698,17 +696,12 @@ img.aat-qr-preview {
 .aat-dashboard-search .search-footer .export_to_dropdown,
 .aat-dashboard-search #export_to_dropdown,
 .aat-dashboard-search .export_dropdown,
-.aat-dashboard-search .search-footer .btn-group,
-.aat-dashboard-search .search-controls .btn-group,
-.aat-dashboard-search .card-header .btn-group,
 .aat-dashboard-search a[href*="as_map"],
 .aat-dashboard-search a[href*="SavedSearch"],
 .aat-dashboard-search a[href*="savedsearch"],
 .aat-dashboard-search button[name="as_map"],
 .aat-dashboard-search button[name="display"],
 .aat-dashboard-search button[name="save"],
-.aat-dashboard-search button[name="search"],
-.aat-dashboard-search input[name="search"],
 .aat-dashboard-search .ti-refresh,
 .aat-dashboard-search .ti-file-download,
 .aat-dashboard-search .ti-file-export,
@@ -719,7 +712,6 @@ img.aat-qr-preview {
 .aat-dashboard-search .ti-adjustments-horizontal,
 .aat-dashboard-search .ti-device-floppy,
 .aat-dashboard-search .ti-bookmark,
-.aat-dashboard-search .ti-search,
 .aat-dashboard-search button:has(.ti-refresh),
 .aat-dashboard-search button:has(.ti-file-download),
 .aat-dashboard-search button:has(.ti-file-export),
@@ -730,7 +722,6 @@ img.aat-qr-preview {
 .aat-dashboard-search button:has(.ti-adjustments-horizontal),
 .aat-dashboard-search button:has(.ti-device-floppy),
 .aat-dashboard-search button:has(.ti-bookmark),
-.aat-dashboard-search button:has(.ti-search),
 .aat-dashboard-search a:has(.ti-adjustments),
 .aat-dashboard-search a:has(.ti-adjustments-horizontal),
 .aat-dashboard-search a:has(.ti-device-floppy),
@@ -741,7 +732,6 @@ img.aat-qr-preview {
 .aat-dashboard-search a:has(.ti-table),
 .aat-dashboard-search a:has(.ti-refresh),
 .aat-dashboard-search a:has(.ti-bookmark),
-.aat-dashboard-search a:has(.ti-search),
 .aat-dashboard-search [title*="Refresh" i],
 .aat-dashboard-search [title*="Download" i],
 .aat-dashboard-search [title*="Export" i],
@@ -764,24 +754,45 @@ img.aat-qr-preview {
 .aat-dashboard-search [data-bs-original-title*="Save" i] {
   display: none !important;
 }
-/* Transfer validate: one shared container picker (shown when items selected). */
-.aat-transfer-bulk-panel {
-  display: none;
+/* Transfer validate: bulk picker + validate button on one row. */
+.aat-transfer-validate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
   margin-top: 1rem;
-  margin-bottom: 0.75rem;
   padding: 0.75rem 1rem;
   background: var(--tblr-bg-surface-secondary, #f6f8fb);
   border-radius: 6px;
 }
+.aat-transfer-bulk-panel {
+  display: none;
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 420px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
 .aat-transfer-bulk-panel.is-visible {
   display: block;
 }
-.aat-transfer-bulk-panel .aat-bulk-field {
-  max-width: 420px;
+.aat-transfer-validate-actions .aat-validate-transfer-btn {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 .aat-transfer-validate-form .aat-item-row {
   cursor: pointer;
 }
 .aat-transfer-validate-form .aat-item-row.is-selected {
   background: var(--tblr-bg-surface-secondary, #f6f8fb);
+}
+.aat-transfer-validate-form .aat-item-row.is-selected .aat-row-container {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.aat-transfer-create-form .aat-check-all,
+.aat-transfer-edit-form .aat-check-all {
+  cursor: pointer;
 }
