@@ -774,3 +774,59 @@ img.aat-qr-preview {
 .aat-transfer-validate-form .aat-check-all {
   cursor: pointer;
 }
+
+/* Reports form: 2-col filters, period left/right, actions right. */
+.aat-report-form .aat-report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1.25rem;
+  align-items: end;
+}
+.aat-report-form .aat-report-field label,
+.aat-report-form .aat-report-period-field label {
+  margin-bottom: 0.25rem;
+}
+.aat-report-form .aat-report-period {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.aat-report-form .aat-report-period-field {
+  flex: 0 1 160px;
+  max-width: 180px;
+}
+.aat-report-form .aat-report-period-to {
+  margin-left: auto;
+}
+.aat-report-form .aat-report-date {
+  max-width: 160px;
+  width: 100%;
+}
+.aat-report-form .aat-report-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+.aat-report-form .aat-req-mark[hidden] {
+  display: none !important;
+}
+@media (max-width: 767.98px) {
+  .aat-report-form .aat-report-grid {
+    grid-template-columns: 1fr;
+  }
+  .aat-report-form .aat-report-period-to {
+    margin-left: 0;
+  }
+  .aat-report-form .aat-report-actions {
+    justify-content: stretch;
+  }
+  .aat-report-form .aat-report-actions .btn {
+    flex: 1 1 auto;
+  }
+}

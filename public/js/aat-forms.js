@@ -365,4 +365,130 @@
   } else {
     aatScheduleHideSearchChrome();
   }
+
+  /**
+   * Reports: toggle red * / required filters from the chosen report type.
+   * Other filters stay optional but still apply when filled.
+   */
+  function aatReportReadType(form) {
+    var sel = form.querySelector('select[name="type"]');
+    if (!sel) {
+      return '';
+    }
+    return String(sel.value || '');
+  }
+
+  function aatReportRequiredMap(form) {
+    try {
+      return JSON.parse(form.getAttribute('data-aat-required') || '{}') || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function aatReportFieldValue(form, field) {
+    if (field === 'date_from' || field === 'date_to') {
+      var d = form.querySelector('[name="' + field + '"]');
+      return d ? String(d.value || '').trim() : '';
+    }
+    var el = form.querySelector('[name="' + field + '"]');
+    if (!el) {
+      return '';
+    }
+    return String(el.value || '').trim();
+  }
+
+  function aatSyncReportRequiredMarks(form) {
+    if (!form) {
+      return;
+    }
+    var type = aatReportReadType(form);
+    var map = aatReportRequiredMap(form);
+    var needed = (type && map[type]) ? map[type] : [];
+    var needSet = {};
+    for (var i = 0; i < needed.length; i++) {
+      needSet[needed[i]] = true;
+    }
+    // Period marks when either date is required.
+    var needPeriod = !!(needSet.date_from || needSet.date_to);
+
+    var fields = form.querySelectorAll('[data-aat-filter]');
+    for (var f = 0; f < fields.length; f++) {
+      var box = fields[f];
+      var key = box.getAttribute('data-aat-filter') || '';
+      var marks = box.querySelectorAll('.aat-req-mark');
+      var on = false;
+      if (key === 'period') {
+        on = needPeriod;
+      } else if (key !== 'type') {
+        on = !!needSet[key];
+      }
+      for (var m = 0; m < marks.length; m++) {
+        if (on) {
+          marks[m].removeAttribute('hidden');
+        } else {
+          marks[m].setAttribute('hidden', 'hidden');
+        }
+      }
+    }
+  }
+
+  function aatValidateReportForm(form) {
+    var type = aatReportReadType(form);
+    if (!type) {
+      window.alert(form.getAttribute('data-aat-msg-type')
+        || 'Please select a report type.');
+      return false;
+    }
+    var map = aatReportRequiredMap(form);
+    var needed = map[type] || [];
+    for (var i = 0; i < needed.length; i++) {
+      var field = needed[i];
+      // Scoped location is a hidden filled input — OK.
+      if (aatReportFieldValue(form, field) === '' || aatReportFieldValue(form, field) === '0') {
+        var msgAttr = 'data-aat-msg-location';
+        if (field === 'users_id') {
+          msgAttr = 'data-aat-msg-user';
+        } else if (field === 'containers_id') {
+          msgAttr = 'data-aat-msg-container';
+        } else if (field === 'date_from' || field === 'date_to') {
+          msgAttr = 'data-aat-msg-period';
+        }
+        window.alert(form.getAttribute(msgAttr) || 'Please fill the required filters.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function aatInitReportForm() {
+    var form = document.getElementById('aat-report-form');
+    if (!form) {
+      return;
+    }
+    aatSyncReportRequiredMarks(form);
+    form.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t && t.name === 'type') {
+        aatSyncReportRequiredMarks(form);
+      }
+    });
+    // Select2 may not bubble native change on the select in all cases.
+    if (window.jQuery) {
+      window.jQuery(form).on('change select2:select select2:clear', 'select[name="type"]', function () {
+        aatSyncReportRequiredMarks(form);
+      });
+    }
+    form.addEventListener('submit', function (e) {
+      if (!aatValidateReportForm(form)) {
+        e.preventDefault();
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', aatInitReportForm);
+  } else {
+    aatInitReportForm();
+  }
 })();

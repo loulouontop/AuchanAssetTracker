@@ -570,8 +570,52 @@ if (!str_contains($dashc, 'resolveServiceTicketId')) {
 } else {
     ok('dashboard resolveServiceTicketId');
 }
+$report_front = file_get_contents("$root/front/report.php");
+$report_cls = file_get_contents("$root/inc/report.class.php");
+if (!str_contains($report_front, 'aat-required')
+    || !str_contains($report_front, 'aat-report-form')
+    || !str_contains($report_front, 'aat-report-period')
+    || !str_contains($report_front, 'aat-report-actions')
+) {
+    fail('report form missing required marks / period / actions layout');
+} else {
+    ok('report form layout + required marks');
+}
+if (!str_contains($report_cls, 'getRequiredFilters')
+    || !str_contains($report_cls, 'validate')
+    || !str_contains($report_cls, 'getItemtypeLabel')
+    || !str_contains($report_cls, 'formatDetailsHtml')
+    || !str_contains($report_cls, 'formatActionLabel')
+    || !str_contains($report_cls, 'getOverdueInService')
+    || !str_contains($report_cls, 'getOverduePending')
+) {
+    fail('report class missing required filters / movements details / threshold issues');
+} else {
+    ok('report class required filters + movements details + threshold issues');
+}
+if (str_contains($report_cls, "__('Entity')")
+    && preg_match("/movements[\s\S]{0,400}__\\('Entity'\\)/", $report_cls)
+) {
+    fail('movements report must not include Entity column');
+} else {
+    ok('movements report has no Entity column');
+}
+if (!str_contains($js, 'aatSyncReportRequiredMarks')
+    || !str_contains($js, 'aatValidateReportForm')
+) {
+    fail('aat-forms.js missing report required-field sync');
+} else {
+    ok('aat-forms.js report required-field sync');
+}
+if (!str_contains($css, '.aat-report-form')
+    || !str_contains($css, '.aat-report-period')
+) {
+    fail('css missing report form layout');
+} else {
+    ok('css report form layout');
+}
 $ro = file_get_contents("$root/locales/ro_RO.php");
-foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {
+foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by', 'Please select a report type.', 'User is required for this report.'] as $msgid) {
     if (!str_contains($ro, "'$msgid'")) {
         fail("ro_RO missing msgid $msgid");
     } else {
