@@ -142,15 +142,14 @@ if ($scope !== null) {
     echo '<div class="form-control-plaintext">' . Html::entities_deep($loc_name) . '</div>';
     echo Html::hidden('locations_id', ['value' => (int) $scope]);
 } else {
-    // Transfer-proven wrapper: hide bare <select> until Select2 binds.
-    echo "<div class='aat-location-dropdown'>";
+    // No aat-location-dropdown hide wrapper here — on Reports, Select2 may not
+    // bind in time and the field stayed blank after refresh.
     Location::dropdown([
         'name'                => 'locations_id',
         'value'               => $filters['locations_id'],
         'display_emptychoice' => true,
         'width'               => '100%',
     ]);
-    echo '</div>';
 }
 echo '</div>';
 
