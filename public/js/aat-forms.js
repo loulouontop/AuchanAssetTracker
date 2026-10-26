@@ -228,8 +228,8 @@
   });
 
   /**
-   * Dashboard Search embeds: hide search-by / saved search / download /
-   * refresh / columns / map — keep column sort working.
+   * Dashboard Search embeds: hide download / refresh / columns / map only.
+   * Keep search-by, saved searches, and column sort.
    */
   function aatHideDashboardSearchChrome(root) {
     root = root || document;
@@ -246,10 +246,9 @@
     }
     var iconHints = [
       'ti-refresh', 'ti-file-download', 'ti-file-export', 'ti-download',
-      'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal',
-      'ti-device-floppy', 'ti-bookmark'
+      'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal'
     ];
-    var titleRe = /refresh|download|export|map|table|saved\s*search|save\s*current\s*search|search\s*criteria|select.*(item|column|default)|afficher|télécharger|actualiser/i;
+    var titleRe = /refresh|download|export|map|table|select.*(item|column|default)|afficher|télécharger|actualiser/i;
 
     for (var s = 0; s < scopes.length; s++) {
       var scope = scopes[s];
@@ -258,9 +257,7 @@
       }
       var secondary = scope.querySelectorAll(
         '.secondary-controls, .display_prefs_btn, .display-prefs,'
-        + ' .export_to_dropdown, #export_to_dropdown, .export_dropdown,'
-        + ' form[name="search"], form.search-form, .search-form, .search_form,'
-        + ' .saved_searches, .savedsearches, .saved-searches, .search_actions'
+        + ' .export_to_dropdown, #export_to_dropdown, .export_dropdown'
       );
       for (var i = 0; i < secondary.length; i++) {
         secondary[i].style.display = 'none';
