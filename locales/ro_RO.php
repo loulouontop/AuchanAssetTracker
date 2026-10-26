@@ -305,6 +305,8 @@ return [
     'Select a container for the selected equipment.' => 'Selectați un container pentru echipamentele bifate.',
     'Select at least one equipment item.' => 'Selectați cel puțin un echipament.',
     'Select all equipment items and one container to validate the transfer.' => 'Selectați toate echipamentele și un container pentru a valida transferul.',
+    'Checked items share the container below; unchecked items each need their own container.' => 'Articolele bifate folosesc containerul de mai jos; cele nebifate au fiecare propriul container.',
+    'Each unselected item needs its own destination container.' => 'Fiecare articol nebifat necesită propriul container de destinație.',
     'Select a container first.' => 'Selectați mai întâi un container.',
     'Unvalidated transfer' => 'Transfer nevalidat',
     'Unvalidated transfer #%d to %s — %d days' => 'Transfer nevalidat #%d către %s — %d zile',

@@ -9,7 +9,8 @@
  * @copyright 2026 Auchan Romania
  */
 
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.3');
+/** Sprint 5 delivery version — keep at 0.5.0 (do not bump for UX patches). */
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.0');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**

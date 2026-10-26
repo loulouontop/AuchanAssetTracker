@@ -2,7 +2,7 @@
 
 GLPI plugin for IT equipment stock, physical containers with QR labels, allocation with user confirmation, inter-location transfers, service via tickets, write-off / lost / stolen, role dashboards, and reports.
 
-**Version:** 0.5.3 (Sprint 5)  
+**Version:** 0.5.0 (Sprint 5)  
 **Author:** Lokmane BENAZIZA  
 **License:** Auchan RO  
 
@@ -80,7 +80,7 @@ Assign users under **Administration → Users** (profile + Location for managers
 ## Upgrade from Sprint 4 / 0.4.x
 
 1. Replace plugin files with this branch (keep folder name `AuchanAssetTracker` or `auchanassettracker` as installed).
-2. Version becomes **0.5.3**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, then updates `glpi_plugins.version`.
+2. Version stays **0.5.0**. On next GLPI page load the plugin **self-heals**: runs `upgrade` + `ensure_schema`, then updates `glpi_plugins.version`.
 3. You may briefly see **Upgrade** on Setup → Plugins if GLPI detects the version mismatch first — click it, or just reload; self-heal usually finishes the job automatically.
 4. Log out and back in after upgrade.
 5. Open **Auchan Asset Tracker → Dashboard** (role home) and **Reports** (admin / manager / tech).

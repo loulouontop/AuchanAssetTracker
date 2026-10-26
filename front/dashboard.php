@@ -245,8 +245,10 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
             echo ' — ' . sprintf(__('since %s (%dd)', 'auchanassettracker'), Html::entities_deep($since), $days);
         }
         if ($tid > 0) {
-            $ticket_url = Ticket::getFormURLWithID($tid);
-            echo ' — <a href="' . Html::entities_deep($ticket_url) . '">'
+            $ticket_url = class_exists('Ticket')
+                ? Ticket::getFormURLWithID($tid)
+                : ('/front/ticket.form.php?id=' . $tid);
+            echo ' — <a class="aat-ticket-link" href="' . Html::entities_deep($ticket_url) . '">'
                 . Html::entities_deep(sprintf(__('Ticket #%d', 'auchanassettracker'), $tid))
                 . '</a>';
         }
