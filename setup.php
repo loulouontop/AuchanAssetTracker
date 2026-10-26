@@ -11,6 +11,11 @@
 
 /** Sprint 5 delivery version — keep at 0.5.0 (do not bump for UX patches). */
 define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.0');
+/**
+ * Asset cache-buster for CSS/JS while PLUGIN version stays 0.5.0.
+ * Bump this when UX CSS/JS must invalidate browser caches.
+ */
+define('PLUGIN_AUCHANASSETTRACKER_ASSET_REV', '20261026d');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -119,6 +124,30 @@ function plugin_auchanassettracker_load_translations(): void
 function plugin_auchanassettracker_post_init(): void
 {
     plugin_auchanassettracker_load_translations();
+}
+
+/**
+ * Emit cache-busted CSS/JS (version stays 0.5.0; ASSET_REV invalidates browsers).
+ * Safe to call once per front page after Html::header().
+ */
+function plugin_auchanassettracker_emit_assets(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $rev = defined('PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
+        ? PLUGIN_AUCHANASSETTRACKER_ASSET_REV
+        : '1';
+    $base = plugin_auchanassettracker_web_dir();
+    // GLPI 11 serves plugin public/ assets at /plugins/<dir>/css|js/...
+    echo '<link rel="stylesheet" type="text/css" href="'
+        . htmlspecialchars($base . '/css/assettracker.css?aat=' . $rev, ENT_QUOTES, 'UTF-8')
+        . '">' . "\n";
+    echo '<script src="'
+        . htmlspecialchars($base . '/js/aat-forms.js?aat=' . $rev, ENT_QUOTES, 'UTF-8')
+        . '"></script>' . "\n";
 }
 
 /**

@@ -678,7 +678,8 @@ img.aat-qr-preview {
   margin-top: 0.25rem;
 }
 /* Hide download / refresh / select-columns / map|table only.
-   Keep search-by, saved searches, and column sort. */
+   Keep search-by, saved searches, column sort, and the Search submit.
+   Avoid broad title substring matchers (Select / map) — those break Search. */
 .aat-dashboard-search .secondary-controls,
 .aat-dashboard-search .search-controls .secondary-controls,
 .aat-dashboard-search .card-header.search-header .secondary-controls,
@@ -692,53 +693,43 @@ img.aat-qr-preview {
 .aat-dashboard-search a[href*="as_map"],
 .aat-dashboard-search button[name="as_map"],
 .aat-dashboard-search button[name="display"],
-.aat-dashboard-search .ti-refresh,
-.aat-dashboard-search .ti-file-download,
-.aat-dashboard-search .ti-file-export,
-.aat-dashboard-search .ti-download,
-.aat-dashboard-search .ti-map,
-.aat-dashboard-search .ti-table,
-.aat-dashboard-search .ti-adjustments,
-.aat-dashboard-search .ti-adjustments-horizontal,
-.aat-dashboard-search button:has(.ti-refresh),
-.aat-dashboard-search button:has(.ti-file-download),
-.aat-dashboard-search button:has(.ti-file-export),
-.aat-dashboard-search button:has(.ti-download),
-.aat-dashboard-search button:has(.ti-map),
-.aat-dashboard-search button:has(.ti-table),
-.aat-dashboard-search button:has(.ti-adjustments),
-.aat-dashboard-search button:has(.ti-adjustments-horizontal),
-.aat-dashboard-search a:has(.ti-adjustments),
-.aat-dashboard-search a:has(.ti-adjustments-horizontal),
-.aat-dashboard-search a:has(.ti-file-download),
-.aat-dashboard-search a:has(.ti-file-export),
-.aat-dashboard-search a:has(.ti-download),
-.aat-dashboard-search a:has(.ti-map),
-.aat-dashboard-search a:has(.ti-table),
-.aat-dashboard-search a:has(.ti-refresh),
-.aat-dashboard-search [title*="Refresh" i],
-.aat-dashboard-search [title*="Download" i],
-.aat-dashboard-search [title*="Export" i],
-.aat-dashboard-search [title*="map" i],
-.aat-dashboard-search [title*="Select default items" i],
-.aat-dashboard-search [title*="Select items to show" i],
-.aat-dashboard-search [aria-label*="Refresh" i],
-.aat-dashboard-search [aria-label*="Download" i],
-.aat-dashboard-search [aria-label*="Export" i],
-.aat-dashboard-search [aria-label*="map" i],
-.aat-dashboard-search [data-bs-original-title*="Refresh" i],
-.aat-dashboard-search [data-bs-original-title*="Download" i],
-.aat-dashboard-search [data-bs-original-title*="Export" i],
-.aat-dashboard-search [data-bs-original-title*="map" i],
-.aat-dashboard-search [data-bs-original-title*="Select" i] {
+.aat-dashboard-search button:has(> .ti-refresh),
+.aat-dashboard-search button:has(> .ti-file-download),
+.aat-dashboard-search button:has(> .ti-file-export),
+.aat-dashboard-search button:has(> .ti-download),
+.aat-dashboard-search button:has(> .ti-map),
+.aat-dashboard-search button:has(> .ti-table),
+.aat-dashboard-search button:has(> .ti-adjustments),
+.aat-dashboard-search button:has(> .ti-adjustments-horizontal),
+.aat-dashboard-search a:has(> .ti-refresh),
+.aat-dashboard-search a:has(> .ti-file-download),
+.aat-dashboard-search a:has(> .ti-file-export),
+.aat-dashboard-search a:has(> .ti-download),
+.aat-dashboard-search a:has(> .ti-map),
+.aat-dashboard-search a:has(> .ti-table),
+.aat-dashboard-search a:has(> .ti-adjustments),
+.aat-dashboard-search a:has(> .ti-adjustments-horizontal),
+.aat-dashboard-search [title="Refresh" i],
+.aat-dashboard-search [title="Download" i],
+.aat-dashboard-search [title="Export" i],
+.aat-dashboard-search [title="Select default items to show" i],
+.aat-dashboard-search [title="Select items to show" i],
+.aat-dashboard-search [aria-label="Refresh" i],
+.aat-dashboard-search [aria-label="Download" i],
+.aat-dashboard-search [aria-label="Export" i],
+.aat-dashboard-search [data-bs-original-title="Refresh" i],
+.aat-dashboard-search [data-bs-original-title="Download" i],
+.aat-dashboard-search [data-bs-original-title="Export" i],
+.aat-dashboard-search [data-bs-original-title="Select default items to show" i],
+.aat-dashboard-search [data-bs-original-title="Select items to show" i] {
   display: none !important;
 }
-/* Transfer validate: bulk picker + validate button on one row. */
+/* Transfer validate: bulk picker left, Validate button always right. */
 .aat-transfer-validate-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.75rem 1.25rem;
   margin-top: 1rem;
   padding: 0.75rem 1rem;
@@ -746,20 +737,23 @@ img.aat-qr-preview {
   border-radius: 6px;
 }
 .aat-transfer-bulk-panel {
-  display: none;
+  display: none !important;
   flex: 1 1 240px;
   min-width: 200px;
   max-width: 420px;
   margin: 0;
+  margin-right: auto;
   padding: 0;
   background: transparent;
+  order: 1;
 }
 .aat-transfer-bulk-panel.is-visible {
-  display: block;
+  display: block !important;
 }
 .aat-transfer-validate-actions .aat-validate-transfer-btn {
   flex: 0 0 auto;
   margin-left: auto;
+  order: 2;
 }
 .aat-transfer-validate-form .aat-item-row {
   cursor: pointer;
@@ -771,7 +765,12 @@ img.aat-qr-preview {
   opacity: 0.45;
   pointer-events: none;
 }
+.aat-transfer-validate-form .aat-row-container select.form-select {
+  min-width: 180px;
+  max-width: 260px;
+}
 .aat-transfer-create-form .aat-check-all,
-.aat-transfer-edit-form .aat-check-all {
+.aat-transfer-edit-form .aat-check-all,
+.aat-transfer-validate-form .aat-check-all {
   cursor: pointer;
 }

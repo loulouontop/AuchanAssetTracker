@@ -123,6 +123,21 @@ if ($id <= 0 && isset($_POST['create_transfer'])) {
 }
 
 echo "<div class='aat-workspace'>";
+if (function_exists('plugin_auchanassettracker_emit_assets')) {
+    plugin_auchanassettracker_emit_assets();
+}
+// Inline critical transfer UX (v 0.5.0 pins CSS URL — avoid stale cache).
+echo '<style id="aat-transfer-critical-css">'
+    . '.aat-transfer-validate-actions{display:flex!important;flex-wrap:wrap;align-items:flex-end;'
+    . 'justify-content:flex-end;gap:.75rem 1.25rem;margin-top:1rem;padding:.75rem 1rem;'
+    . 'background:var(--tblr-bg-surface-secondary,#f6f8fb);border-radius:6px}'
+    . '.aat-transfer-bulk-panel{display:none!important;flex:1 1 240px;min-width:200px;max-width:420px;'
+    . 'margin:0;margin-right:auto;padding:0;order:1}'
+    . '.aat-transfer-bulk-panel.is-visible{display:block!important}'
+    . '.aat-transfer-validate-actions .aat-validate-transfer-btn{flex:0 0 auto;margin-left:auto!important;order:2}'
+    . '.aat-transfer-validate-form .aat-item-row.is-selected{background:var(--tblr-bg-surface-secondary,#f6f8fb)}'
+    . '.aat-transfer-validate-form .aat-item-row.is-selected .aat-row-container{opacity:.45;pointer-events:none}'
+    . '</style>';
 
 if ($id > 0) {
     $tr = new PluginAuchanassettrackerTransfer();
@@ -306,10 +321,14 @@ if ($id > 0) {
             ))
             . '</p>';
 
+        // Plain <select> per row (fast). One Select2 only on the shared bulk panel.
+        $container_opts = PluginAuchanassettrackerContainer::dropdownOptionsForLocation($dest);
+
         echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
         echo "<thead><tr>"
             . "<th style='width:2.5rem'><input type='checkbox' class='form-check-input aat-check-all'"
-            . " title='" . Html::entities_deep(__('Check all')) . "'></th>"
+            . " title='" . Html::entities_deep(__('Check all')) . "' aria-label='"
+            . Html::entities_deep(__('Check all')) . "'></th>"
             . '<th>' . __('Equipment') . '</th><th>'
             . __('Serial number') . '</th><th>'
             . __('Container', 'auchanassettracker') . $req . '</th></tr></thead><tbody>';
@@ -322,23 +341,20 @@ if ($id > 0) {
                 . " name='equipment_ids[]' value='" . $eid . "' data-eid='" . $eid . "'></td>"
                 . '<td>' . Html::entities_deep($eq->fields['name'] ?? '')
                 . '</td><td>' . Html::entities_deep($eq->fields['serial'] ?? '')
-                . '</td><td><span class="aat-row-container aat-container-field" data-aat-width="220px">';
-            PluginAuchanassettrackerContainer::dropdownWithActions([
-                'name'      => "container[$eid]",
-                'condition' => [
-                    'locations_id' => $dest,
-                    'is_active'    => 1,
-                    'is_deleted'   => 0,
-                ],
-                'width' => '220px',
-            ]);
+                . '</td><td><span class="aat-row-container">';
+            echo "<select class='form-select' name='container[" . $eid . "]' style='min-width:180px;max-width:260px'>";
+            foreach ($container_opts as $cid => $label) {
+                echo "<option value='" . (int) $cid . "'>"
+                    . Html::entities_deep((string) $label) . '</option>';
+            }
+            echo '</select>';
             echo '</span></td></tr>';
         }
         echo '</tbody></table></div>';
 
-        // Bulk picker + validate on the same row; bulk panel shown when any row is checked.
+        // Bulk picker (left when visible) + Validate button always on the right.
         echo "<div class='aat-transfer-validate-actions'>";
-        echo "<div class='aat-transfer-bulk-panel' hidden>";
+        echo "<div class='aat-transfer-bulk-panel'>";
         echo "<div class='aat-bulk-field'><label class='form-label mb-1'>"
             . Html::entities_deep(__('Container for selected items', 'auchanassettracker'))
             . $req . '</label>';

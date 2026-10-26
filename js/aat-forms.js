@@ -1,6 +1,7 @@
 /**
  * Localize HTML5 "Please fill out this field" for Romanian GLPI sessions.
  * Also kick native Location setupAjaxDropdown early on transfer destination.
+ * Transfer select-all / bulk container panel; dashboard Search chrome hide.
  */
 (function () {
   function aatRequiredMessage() {
@@ -106,6 +107,25 @@
     return parseInt(sel.value || '0', 10) || 0;
   }
 
+  function aatSyncTransferCheckAll(form) {
+    if (!form) {
+      return;
+    }
+    var boxes = form.querySelectorAll('.aat-item-check');
+    var checked = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].checked) {
+        checked++;
+      }
+    }
+    var master = form.querySelector('.aat-check-all');
+    if (master) {
+      master.checked = boxes.length > 0 && checked === boxes.length;
+      master.indeterminate = checked > 0 && checked < boxes.length;
+    }
+    return checked;
+  }
+
   function aatSyncTransferBulkPanel(form) {
     if (!form) {
       return;
@@ -123,21 +143,21 @@
         row.classList.remove('is-selected');
       }
     }
-    var master = form.querySelector('.aat-check-all');
-    if (master) {
-      master.checked = boxes.length > 0 && checked === boxes.length;
-      master.indeterminate = checked > 0 && checked < boxes.length;
-    }
+    aatSyncTransferCheckAll(form);
     var panel = form.querySelector('.aat-transfer-bulk-panel');
     if (!panel) {
       return;
     }
     if (checked > 0) {
       panel.hidden = false;
+      panel.removeAttribute('hidden');
       panel.classList.add('is-visible');
+      panel.style.display = '';
     } else {
       panel.hidden = true;
+      panel.setAttribute('hidden', 'hidden');
       panel.classList.remove('is-visible');
+      panel.style.display = '';
     }
   }
 
@@ -147,6 +167,18 @@
       || form.classList.contains('aat-transfer-create-form')
       || form.classList.contains('aat-transfer-edit-form')
     ));
+  }
+
+  function aatApplyCheckAll(form, on) {
+    var boxes = form.querySelectorAll('.aat-item-check');
+    for (var i = 0; i < boxes.length; i++) {
+      boxes[i].checked = !!on;
+    }
+    if (form.classList.contains('aat-transfer-validate-form')) {
+      aatSyncTransferBulkPanel(form);
+    } else {
+      aatSyncTransferCheckAll(form);
+    }
   }
 
   document.addEventListener('change', function (e) {
@@ -159,20 +191,17 @@
       return;
     }
     if (el.classList.contains('aat-check-all')) {
-      var boxes = form.querySelectorAll('.aat-item-check');
-      for (var i = 0; i < boxes.length; i++) {
-        boxes[i].checked = !!el.checked;
-      }
-      if (form.classList.contains('aat-transfer-validate-form')) {
-        aatSyncTransferBulkPanel(form);
-      }
+      aatApplyCheckAll(form, !!el.checked);
       return;
     }
-    if (el.classList.contains('aat-item-check')
-        && form.classList.contains('aat-transfer-validate-form')) {
-      aatSyncTransferBulkPanel(form);
+    if (el.classList.contains('aat-item-check')) {
+      if (form.classList.contains('aat-transfer-validate-form')) {
+        aatSyncTransferBulkPanel(form);
+      } else {
+        aatSyncTransferCheckAll(form);
+      }
     }
-  });
+  }, true);
 
   // Clicking the validate row (not inputs) toggles selection.
   document.addEventListener('click', function (e) {
@@ -180,7 +209,7 @@
     if (!row) {
       return;
     }
-    if (e.target.closest('input, a, button, select, .select2-container, .aat-row-container')) {
+    if (e.target.closest('input, a, button, select, label, .select2-container, .aat-row-container')) {
       return;
     }
     var check = row.querySelector('.aat-item-check');
@@ -221,16 +250,47 @@
   });
 
   document.addEventListener('DOMContentLoaded', function () {
-    var forms = document.querySelectorAll('.aat-transfer-validate-form');
+    var forms = document.querySelectorAll(
+      '.aat-transfer-validate-form, .aat-transfer-create-form, .aat-transfer-edit-form'
+    );
     for (var i = 0; i < forms.length; i++) {
-      aatSyncTransferBulkPanel(forms[i]);
+      if (forms[i].classList.contains('aat-transfer-validate-form')) {
+        aatSyncTransferBulkPanel(forms[i]);
+      } else {
+        aatSyncTransferCheckAll(forms[i]);
+      }
     }
   });
 
   /**
    * Dashboard Search embeds: hide download / refresh / columns / map only.
-   * Keep search-by, saved searches, and column sort.
+   * Keep search-by, saved searches, column sort, and the Search submit button.
    */
+  function aatIsSearchSubmitControl(n) {
+    if (!n) {
+      return false;
+    }
+    var name = (n.getAttribute && n.getAttribute('name')) || '';
+    var type = (n.getAttribute && n.getAttribute('type')) || '';
+    var cls = (n.className && String(n.className)) || '';
+    if (name === 'search' || name === 'find' || type === 'submit') {
+      // Submit inside the criteria form must stay clickable.
+      if (n.closest && (n.closest('form[name="search"]')
+          || n.closest('.search-form')
+          || n.closest('.aat-dashboard-search .card-body')
+          || n.closest('.searchcriteria'))) {
+        return true;
+      }
+    }
+    if (/\bbtn-search\b|\bsubmit-search\b/i.test(cls)) {
+      return true;
+    }
+    if (n.querySelector && n.querySelector('.ti-search, .fa-search')) {
+      return true;
+    }
+    return false;
+  }
+
   function aatHideDashboardSearchChrome(root) {
     root = root || document;
     var scopes = [];
@@ -248,7 +308,9 @@
       'ti-refresh', 'ti-file-download', 'ti-file-export', 'ti-download',
       'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal'
     ];
-    var titleRe = /refresh|download|export|map|table|select.*(item|column|default)|afficher|télécharger|actualiser/i;
+    // Narrow titles only — bare "map"/"table"/"Select" broke Search submit.
+    var titleRe = /^(refresh|download|export|afficher|télécharger|actualiser)$/i;
+    var titlePhraseRe = /select\s+(default\s+)?items(\s+to\s+show)?|show\s+as\s+(map|table)|as[_\s-]?map/i;
 
     for (var s = 0; s < scopes.length; s++) {
       var scope = scopes[s];
@@ -260,19 +322,40 @@
         + ' .export_to_dropdown, #export_to_dropdown, .export_dropdown'
       );
       for (var i = 0; i < secondary.length; i++) {
-        secondary[i].style.display = 'none';
+        secondary[i].style.setProperty('display', 'none', 'important');
       }
       var nodes = scope.querySelectorAll('a, button, .btn, [data-bs-toggle]');
       for (var j = 0; j < nodes.length; j++) {
         var n = nodes[j];
+        if (aatIsSearchSubmitControl(n)) {
+          continue;
+        }
+        // Never touch primary sort / search-by / saved-search controls
+        // (unless they are clearly a chrome icon button).
+        var inProtected = !!(n.closest && n.closest('.primary-controls, .saved_searches'));
+        if (inProtected) {
+          var chromeIcon = false;
+          for (var p = 0; p < iconHints.length; p++) {
+            if ((n.querySelector && n.querySelector('.' + iconHints[p]))
+                || (n.classList && n.classList.contains(iconHints[p]))) {
+              chromeIcon = true;
+              break;
+            }
+          }
+          if (!chromeIcon) {
+            continue;
+          }
+        }
         var tip = [
           n.getAttribute('title') || '',
           n.getAttribute('aria-label') || '',
-          n.getAttribute('data-bs-original-title') || '',
-          n.getAttribute('href') || '',
-          n.getAttribute('name') || ''
-        ].join(' ');
-        var hide = titleRe.test(tip) || /as_map|display_type|export/.test(tip);
+          n.getAttribute('data-bs-original-title') || ''
+        ].join(' ').trim();
+        var href = n.getAttribute('href') || '';
+        var nameAttr = n.getAttribute('name') || '';
+        var hide = titleRe.test(tip) || titlePhraseRe.test(tip)
+          || /as_map|display_type/.test(href + ' ' + nameAttr)
+          || nameAttr === 'as_map' || nameAttr === 'display';
         if (!hide) {
           for (var k = 0; k < iconHints.length; k++) {
             if (n.querySelector && n.querySelector('.' + iconHints[k])) {
@@ -286,7 +369,7 @@
           }
         }
         if (hide) {
-          n.style.display = 'none';
+          n.style.setProperty('display', 'none', 'important');
         }
       }
     }

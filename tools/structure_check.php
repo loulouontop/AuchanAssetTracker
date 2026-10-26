@@ -94,6 +94,13 @@ if (!str_contains($setup, "'0.5.0'")) {
 } else {
     ok('version 0.5.0');
 }
+if (!str_contains($setup, 'PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
+    || !str_contains($setup, 'plugin_auchanassettracker_emit_assets')
+) {
+    fail('setup missing ASSET_REV / emit_assets cache-bust helpers');
+} else {
+    ok('setup has ASSET_REV cache-bust helpers');
+}
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
 } else {
@@ -457,12 +464,20 @@ if (!str_contains($audit, 'isEmptyDetailValue')
 if (!str_contains($xfer_front, 'bulk_container_id')
     || !str_contains($xfer_front, 'aat-transfer-bulk-panel')
     || !str_contains($xfer_front, 'aat-transfer-validate-actions')
-    || !str_contains($xfer_front, 'container[$eid]')
+    || !str_contains($xfer_front, 'container[')
     || !str_contains($xfer_front, 'Container for selected items')
+    || !str_contains($xfer_front, 'dropdownOptionsForLocation')
 ) {
     fail('transfer validate missing mixed per-row + bulk containers');
 } else {
     ok('transfer mixed per-row + bulk containers');
+}
+if (!str_contains($xfer_front, 'aat-transfer-critical-css')
+    || !str_contains($xfer_front, 'plugin_auchanassettracker_emit_assets')
+) {
+    fail('transfer form missing critical CSS / asset emit (cache-bust)');
+} else {
+    ok('transfer form has critical CSS + asset emit');
 }
 if (!str_contains($xfer_front, 'aat-transfer-create-form')
     || !str_contains($xfer_front, 'aat-check-all')
@@ -485,17 +500,26 @@ if (!str_contains($js, 'aatSyncTransferBulkPanel')
 } else {
     ok('aat-forms.js transfer bulk panel sync');
 }
-if (!str_contains($js, 'aatHideDashboardSearchChrome')) {
-    fail('aat-forms.js must hide dashboard Search chrome extras');
+if (!str_contains($js, 'aatHideDashboardSearchChrome')
+    || !str_contains($js, 'aatIsSearchSubmitControl')
+) {
+    fail('aat-forms.js must hide dashboard Search chrome extras (and protect Search submit)');
 } else {
     ok('aat-forms.js hides dashboard Search chrome extras');
 }
 if (str_contains($js, "form[name=\"search\"]")
-    || str_contains($js, '.saved_searches')
+    && preg_match('/querySelectorAll\([^\)]*form\[name=["\']search["\']/', $js)
 ) {
     fail('aat-forms.js must not hide search-by / saved searches');
 } else {
     ok('aat-forms.js keeps search-by + saved searches');
+}
+if (!str_contains($js, 'aatApplyCheckAll')
+    || !str_contains($js, 'aatSyncTransferCheckAll')
+) {
+    fail('aat-forms.js missing select-all sync for create/edit/validate');
+} else {
+    ok('aat-forms.js select-all sync');
 }
 if (!str_contains($css, 'font-weight: 700 !important')
     || !str_contains($css, 'color: #000 !important')
@@ -511,12 +535,27 @@ if (str_contains($css, 'form[name="search"]')
 } else {
     ok('css keeps search-by + saved searches');
 }
+if (str_contains($css, '[data-bs-original-title*="Select"')
+    || str_contains($css, '[title*="map"')
+) {
+    fail('css must not use broad Select/map title matchers (breaks Search)');
+} else {
+    ok('css avoids broad Select/map title matchers');
+}
 if (str_contains($css, '.search-controls .primary-controls')
     && preg_match('/\.aat-dashboard-search \.search-controls \.primary-controls[\s\S]{0,80}display:\s*none/', $css)
 ) {
     fail('css must not hide primary-controls (breaks sort-by)');
 } else {
     ok('css keeps sort-by primary-controls');
+}
+if (!str_contains($dash, 'aat_show_isolated')
+    || !str_contains($dash, 'aat-dashboard-critical-css')
+    || !str_contains($dash, 'plugin_auchanassettracker_emit_assets')
+) {
+    fail('dashboard missing isolated dual Search + critical CSS / asset emit');
+} else {
+    ok('dashboard isolated Search + critical CSS');
 }
 if (!str_contains($dashc, 'resolveServiceTicketId')) {
     fail('dashboard missing resolveServiceTicketId for In movement tickets');

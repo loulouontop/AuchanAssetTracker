@@ -20,8 +20,11 @@ if ($is_helpdesk) {
 }
 
 echo "<div class='aat-dashboard-page assettracker-dashboard'>";
-// Critical dashboard colors inline so card/alert UX cannot regress to plain/yellow
-// when a stale plugin CSS cache still serves the Sprint 5.0 yellow alert look.
+if (function_exists('plugin_auchanassettracker_emit_assets')) {
+    plugin_auchanassettracker_emit_assets();
+}
+// Critical dashboard colors + Search chrome hide inline so UX cannot regress
+// when a stale plugin CSS cache still serves an older assettracker.css (v pinned 0.5.0).
 echo '<style id="aat-dashboard-critical-css">'
     . '.aat-dashboard-page a.aat-card.aat-card--total{background:#e8f1ff!important;border-color:#9ec5fe!important}'
     . '.aat-dashboard-page a.aat-card.aat-card--total .aat-card-value{color:#1a5fb4!important}'
@@ -40,6 +43,33 @@ echo '<style id="aat-dashboard-critical-css">'
     . '.aat-dashboard-page .aat-alerts .aat-alert a,.aat-dashboard-page .aat-manager-grid .aat-alert a{'
     . 'color:#000!important;font-weight:400!important}'
     . '.aat-dashboard-page .aat-alert-heading{color:inherit!important;font-weight:700!important}'
+    // Hide download / refresh / columns / map only — never primary-controls or Search submit.
+    . '.aat-dashboard-search .secondary-controls,'
+    . '.aat-dashboard-search .display-prefs,'
+    . '.aat-dashboard-search .display_prefs_btn,'
+    . '.aat-dashboard-search .export_to_dropdown,'
+    . '.aat-dashboard-search #export_to_dropdown,'
+    . '.aat-dashboard-search .export_dropdown,'
+    . '.aat-dashboard-search a[href*="as_map"],'
+    . '.aat-dashboard-search button[name="as_map"],'
+    . '.aat-dashboard-search button[name="display"],'
+    . '.aat-dashboard-search button:has(> .ti-refresh),'
+    . '.aat-dashboard-search button:has(> .ti-file-download),'
+    . '.aat-dashboard-search button:has(> .ti-file-export),'
+    . '.aat-dashboard-search button:has(> .ti-download),'
+    . '.aat-dashboard-search button:has(> .ti-map),'
+    . '.aat-dashboard-search button:has(> .ti-table),'
+    . '.aat-dashboard-search button:has(> .ti-adjustments),'
+    . '.aat-dashboard-search button:has(> .ti-adjustments-horizontal),'
+    . '.aat-dashboard-search a:has(> .ti-refresh),'
+    . '.aat-dashboard-search a:has(> .ti-file-download),'
+    . '.aat-dashboard-search a:has(> .ti-file-export),'
+    . '.aat-dashboard-search a:has(> .ti-download),'
+    . '.aat-dashboard-search a:has(> .ti-map),'
+    . '.aat-dashboard-search a:has(> .ti-table),'
+    . '.aat-dashboard-search a:has(> .ti-adjustments),'
+    . '.aat-dashboard-search a:has(> .ti-adjustments-horizontal)'
+    . '{display:none!important}'
     . '</style>';
 PluginAuchanassettrackerMenu::beginNativeFormCard($title, 'ti ti-dashboard');
 
@@ -141,13 +171,76 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     echo '</div>';
 
     // Native GLPI Search: filter / sort / saved searches / rows per page / pagination.
+    // Dual embeds share one URL — isolate GET/REQUEST so Stock sort/criteria
+    // cannot bleed into Recent activity (and vice versa / sticky Available DESC).
+    $aat_search_keys = [
+        'sort', 'order', 'clearsort', 'criteria', 'metacriteria',
+        'reset', 'start', 'savedsearches_id', 'is_deleted', 'as_map',
+        'browse', 'unpublished', 'glpilist_limit', 'itemtype',
+    ];
+    $aat_save_search_env = static function () use ($aat_search_keys): array {
+        $snap = ['GET' => [], 'REQUEST' => []];
+        foreach ($aat_search_keys as $k) {
+            if (array_key_exists($k, $_GET)) {
+                $snap['GET'][$k] = $_GET[$k];
+            }
+            if (array_key_exists($k, $_REQUEST)) {
+                $snap['REQUEST'][$k] = $_REQUEST[$k];
+            }
+        }
+        return $snap;
+    };
+    $aat_restore_search_env = static function (array $snap) use ($aat_search_keys): void {
+        foreach ($aat_search_keys as $k) {
+            unset($_GET[$k], $_REQUEST[$k]);
+            if (array_key_exists($k, $snap['GET'])) {
+                $_GET[$k] = $snap['GET'][$k];
+            }
+            if (array_key_exists($k, $snap['REQUEST'])) {
+                $_REQUEST[$k] = $snap['REQUEST'][$k];
+            }
+        }
+    };
+    $aat_url_consumed = false;
+    $aat_show_isolated = static function (string $itemtype, array $params) use (
+        $aat_search_keys,
+        $aat_save_search_env,
+        $aat_restore_search_env,
+        &$aat_url_consumed
+    ): void {
+        $snap = $aat_save_search_env();
+        $active = (string) ($_GET['itemtype'] ?? $_REQUEST['itemtype'] ?? '');
+        $has_url_search = isset($_GET['sort']) || isset($_GET['order'])
+            || isset($_GET['criteria']) || isset($_GET['reset'])
+            || isset($_GET['clearsort']) || isset($_GET['start'])
+            || isset($_GET['savedsearches_id']);
+        // Only apply URL sort/criteria when this embed is the request target.
+        // Otherwise strip shared GET keys so the other list's Available DESC / criteria
+        // cannot stick onto this embed or spawn a second unremovable sort chip.
+        $use_url = false;
+        if ($active !== '' && $active === $itemtype) {
+            $use_url = true;
+        } elseif ($active === '' && $has_url_search && !$aat_url_consumed) {
+            // Ambiguous dual-embed URL (no itemtype) — first embed wins once.
+            $use_url = true;
+            $aat_url_consumed = true;
+        }
+        if (!$use_url && ($active !== '' || $has_url_search)) {
+            foreach ($aat_search_keys as $k) {
+                unset($_GET[$k], $_REQUEST[$k]);
+            }
+        }
+        Search::showList($itemtype, $params);
+        $aat_restore_search_env($snap);
+    };
+
     echo '<h2 class="mt-4">' . __('Stock by location', 'auchanassettracker') . '</h2>';
     echo "<div class='aat-dashboard-search' data-aat-hide-search-chrome='1'>";
     // Throttled rebuild — avoids full rescan on every sort click (504).
     PluginAuchanassettrackerStockbylocation::rebuild();
     PluginAuchanassettrackerStockbylocation::ensureDisplayPreferences();
     // Do not force sort/order on every render — that breaks ASC↔DESC column toggles.
-    Search::showList(PluginAuchanassettrackerStockbylocation::class, [
+    $aat_show_isolated(PluginAuchanassettrackerStockbylocation::class, [
         'showmassiveactions' => false,
     ]);
     echo '</div>';
@@ -160,7 +253,7 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     if (!isset($_GET['glpilist_limit']) && !isset($_REQUEST['glpilist_limit'])) {
         $_SESSION['glpilist_limit'] = 15;
     }
-    Search::showList(PluginAuchanassettrackerAuditlog::class, [
+    $aat_show_isolated(PluginAuchanassettrackerAuditlog::class, [
         'showmassiveactions' => false,
         // Date, User, Action, Details — no Item type column.
         'forcetoview'        => [2, 3, 4, 5],
