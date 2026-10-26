@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.0'")) {
-    fail('expected version 0.5.0');
+if (!str_contains($setup, "'0.5.1'")) {
+    fail('expected version 0.5.1');
 } else {
-    ok('version 0.5.0');
+    ok('version 0.5.1');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -358,12 +358,91 @@ if (!str_contains($xfer, 'function dropdownDestinationLocation')
     ok('transfer native Location dropdown boot + exclude');
 }
 $css = file_get_contents("$root/css/assettracker.css");
+$pcss = file_get_contents("$root/public/css/assettracker.css");
 if (!str_contains($css, 'aat-location-dropdown')
     || !str_contains($css, '--bs-gutter-x: 2.5rem')
 ) {
     fail('css missing location wrapper / alert column gap');
 } else {
     ok('css location wrapper + alert gap');
+}
+if ($css !== $pcss) {
+    fail('css/assettracker.css and public/css/assettracker.css must stay identical');
+} else {
+    ok('css and public/css assettracker.css in sync');
+}
+// Sprint 5 UX lock — colorful cards + red alerts (never yellow warning look).
+foreach ([
+    'aat-card--total', 'aat-card--available', 'aat-card--allocated',
+    'aat-card--in_service', 'aat-card--in_transit', 'aat-card--written_off',
+    '#d63939', '#fde8e8', '#e8f1ff',
+] as $needle) {
+    if (!str_contains($css, $needle)) {
+        fail("css missing sprint-5 UX marker: $needle");
+    } else {
+        ok("css UX marker $needle");
+    }
+}
+if (str_contains($css, '#fff8e6') || str_contains($css, '#e6a700')) {
+    fail('css must not use yellow alert colors (#fff8e6 / #e6a700)');
+} else {
+    ok('css has no yellow alert leftovers');
+}
+$dash = file_get_contents("$root/front/dashboard.php");
+if (str_contains($dash, 'Signed in as')) {
+    fail('dashboard must not show Signed in as');
+} else {
+    ok('dashboard omits Signed in as');
+}
+foreach ([
+    'aat-card--', 'aat-alert-heading', 'Active alerts', 'To resolve today',
+    'Search::showList', 'forcetoview', 'aat-pending-row', 'aat-pending-equipment',
+    'In movement', 'aat-dashboard-critical-css',
+] as $needle) {
+    if (!str_contains($dash, $needle)) {
+        fail("dashboard missing UX: $needle");
+    } else {
+        ok("dashboard has $needle");
+    }
+}
+if (str_contains($dash, 'item(s)')) {
+    fail('dashboard pending must not say item(s)');
+} else {
+    ok('dashboard pending omits item(s)');
+}
+$dashc = file_get_contents("$root/inc/dashboard.class.php");
+if (!str_contains($dashc, 'syncInServiceFromGlpiAssets')) {
+    fail('dashboard class missing syncInServiceFromGlpiAssets');
+} else {
+    ok('dashboard syncInServiceFromGlpiAssets');
+}
+$audit = file_get_contents("$root/inc/auditlog.class.php");
+foreach (['formatActionLabel', 'formatDetailsHtml'] as $needle) {
+    if (!str_contains($audit, $needle)) {
+        fail("auditlog missing $needle");
+    } else {
+        ok("auditlog has $needle");
+    }
+}
+if (!str_contains($xfer_front, 'bulk_container_id')
+    || !str_contains($xfer_front, 'aat-transfer-bulk-container')
+    || !str_contains($xfer_front, 'Apply to checked')
+) {
+    fail('transfer validate missing bulk container (option A)');
+} else {
+    ok('transfer bulk container option A');
+}
+$js = file_get_contents("$root/js/aat-forms.js");
+$pjs = file_get_contents("$root/public/js/aat-forms.js");
+if ($js !== $pjs) {
+    fail('js/aat-forms.js and public/js/aat-forms.js must stay identical');
+} else {
+    ok('js and public/js aat-forms.js in sync');
+}
+if (!str_contains($js, 'bulk_container_id')) {
+    fail('aat-forms.js missing bulk_container_id handler');
+} else {
+    ok('aat-forms.js bulk container handler');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

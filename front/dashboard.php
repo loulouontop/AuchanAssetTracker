@@ -20,6 +20,27 @@ if ($is_helpdesk) {
 }
 
 echo "<div class='aat-dashboard-page assettracker-dashboard'>";
+// Critical dashboard colors inline so card/alert UX cannot regress to plain/yellow
+// when a stale plugin CSS cache still serves the Sprint 5.0 yellow alert look.
+echo '<style id="aat-dashboard-critical-css">'
+    . '.aat-dashboard-page a.aat-card.aat-card--total{background:#e8f1ff!important;border-color:#9ec5fe!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--total .aat-card-value{color:#1a5fb4!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--available{background:#e6f4ea!important;border-color:#8fd19e!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--available .aat-card-value{color:#1b7a3d!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--allocated{background:#e7f7f5!important;border-color:#7dcdc0!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--allocated .aat-card-value{color:#0f766e!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--in_service{background:#fff4e5!important;border-color:#f0b45a!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--in_service .aat-card-value{color:#b45309!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--in_transit{background:#eef6fb!important;border-color:#7eb6d6!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--in_transit .aat-card-value{color:#0b6e99!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--written_off{background:#f3f4f6!important;border-color:#c4c9d0!important}'
+    . '.aat-dashboard-page a.aat-card.aat-card--written_off .aat-card-value{color:#4b5563!important}'
+    . '.aat-dashboard-page .aat-alerts .aat-alert,.aat-dashboard-page .aat-manager-grid .aat-alert{'
+    . 'background:#fde8e8!important;border-left:4px solid #d63939!important;color:#9b1c1c!important;font-weight:400!important}'
+    . '.aat-dashboard-page .aat-alerts .aat-alert a,.aat-dashboard-page .aat-manager-grid .aat-alert a{'
+    . 'color:#9b1c1c!important;font-weight:400!important}'
+    . '.aat-dashboard-page .aat-alert-heading{color:inherit!important;font-weight:inherit!important}'
+    . '</style>';
 PluginAuchanassettrackerMenu::beginNativeFormCard($title, 'ti ti-dashboard');
 
 if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
