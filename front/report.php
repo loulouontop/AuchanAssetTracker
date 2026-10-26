@@ -29,9 +29,11 @@ if ($scope !== null) {
 }
 
 $export = (string) ($_REQUEST['export'] ?? '');
+$wants_export = ($export === 'csv' || $export === 'excel'
+    || isset($_REQUEST['export_csv']) || isset($_REQUEST['export_excel']));
 $submitted = $type !== ''
     || isset($_REQUEST['run'])
-    || ($export === 'csv' || $export === 'excel');
+    || $wants_export;
 
 $errors = [];
 $report = null;
@@ -48,16 +50,25 @@ if ($submitted) {
             }
         }
         $report = PluginAuchanassettrackerReport::run($type, $filters);
-        if ($export === 'csv' || $export === 'excel') {
-            if ($export === 'excel') {
-                header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-                header('Content-Disposition: attachment; filename="aat-report-' . $type . '.xls"');
-                echo PluginAuchanassettrackerReport::toExcelXml($report);
-            } else {
-                header('Content-Type: text/csv; charset=UTF-8');
-                header('Content-Disposition: attachment; filename="aat-report-' . $type . '.csv"');
-                echo PluginAuchanassettrackerReport::toCsv($report);
+        if ($wants_export) {
+            $as_excel = ($export === 'excel' || isset($_REQUEST['export_excel']));
+            $filename = PluginAuchanassettrackerReport::exportFilename($as_excel ? 'xls' : 'csv');
+            // Clear any prior output so the browser downloads the file.
+            while (ob_get_level() > 0) {
+                ob_end_clean();
             }
+            if ($as_excel) {
+                $body = PluginAuchanassettrackerReport::toExcelXml($report, $type, $filters);
+                header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+            } else {
+                $body = PluginAuchanassettrackerReport::toCsv($report, $type, $filters);
+                header('Content-Type: text/csv; charset=UTF-8');
+            }
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Content-Length: ' . (string) strlen($body));
+            header('Cache-Control: no-store, no-cache, must-revalidate');
+            header('Pragma: public');
+            echo $body;
             exit;
         }
     }
@@ -156,7 +167,7 @@ PluginAuchanassettrackerContainer::dropdown([
 ]);
 echo '</div>';
 
-// Period: from on the left, to on the right (compact).
+// Period: half-width From | → | half-width To.
 echo "<div class='aat-report-period' data-aat-filter='period'>";
 echo "<div class='aat-report-period-field aat-report-period-from'>";
 echo "<label class='form-label'>" . __('From')
@@ -166,16 +177,17 @@ echo Html::input('date_from', [
     'value' => $filters['date_from'] !== ''
         ? $filters['date_from']
         : date('Y-m-d', strtotime('-30 days')),
-    'class' => 'form-control form-control-sm aat-report-date',
+    'class' => 'form-control aat-report-date',
 ]);
 echo '</div>';
+echo "<div class='aat-report-period-arrow' aria-hidden='true'><span>→</span></div>";
 echo "<div class='aat-report-period-field aat-report-period-to'>";
 echo "<label class='form-label'>" . __('To')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
 echo Html::input('date_to', [
     'type'  => 'date',
     'value' => $filters['date_to'] !== '' ? $filters['date_to'] : date('Y-m-d'),
-    'class' => 'form-control form-control-sm aat-report-date',
+    'class' => 'form-control aat-report-date',
 ]);
 echo '</div>';
 echo '</div>';
@@ -186,16 +198,11 @@ echo Html::submit(__('Run', 'auchanassettracker'), [
     'class' => 'btn btn-primary',
     'value' => '1',
 ]);
-echo Html::submit(__('Export CSV', 'auchanassettracker'), [
-    'name'  => 'export',
-    'class' => 'btn btn-outline-secondary',
-    'value' => 'csv',
-]);
-echo Html::submit(__('Export Excel', 'auchanassettracker'), [
-    'name'  => 'export',
-    'class' => 'btn btn-outline-secondary',
-    'value' => 'excel',
-]);
+// Native buttons: Html::submit() forces value=caption and broke export=csv detection.
+echo '<button type="submit" class="btn btn-outline-secondary" name="export_csv" value="1">'
+    . Html::entities_deep(__('Export CSV', 'auchanassettracker')) . '</button>';
+echo '<button type="submit" class="btn btn-outline-secondary" name="export_excel" value="1">'
+    . Html::entities_deep(__('Export Excel', 'auchanassettracker')) . '</button>';
 echo '</div>';
 
 echo '</div>'; // grid
