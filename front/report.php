@@ -52,7 +52,16 @@ if ($submitted) {
         $report = PluginAuchanassettrackerReport::run($type, $filters);
         if ($wants_export) {
             $as_excel = ($export === 'excel' || isset($_REQUEST['export_excel']));
+            $format = $as_excel ? 'excel' : 'csv';
             $filename = PluginAuchanassettrackerReport::exportFilename($as_excel ? 'xls' : 'csv');
+            // Same audit + plugin log trail as transfers / allocations / equipment.
+            PluginAuchanassettrackerReport::logExport(
+                $type,
+                $format,
+                $filename,
+                $filters,
+                $report
+            );
             // Clear any prior output so the browser downloads the file.
             while (ob_get_level() > 0) {
                 ob_end_clean();

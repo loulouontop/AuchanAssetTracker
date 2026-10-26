@@ -594,10 +594,17 @@ if (!preg_match("/inventory_location'\s*=>\s*\['locations_id'\]/", $report_cls))
 }
 if (!str_contains($report_cls, 'exportFilename')
     || !str_contains($report_cls, 'exportMetaLines')
+    || !str_contains($report_cls, 'logExport')
+    || !str_contains($report_cls, "'report_export'")
 ) {
-    fail('report class missing export filename / meta header helpers');
+    fail('report class missing export filename / meta header / audit logExport');
 } else {
-    ok('report export filename + meta header');
+    ok('report export filename + meta header + audit logExport');
+}
+if (!str_contains($report_front, 'logExport')) {
+    fail('report front must call logExport on CSV/Excel generation');
+} else {
+    ok('report front logs document generation');
 }
 if (!str_contains($audit, 'PluginAuchanassettrackerPluginlog::info')) {
     fail('auditlog::record must mirror into plugin log file');
