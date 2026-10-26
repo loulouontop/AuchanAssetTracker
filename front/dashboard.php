@@ -234,8 +234,11 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         $aat_restore_search_env($snap);
     };
 
+    // GLPI 11 fluid Search binds button[name=search] on the closest
+    // .search-container — without that wrapper, Search click does nothing.
     echo '<h2 class="mt-4">' . __('Stock by location', 'auchanassettracker') . '</h2>';
-    echo "<div class='aat-dashboard-search' data-aat-hide-search-chrome='1'>";
+    echo "<div class='col search-container aat-dashboard-search'"
+        . " data-glpi-search-container data-aat-hide-search-chrome='1'>";
     // Throttled rebuild — avoids full rescan on every sort click (504).
     PluginAuchanassettrackerStockbylocation::rebuild();
     PluginAuchanassettrackerStockbylocation::ensureDisplayPreferences();
@@ -246,7 +249,8 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     echo '</div>';
 
     echo '<h2 class="mt-4">' . __('Recent activity', 'auchanassettracker') . '</h2>';
-    echo "<div class='aat-dashboard-search' data-aat-hide-search-chrome='1'>";
+    echo "<div class='col search-container aat-dashboard-search'"
+        . " data-glpi-search-container data-aat-hide-search-chrome='1'>";
     PluginAuchanassettrackerAuditlog::ensureDisplayPreferences();
     // Keep page light so sort/filter does not Gateway-timeout formatting details.
     $prev_list_limit = $_SESSION['glpilist_limit'] ?? null;
