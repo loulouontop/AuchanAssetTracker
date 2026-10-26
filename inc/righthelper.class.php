@@ -186,16 +186,17 @@ class PluginAuchanassettrackerRighthelper
     /**
      * Active plugin role for the current GLPI profile.
      * Empty string = no plugin role (unmapped profile).
+     * GLPI Super-Admin (config UPDATE) always acts as Central admin —
+     * same dashboard and ops view, even if a plugin role map exists.
      */
     public static function getCurrentRole(): string
     {
+        if (Session::haveRight('config', UPDATE)) {
+            return self::ROLE_CENTRAL_ADMIN;
+        }
         $mapped = self::getMappedRole();
         if ($mapped !== null) {
             return $mapped;
-        }
-        // Unmapped Super-Admin acts as central admin for plugin ops + config.
-        if (Session::haveRight('config', UPDATE)) {
-            return self::ROLE_CENTRAL_ADMIN;
         }
         // Do not treat every other unmapped profile as End user.
         return '';

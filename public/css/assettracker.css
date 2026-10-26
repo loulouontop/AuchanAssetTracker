@@ -490,7 +490,9 @@ img.aat-qr-preview {
   gap: 12px;
   margin: 1rem 0 1.5rem;
 }
-.aat-card {
+/* Colorful status cards + red alert rows (scoped; beat Tabler/card defaults). */
+.aat-dashboard-page a.aat-card,
+.assettracker-dashboard a.aat-card {
   display: block;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -499,79 +501,101 @@ img.aat-qr-preview {
   color: inherit;
   transition: transform .12s ease, box-shadow .15s ease;
 }
-.aat-card:hover {
+.aat-dashboard-page a.aat-card:hover,
+.assettracker-dashboard a.aat-card:hover {
   text-decoration: none;
   color: inherit;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
 }
-.aat-card-value {
+.aat-dashboard-page .aat-card-value,
+.assettracker-dashboard .aat-card-value {
   font-size: 1.75rem;
   font-weight: 700;
   line-height: 1.2;
 }
-.aat-card-label {
+.aat-dashboard-page .aat-card-label,
+.assettracker-dashboard .aat-card-label {
   font-size: .85rem;
   margin-top: 4px;
   opacity: .9;
 }
-.aat-card--total {
-  background: #e8f1ff;
-  border-color: #9ec5fe;
+.aat-dashboard-page a.aat-card.aat-card--total,
+.assettracker-dashboard a.aat-card.aat-card--total {
+  background: #e8f1ff !important;
+  border-color: #9ec5fe !important;
 }
-.aat-card--total .aat-card-value { color: #1a5fb4; }
-.aat-card--available {
-  background: #e6f4ea;
-  border-color: #8fd19e;
+.aat-dashboard-page a.aat-card.aat-card--total .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--total .aat-card-value { color: #1a5fb4 !important; }
+.aat-dashboard-page a.aat-card.aat-card--available,
+.assettracker-dashboard a.aat-card.aat-card--available {
+  background: #e6f4ea !important;
+  border-color: #8fd19e !important;
 }
-.aat-card--available .aat-card-value { color: #1b7a3d; }
-.aat-card--allocated {
-  background: #e7f7f5;
-  border-color: #7dcdc0;
+.aat-dashboard-page a.aat-card.aat-card--available .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--available .aat-card-value { color: #1b7a3d !important; }
+.aat-dashboard-page a.aat-card.aat-card--allocated,
+.assettracker-dashboard a.aat-card.aat-card--allocated {
+  background: #e7f7f5 !important;
+  border-color: #7dcdc0 !important;
 }
-.aat-card--allocated .aat-card-value { color: #0f766e; }
-.aat-card--in_service {
-  background: #fff4e5;
-  border-color: #f0b45a;
+.aat-dashboard-page a.aat-card.aat-card--allocated .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--allocated .aat-card-value { color: #0f766e !important; }
+.aat-dashboard-page a.aat-card.aat-card--in_service,
+.assettracker-dashboard a.aat-card.aat-card--in_service {
+  background: #fff4e5 !important;
+  border-color: #f0b45a !important;
 }
-.aat-card--in_service .aat-card-value { color: #b45309; }
-.aat-card--in_transit {
-  background: #eef6fb;
-  border-color: #7eb6d6;
+.aat-dashboard-page a.aat-card.aat-card--in_service .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--in_service .aat-card-value { color: #b45309 !important; }
+.aat-dashboard-page a.aat-card.aat-card--in_transit,
+.assettracker-dashboard a.aat-card.aat-card--in_transit {
+  background: #eef6fb !important;
+  border-color: #7eb6d6 !important;
 }
-.aat-card--in_transit .aat-card-value { color: #0b6e99; }
-.aat-card--written_off {
-  background: #f3f4f6;
-  border-color: #c4c9d0;
+.aat-dashboard-page a.aat-card.aat-card--in_transit .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--in_transit .aat-card-value { color: #0b6e99 !important; }
+.aat-dashboard-page a.aat-card.aat-card--written_off,
+.assettracker-dashboard a.aat-card.aat-card--written_off {
+  background: #f3f4f6 !important;
+  border-color: #c4c9d0 !important;
 }
-.aat-card--written_off .aat-card-value { color: #4b5563; }
+.aat-dashboard-page a.aat-card.aat-card--written_off .aat-card-value,
+.assettracker-dashboard a.aat-card.aat-card--written_off .aat-card-value { color: #4b5563 !important; }
 .aat-alert-section-block {
   margin-top: 1rem;
 }
 .aat-alert-heading {
   /* Keep normal dashboard title look (not red / not extra-bold). */
-  color: inherit;
-  font-weight: inherit;
+  color: inherit !important;
+  font-weight: inherit !important;
 }
-.aat-alerts .aat-alert,
-.aat-manager-grid .aat-alert {
-  background: #fde8e8;
-  border-left: 4px solid #d63939;
-  color: #9b1c1c;
+/* Active alerts / To resolve today rows: red (never yellow warning). */
+.aat-dashboard-page .aat-alerts .aat-alert,
+.aat-dashboard-page .aat-manager-grid .aat-alert,
+.assettracker-dashboard .aat-alerts .aat-alert,
+.assettracker-dashboard .aat-manager-grid .aat-alert {
+  background: #fde8e8 !important;
+  border-left: 4px solid #d63939 !important;
+  color: #9b1c1c !important;
   padding: 8px 12px;
   margin-bottom: 8px;
   border-radius: 0 4px 4px 0;
-  font-weight: 400;
+  font-weight: 400 !important;
   font-size: inherit;
 }
-.aat-alerts .aat-alert a,
-.aat-manager-grid .aat-alert a {
-  color: #9b1c1c;
+.aat-dashboard-page .aat-alerts .aat-alert a,
+.aat-dashboard-page .aat-manager-grid .aat-alert a,
+.assettracker-dashboard .aat-alerts .aat-alert a,
+.assettracker-dashboard .aat-manager-grid .aat-alert a {
+  color: #9b1c1c !important;
   text-decoration: none;
-  font-weight: 400;
+  font-weight: 400 !important;
 }
-.aat-alerts .aat-alert a:hover,
-.aat-manager-grid .aat-alert a:hover {
+.aat-dashboard-page .aat-alerts .aat-alert a:hover,
+.aat-dashboard-page .aat-manager-grid .aat-alert a:hover,
+.assettracker-dashboard .aat-alerts .aat-alert a:hover,
+.assettracker-dashboard .aat-manager-grid .aat-alert a:hover {
   text-decoration: underline;
 }
 .aat-in-movement {
@@ -607,14 +631,13 @@ img.aat-qr-preview {
   border-radius: 0 4px 4px 0;
 }
 .aat-pending-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 1.25rem;
+  row-gap: 0.75rem;
 }
 .aat-pending-main {
-  flex: 1 1 220px;
   min-width: 0;
 }
 .aat-pending-main h2 {
@@ -628,9 +651,23 @@ img.aat-qr-preview {
   margin: 0.15rem 0;
 }
 .aat-pending-actions {
-  flex: 0 0 auto;
-  margin-left: auto;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
   align-self: center;
+  flex: 0 0 auto;
+  margin-left: 0;
+  white-space: nowrap;
+}
+@media (max-width: 520px) {
+  .aat-pending-row {
+    grid-template-columns: 1fr;
+  }
+  .aat-pending-actions {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: end;
+  }
 }
 .aat-dashboard-search {
   margin-bottom: 1.5rem;
@@ -639,33 +676,67 @@ img.aat-qr-preview {
 .aat-dashboard-search .card.search-card {
   margin-top: 0.25rem;
 }
-/* Hide GLPI Search chrome not useful on the dashboard embeds
-   (select columns / refresh / download / table|map). */
+/* Hide GLPI Search chrome on dashboard embeds
+   (select columns / refresh / download / table|map). Broad selectors —
+   GLPI 11 markup varies by version; JS also strips these nodes. */
+.aat-dashboard-search .secondary-controls,
 .aat-dashboard-search .search-controls .secondary-controls,
 .aat-dashboard-search .card-header.search-header .secondary-controls,
+.aat-dashboard-search .display-prefs,
+.aat-dashboard-search .display_prefs_btn,
+.aat-dashboard-search .btn.display-prefs,
 .aat-dashboard-search .search-footer .list_footer_controls .dropdown,
 .aat-dashboard-search .search-footer .export_to_dropdown,
 .aat-dashboard-search #export_to_dropdown,
+.aat-dashboard-search .export_dropdown,
 .aat-dashboard-search .search-footer .btn-group,
-.aat-dashboard-search .search-controls a[href*="as_map"],
-.aat-dashboard-search .search-controls button[name="as_map"],
-.aat-dashboard-search .search-controls .ti-refresh,
-.aat-dashboard-search .search-controls .ti-file-download,
-.aat-dashboard-search .search-controls .ti-map,
-.aat-dashboard-search .search-controls .ti-table,
-.aat-dashboard-search .search-controls .ti-adjustments,
-.aat-dashboard-search .search-controls .ti-device-floppy,
-.aat-dashboard-search .search-controls .ti-refresh,
-.aat-dashboard-search .search-controls button:has(.ti-refresh),
-.aat-dashboard-search .search-controls button:has(.ti-file-download),
-.aat-dashboard-search .search-controls button:has(.ti-map),
-.aat-dashboard-search .search-controls button:has(.ti-table),
-.aat-dashboard-search .search-controls button:has(.ti-adjustments),
-.aat-dashboard-search .search-controls a:has(.ti-adjustments),
-.aat-dashboard-search .search-controls a:has(.ti-device-floppy),
-.aat-dashboard-search .search-controls a:has(.ti-file-download),
-.aat-dashboard-search .search-controls a:has(.ti-map),
-.aat-dashboard-search .search-controls a:has(.ti-table) {
+.aat-dashboard-search .search-controls .btn-group,
+.aat-dashboard-search .card-header .btn-group,
+.aat-dashboard-search a[href*="as_map"],
+.aat-dashboard-search button[name="as_map"],
+.aat-dashboard-search button[name="display"],
+.aat-dashboard-search .ti-refresh,
+.aat-dashboard-search .ti-file-download,
+.aat-dashboard-search .ti-file-export,
+.aat-dashboard-search .ti-download,
+.aat-dashboard-search .ti-map,
+.aat-dashboard-search .ti-table,
+.aat-dashboard-search .ti-adjustments,
+.aat-dashboard-search .ti-adjustments-horizontal,
+.aat-dashboard-search .ti-device-floppy,
+.aat-dashboard-search button:has(.ti-refresh),
+.aat-dashboard-search button:has(.ti-file-download),
+.aat-dashboard-search button:has(.ti-file-export),
+.aat-dashboard-search button:has(.ti-download),
+.aat-dashboard-search button:has(.ti-map),
+.aat-dashboard-search button:has(.ti-table),
+.aat-dashboard-search button:has(.ti-adjustments),
+.aat-dashboard-search button:has(.ti-adjustments-horizontal),
+.aat-dashboard-search button:has(.ti-device-floppy),
+.aat-dashboard-search a:has(.ti-adjustments),
+.aat-dashboard-search a:has(.ti-adjustments-horizontal),
+.aat-dashboard-search a:has(.ti-device-floppy),
+.aat-dashboard-search a:has(.ti-file-download),
+.aat-dashboard-search a:has(.ti-file-export),
+.aat-dashboard-search a:has(.ti-download),
+.aat-dashboard-search a:has(.ti-map),
+.aat-dashboard-search a:has(.ti-table),
+.aat-dashboard-search a:has(.ti-refresh),
+.aat-dashboard-search [title*="Refresh" i],
+.aat-dashboard-search [title*="Download" i],
+.aat-dashboard-search [title*="Export" i],
+.aat-dashboard-search [title*="map" i],
+.aat-dashboard-search [title*="Select default items" i],
+.aat-dashboard-search [title*="Select items to show" i],
+.aat-dashboard-search [aria-label*="Refresh" i],
+.aat-dashboard-search [aria-label*="Download" i],
+.aat-dashboard-search [aria-label*="Export" i],
+.aat-dashboard-search [aria-label*="map" i],
+.aat-dashboard-search [data-bs-original-title*="Refresh" i],
+.aat-dashboard-search [data-bs-original-title*="Download" i],
+.aat-dashboard-search [data-bs-original-title*="Export" i],
+.aat-dashboard-search [data-bs-original-title*="map" i],
+.aat-dashboard-search [data-bs-original-title*="Select" i] {
   display: none !important;
 }
 .aat-transfer-bulk-container {

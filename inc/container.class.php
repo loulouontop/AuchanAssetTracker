@@ -270,7 +270,7 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
             'container_update',
             self::class,
             (int) $this->getID(),
-            json_encode(array_keys($this->updates ?? []))
+            json_encode(['updates' => array_keys($this->updates ?? [])])
         );
     }
 

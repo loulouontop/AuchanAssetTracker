@@ -761,10 +761,8 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'equipment_update',
             self::class,
             (int) $this->getID(),
-            json_encode([
-                'updates' => $touched,
-                'status'  => $this->fields['status'] ?? '',
-            ])
+            // Field names only — details column shows “Updated fields”, not values/ids.
+            json_encode(['updates' => $touched])
         );
     }
 
