@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.2'")) {
-    fail('expected version 0.5.2');
+if (!str_contains($setup, "'0.5.3'")) {
+    fail('expected version 0.5.3');
 } else {
-    ok('version 0.5.2');
+    ok('version 0.5.3');
 }
 if (str_contains($setup, 'helpdesk_menu_entry')) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
@@ -455,12 +455,13 @@ if (!str_contains($audit, 'isEmptyDetailValue')
     ok('audit details empty/list handling');
 }
 if (!str_contains($xfer_front, 'bulk_container_id')
-    || !str_contains($xfer_front, 'aat-transfer-bulk-container')
-    || !str_contains($xfer_front, 'Apply to checked')
+    || !str_contains($xfer_front, 'aat-transfer-bulk-panel')
+    || !str_contains($xfer_front, 'equipment_ids[]')
+    || !str_contains($xfer_front, 'Container for selected items')
 ) {
-    fail('transfer validate missing bulk container (option A)');
+    fail('transfer validate missing shared bulk container panel');
 } else {
-    ok('transfer bulk container option A');
+    ok('transfer shared bulk container panel');
 }
 $js = file_get_contents("$root/js/aat-forms.js");
 $pjs = file_get_contents("$root/public/js/aat-forms.js");
@@ -469,15 +470,27 @@ if ($js !== $pjs) {
 } else {
     ok('js and public/js aat-forms.js in sync');
 }
-if (!str_contains($js, 'bulk_container_id')) {
-    fail('aat-forms.js missing bulk_container_id handler');
+if (!str_contains($js, 'aatSyncTransferBulkPanel')
+    || !str_contains($js, 'bulk_container_id')
+) {
+    fail('aat-forms.js missing transfer bulk panel sync');
 } else {
-    ok('aat-forms.js bulk container handler');
+    ok('aat-forms.js transfer bulk panel sync');
 }
-if (!str_contains($js, 'aatHideDashboardSearchChrome')) {
-    fail('aat-forms.js must hide dashboard Search chrome');
+if (!str_contains($js, 'aatHideDashboardSearchChrome')
+    || !str_contains($js, 'saved_searches')
+) {
+    fail('aat-forms.js must hide dashboard Search chrome + saved search');
 } else {
     ok('aat-forms.js hides dashboard Search chrome');
+}
+if (!str_contains($css, 'font-weight: 700 !important')
+    || !str_contains($css, 'color: #000 !important')
+    || !str_contains($css, 'form[name="search"]')
+) {
+    fail('css missing bold alert titles / black alert text / hide search form');
+} else {
+    ok('css alert titles + black text + hide search form');
 }
 $ro = file_get_contents("$root/locales/ro_RO.php");
 foreach (['Destination', 'Sort', 'Filter', 'Export', 'Choose files', 'No file chosen', 'Rows / page', 'Show saved search', 'Filtered by'] as $msgid) {

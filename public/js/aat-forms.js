@@ -84,7 +84,8 @@
   }
 
   /**
-   * Transfer validation: apply one destination container to all / checked rows.
+   * Transfer validation: shared container dropdown appears only when items
+   * are selected; backend applies that one container to all selected IDs.
    */
   function aatReadBulkContainerId(form) {
     var bulk = form.querySelector('[name="bulk_container_id"]');
@@ -94,79 +95,114 @@
     return parseInt(bulk.value || '0', 10) || 0;
   }
 
-  function aatSetRowContainer(form, eid, cid) {
-    if (!eid || !cid) {
-      return;
-    }
-    var sel = form.querySelector('select[name="container[' + eid + ']"]');
-    if (!sel) {
-      return;
-    }
-    sel.value = String(cid);
-    if (window.jQuery) {
-      var $sel = window.jQuery(sel);
-      if ($sel.hasClass('select2-hidden-accessible')) {
-        $sel.val(String(cid)).trigger('change');
-      }
-    }
-    try {
-      sel.dispatchEvent(new Event('change', { bubbles: true }));
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function aatApplyBulkContainer(form, checkedOnly) {
-    var cid = aatReadBulkContainerId(form);
-    if (cid <= 0) {
-      window.alert(form.getAttribute('data-aat-bulk-missing')
-        || 'Select a container first.');
-      return;
-    }
-    var rows = form.querySelectorAll('tbody tr');
-    for (var i = 0; i < rows.length; i++) {
-      var row = rows[i];
-      var check = row.querySelector('.aat-item-check');
-      if (checkedOnly && check && !check.checked) {
-        continue;
-      }
-      var eid = check ? parseInt(check.getAttribute('data-eid') || '0', 10) : 0;
-      if (!eid) {
-        var named = row.querySelector('select[name^="container["]');
-        if (named && named.name) {
-          var m = named.name.match(/container\[(\d+)\]/);
-          eid = m ? parseInt(m[1], 10) : 0;
-        }
-      }
-      aatSetRowContainer(form, eid, cid);
-    }
-  }
-
-  document.addEventListener('click', function (e) {
-    var btn = e.target.closest('.aat-apply-container-all, .aat-apply-container-checked');
-    if (!btn) {
-      return;
-    }
-    var form = btn.closest('.aat-transfer-validate-form');
+  function aatSyncTransferBulkPanel(form) {
     if (!form) {
       return;
     }
-    e.preventDefault();
-    aatApplyBulkContainer(form, btn.classList.contains('aat-apply-container-checked'));
-  });
+    var boxes = form.querySelectorAll('.aat-item-check');
+    var checked = 0;
+    for (var i = 0; i < boxes.length; i++) {
+      var row = boxes[i].closest('tr');
+      if (boxes[i].checked) {
+        checked++;
+        if (row) {
+          row.classList.add('is-selected');
+        }
+      } else if (row) {
+        row.classList.remove('is-selected');
+      }
+    }
+    var master = form.querySelector('.aat-check-all');
+    if (master) {
+      master.checked = boxes.length > 0 && checked === boxes.length;
+      master.indeterminate = checked > 0 && checked < boxes.length;
+    }
+    var panel = form.querySelector('.aat-transfer-bulk-panel');
+    if (!panel) {
+      return;
+    }
+    if (checked > 0) {
+      panel.hidden = false;
+      panel.classList.add('is-visible');
+    } else {
+      panel.hidden = true;
+      panel.classList.remove('is-visible');
+    }
+  }
 
   document.addEventListener('change', function (e) {
     var el = e.target;
-    if (!el || !el.classList || !el.classList.contains('aat-check-all')) {
+    if (!el || !el.classList) {
       return;
     }
     var form = el.closest('.aat-transfer-validate-form');
     if (!form) {
       return;
     }
+    if (el.classList.contains('aat-check-all')) {
+      var boxes = form.querySelectorAll('.aat-item-check');
+      for (var i = 0; i < boxes.length; i++) {
+        boxes[i].checked = !!el.checked;
+      }
+      aatSyncTransferBulkPanel(form);
+      return;
+    }
+    if (el.classList.contains('aat-item-check')) {
+      aatSyncTransferBulkPanel(form);
+    }
+  });
+
+  // Clicking the row (not just the checkbox) toggles selection.
+  document.addEventListener('click', function (e) {
+    var row = e.target.closest('.aat-transfer-validate-form tr.aat-item-row');
+    if (!row) {
+      return;
+    }
+    if (e.target.closest('input, a, button, select, .select2-container')) {
+      return;
+    }
+    var check = row.querySelector('.aat-item-check');
+    if (!check) {
+      return;
+    }
+    check.checked = !check.checked;
+    try {
+      check.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (err) {
+      aatSyncTransferBulkPanel(row.closest('.aat-transfer-validate-form'));
+    }
+  });
+
+  document.addEventListener('submit', function (e) {
+    var form = e.target;
+    if (!form || !form.classList || !form.classList.contains('aat-transfer-validate-form')) {
+      return;
+    }
     var boxes = form.querySelectorAll('.aat-item-check');
-    for (var i = 0; i < boxes.length; i++) {
-      boxes[i].checked = !!el.checked;
+    var selected = form.querySelectorAll('.aat-item-check:checked');
+    if (!selected.length) {
+      e.preventDefault();
+      window.alert(form.getAttribute('data-aat-select-items')
+        || 'Select at least one equipment item.');
+      return;
+    }
+    if (boxes.length && selected.length !== boxes.length) {
+      e.preventDefault();
+      window.alert(form.getAttribute('data-aat-select-all')
+        || 'Select all equipment items and one container to validate the transfer.');
+      return;
+    }
+    if (aatReadBulkContainerId(form) <= 0) {
+      e.preventDefault();
+      window.alert(form.getAttribute('data-aat-bulk-missing')
+        || 'Select a container for the selected equipment.');
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    var forms = document.querySelectorAll('.aat-transfer-validate-form');
+    for (var i = 0; i < forms.length; i++) {
+      aatSyncTransferBulkPanel(forms[i]);
     }
   });
 
@@ -190,16 +226,21 @@
     var iconHints = [
       'ti-refresh', 'ti-file-download', 'ti-file-export', 'ti-download',
       'ti-map', 'ti-table', 'ti-adjustments', 'ti-adjustments-horizontal',
-      'ti-device-floppy'
+      'ti-device-floppy', 'ti-bookmark', 'ti-search'
     ];
-    var titleRe = /refresh|download|export|map|table|select.*(item|column|default)|afficher|télécharger|actualiser/i;
+    var titleRe = /refresh|download|export|map|table|saved\s*search|save\s*current\s*search|search\s*criteria|select.*(item|column|default)|afficher|télécharger|actualiser|recherch/i;
 
     for (var s = 0; s < scopes.length; s++) {
       var scope = scopes[s];
       if (!scope || !scope.querySelectorAll) {
         continue;
       }
-      var secondary = scope.querySelectorAll('.secondary-controls, .display_prefs_btn, .display-prefs, .export_to_dropdown, #export_to_dropdown, .export_dropdown');
+      var secondary = scope.querySelectorAll(
+        '.secondary-controls, .primary-controls, .display_prefs_btn, .display-prefs,'
+        + ' .export_to_dropdown, #export_to_dropdown, .export_dropdown,'
+        + ' form[name="search"], form.search-form, .search-form, .search_form,'
+        + ' .saved_searches, .savedsearches, .saved-searches, .search_actions'
+      );
       for (var i = 0; i < secondary.length; i++) {
         secondary[i].style.display = 'none';
       }

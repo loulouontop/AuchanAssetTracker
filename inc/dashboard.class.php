@@ -99,9 +99,10 @@ class PluginAuchanassettrackerDashboard
         foreach ($in_service as &$e) {
             $tid = (int) ($e['service_tickets_id'] ?? 0);
             $e['since'] = (string) ($e['service_since'] ?? $e['date_mod'] ?? '');
+            $e['service_tickets_id'] = $tid;
             $e['service_label'] = $tid > 0
                 ? sprintf(__('Ticket #%d', 'auchanassettracker'), $tid)
-                : __('Service', 'auchanassettracker');
+                : '';
         }
         unset($e);
 
