@@ -252,20 +252,51 @@ if ($id > 0) {
     }
 
     if ($can_validate && PluginAuchanassettrackerContainer::countAtLocation($dest) > 0) {
-        echo "<form method='post' action=''>";
+        echo "<form method='post' action='' class='aat-transfer-validate-form'"
+            . " data-aat-bulk-missing='"
+            . Html::entities_deep(__('Select a container first.', 'auchanassettracker'))
+            . "'>";
         echo Html::hidden('id', ['value' => $id]);
         echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+
+        // Option A: put all / checked items into one destination container.
+        echo "<div class='aat-transfer-bulk-container'>";
+        echo "<div class='aat-bulk-field'><label class='form-label mb-1'>"
+            . Html::entities_deep(__('Put selected items in one container', 'auchanassettracker'))
+            . '</label>';
+        echo "<span class='aat-container-field' data-aat-width='100%'>";
+        PluginAuchanassettrackerContainer::dropdownWithActions([
+            'name'      => 'bulk_container_id',
+            'condition' => [
+                'locations_id' => $dest,
+                'is_active'    => 1,
+                'is_deleted'   => 0,
+            ],
+            'width' => '100%',
+        ]);
+        echo '</span></div>';
+        echo "<button type='button' class='btn btn-outline-primary aat-apply-container-checked'>"
+            . Html::entities_deep(__('Apply to checked', 'auchanassettracker')) . '</button>';
+        echo "<button type='button' class='btn btn-outline-secondary aat-apply-container-all'>"
+            . Html::entities_deep(__('Apply to all', 'auchanassettracker')) . '</button>';
+        echo '</div>';
+
         echo "<div class='table-responsive'><table class='table table-sm table-hover card-table'>";
-        echo "<thead><tr><th>" . __('Equipment') . "</th><th>"
-            . __('Serial number') . "</th><th>"
-            . __('Container', 'auchanassettracker') . $req . "</th></tr></thead><tbody>";
+        echo "<thead><tr>"
+            . "<th style='width:2.5rem'><input type='checkbox' class='form-check-input aat-check-all' checked"
+            . " title='" . Html::entities_deep(__('Check all')) . "'></th>"
+            . '<th>' . __('Equipment') . '</th><th>'
+            . __('Serial number') . '</th><th>'
+            . __('Container', 'auchanassettracker') . $req . '</th></tr></thead><tbody>';
         foreach ($items as $it) {
             $eq = new PluginAuchanassettrackerEquipment();
             $eq->getFromDB((int) $it['plugin_auchanassettracker_equipments_id']);
             $eid = (int) $eq->getID();
-            echo "<tr><td>" . Html::entities_deep($eq->fields['name'] ?? '')
-                . "</td><td>" . Html::entities_deep($eq->fields['serial'] ?? '')
-                . "</td><td>";
+            echo "<tr><td><input type='checkbox' class='form-check-input aat-item-check' checked"
+                . " data-eid='" . $eid . "'></td>"
+                . '<td>' . Html::entities_deep($eq->fields['name'] ?? '')
+                . '</td><td>' . Html::entities_deep($eq->fields['serial'] ?? '')
+                . '</td><td>';
             echo "<span class='aat-container-field' data-aat-width='220px'>";
             PluginAuchanassettrackerContainer::dropdownWithActions([
                 'name'      => "container[$eid]",
@@ -276,15 +307,15 @@ if ($id > 0) {
                 ],
                 'width' => '220px',
             ]);
-            echo "</span></td></tr>";
+            echo '</span></td></tr>';
         }
-        echo "</tbody></table></div>";
+        echo '</tbody></table></div>';
         echo "<div class='text-center mt-3'>";
         echo Html::submit(__('Validate transfer', 'auchanassettracker'), [
             'name'  => 'validate_transfer',
             'class' => 'btn btn-primary',
         ]);
-        echo "</div>";
+        echo '</div>';
         Html::closeForm();
 
         // Recipient reject with mandatory comment (separate form).

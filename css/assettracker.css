@@ -549,8 +549,9 @@ img.aat-qr-preview {
   margin-top: 1rem;
 }
 .aat-alert-heading {
-  color: #d63939 !important;
-  font-weight: 700;
+  /* Keep normal dashboard title look (not red / not extra-bold). */
+  color: inherit;
+  font-weight: inherit;
 }
 .aat-alerts .aat-alert,
 .aat-manager-grid .aat-alert {
@@ -560,12 +561,14 @@ img.aat-qr-preview {
   padding: 8px 12px;
   margin-bottom: 8px;
   border-radius: 0 4px 4px 0;
+  font-weight: 400;
+  font-size: inherit;
 }
 .aat-alerts .aat-alert a,
 .aat-manager-grid .aat-alert a {
   color: #9b1c1c;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 400;
 }
 .aat-alerts .aat-alert a:hover,
 .aat-manager-grid .aat-alert a:hover {
@@ -635,4 +638,50 @@ img.aat-qr-preview {
 .aat-dashboard-search .search-header,
 .aat-dashboard-search .card.search-card {
   margin-top: 0.25rem;
+}
+/* Hide GLPI Search chrome not useful on the dashboard embeds
+   (select columns / refresh / download / table|map). */
+.aat-dashboard-search .search-controls .secondary-controls,
+.aat-dashboard-search .card-header.search-header .secondary-controls,
+.aat-dashboard-search .search-footer .list_footer_controls .dropdown,
+.aat-dashboard-search .search-footer .export_to_dropdown,
+.aat-dashboard-search #export_to_dropdown,
+.aat-dashboard-search .search-footer .btn-group,
+.aat-dashboard-search .search-controls a[href*="as_map"],
+.aat-dashboard-search .search-controls button[name="as_map"],
+.aat-dashboard-search .search-controls .ti-refresh,
+.aat-dashboard-search .search-controls .ti-file-download,
+.aat-dashboard-search .search-controls .ti-map,
+.aat-dashboard-search .search-controls .ti-table,
+.aat-dashboard-search .search-controls .ti-adjustments,
+.aat-dashboard-search .search-controls .ti-device-floppy,
+.aat-dashboard-search .search-controls .ti-refresh,
+.aat-dashboard-search .search-controls button:has(.ti-refresh),
+.aat-dashboard-search .search-controls button:has(.ti-file-download),
+.aat-dashboard-search .search-controls button:has(.ti-map),
+.aat-dashboard-search .search-controls button:has(.ti-table),
+.aat-dashboard-search .search-controls button:has(.ti-adjustments),
+.aat-dashboard-search .search-controls a:has(.ti-adjustments),
+.aat-dashboard-search .search-controls a:has(.ti-device-floppy),
+.aat-dashboard-search .search-controls a:has(.ti-file-download),
+.aat-dashboard-search .search-controls a:has(.ti-map),
+.aat-dashboard-search .search-controls a:has(.ti-table) {
+  display: none !important;
+}
+.aat-transfer-bulk-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--tblr-bg-surface-secondary, #f6f8fb);
+  border-radius: 6px;
+}
+.aat-transfer-bulk-container .aat-bulk-field {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+.aat-transfer-bulk-container .btn {
+  flex: 0 0 auto;
 }

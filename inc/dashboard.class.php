@@ -89,13 +89,16 @@ class PluginAuchanassettrackerDashboard
      */
     public static function buildInMovement(?int $locations_id): array
     {
+        // Heal rows whose linked GLPI asset is already “In service” (other plugins / tickets).
+        self::syncInServiceFromGlpiAssets($locations_id);
+
         $in_service = PluginAuchanassettrackerEquipment::findByStatus(
             PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
             $locations_id
         );
         foreach ($in_service as &$e) {
             $tid = (int) ($e['service_tickets_id'] ?? 0);
-            $e['since'] = (string) ($e['service_since'] ?? '');
+            $e['since'] = (string) ($e['service_since'] ?? $e['date_mod'] ?? '');
             $e['service_label'] = $tid > 0
                 ? sprintf(__('Ticket #%d', 'auchanassettracker'), $tid)
                 : __('Service', 'auchanassettracker');
@@ -172,6 +175,121 @@ class PluginAuchanassettrackerDashboard
             return '';
         }
         return date('Y-m-d', $t);
+    }
+
+    /**
+     * If another plugin/GLPI set the linked asset state to In service / maintenance,
+     * mirror that onto plugin equipment so “In movement” stays accurate.
+     */
+    public static function syncInServiceFromGlpiAssets(?int $locations_id): void
+    {
+        global $DB;
+
+        $table = PluginAuchanassettrackerEquipment::getTable();
+        if (!$DB->tableExists($table)) {
+            return;
+        }
+
+        $where = [
+            'is_deleted' => 0,
+            ['items_id' => ['>', 0]],
+            [
+                'NOT' => [
+                    'status' => [
+                        PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
+                        PluginAuchanassettrackerEquipment::STATUS_IN_TRANSIT,
+                        PluginAuchanassettrackerEquipment::STATUS_WRITTEN_OFF,
+                        PluginAuchanassettrackerEquipment::STATUS_LOST,
+                        PluginAuchanassettrackerEquipment::STATUS_STOLEN,
+                    ],
+                ],
+            ],
+        ];
+        if ($locations_id !== null) {
+            $where['locations_id'] = $locations_id;
+        }
+
+        $now = $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s');
+        foreach ($DB->request([
+            'FROM'  => $table,
+            'WHERE' => $where,
+            'LIMIT' => 500,
+        ]) as $row) {
+            if (!self::linkedGlpiAssetLooksInService($row)) {
+                continue;
+            }
+            $eid = (int) ($row['id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+            PluginAuchanassettrackerEquipment::applyWorkflowFields($eid, [
+                'status'        => PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE,
+                'service_since' => (string) ($row['service_since'] ?? '') !== ''
+                    ? (string) $row['service_since']
+                    : $now,
+            ]);
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $eq_row
+     */
+    public static function linkedGlpiAssetLooksInService(array $eq_row): bool
+    {
+        $itemtype = (string) ($eq_row['itemtype'] ?? '');
+        $items_id = (int) ($eq_row['items_id'] ?? 0);
+        if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
+            return false;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return false;
+        }
+
+        try {
+            /** @var CommonDBTM $asset */
+            $asset = new $itemtype();
+            if (!$asset->getFromDB($items_id) || !$asset->isField('states_id')) {
+                return false;
+            }
+            $states_id = (int) ($asset->fields['states_id'] ?? 0);
+            if ($states_id <= 0) {
+                return false;
+            }
+
+            // Exact match against our plugin “In service” GLPI state.
+            $expected = PluginAuchanassettrackerEquipment::resolveGlpiStateIdForStatus(
+                PluginAuchanassettrackerEquipment::STATUS_IN_SERVICE
+            );
+            if ($expected > 0 && $states_id === $expected) {
+                return true;
+            }
+
+            $name = trim(strip_tags((string) Dropdown::getDropdownName('glpi_states', $states_id)));
+            if ($name === '' || $name === '&nbsp;' || $name === '-') {
+                return false;
+            }
+            $n = mb_strtolower($name);
+            foreach ([
+                'in service',
+                'en service',
+                'în service',
+                'in service',
+                'maintenance',
+                'in maintenance',
+                'repair',
+                'reparation',
+                'réparation',
+                'service',
+            ] as $needle) {
+                if ($n === $needle || str_contains($n, $needle)) {
+                    return true;
+                }
+            }
+        } catch (Throwable) {
+            return false;
+        }
+
+        return false;
     }
 
     public static function countWrittenOffLastDays(int $days): int

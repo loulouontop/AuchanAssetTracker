@@ -124,10 +124,9 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     echo "<div class='aat-dashboard-search'>";
     PluginAuchanassettrackerStockbylocation::rebuild();
     PluginAuchanassettrackerStockbylocation::ensureDisplayPreferences();
+    // Do not force sort/order on every render — that breaks ASC↔DESC column toggles.
     Search::showList(PluginAuchanassettrackerStockbylocation::class, [
         'showmassiveactions' => false,
-        'sort'               => 2,
-        'order'              => 'ASC',
     ]);
     echo '</div>';
 
@@ -136,8 +135,8 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
     PluginAuchanassettrackerAuditlog::ensureDisplayPreferences();
     Search::showList(PluginAuchanassettrackerAuditlog::class, [
         'showmassiveactions' => false,
-        'sort'               => 2,
-        'order'              => 'DESC',
+        // Date, User, Action, Details — no Item type column.
+        'forcetoview'        => [2, 3, 4, 5],
     ]);
     echo '</div>';
 

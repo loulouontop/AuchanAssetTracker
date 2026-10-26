@@ -53,9 +53,11 @@ class PluginAuchanassettrackerTickethook
                 continue;
             }
             $st = (string) ($eq->fields['status'] ?? '');
+            // Also allow Available: ticket may be opened from stock / another plugin path.
             if (!in_array($st, [
                 PluginAuchanassettrackerEquipment::STATUS_ALLOCATED,
                 PluginAuchanassettrackerEquipment::STATUS_AWAITING_VALIDATION,
+                PluginAuchanassettrackerEquipment::STATUS_AVAILABLE,
             ], true)) {
                 continue;
             }

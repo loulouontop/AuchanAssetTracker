@@ -82,4 +82,91 @@
   } else {
     document.addEventListener('DOMContentLoaded', aatKickDestLocationDropdowns);
   }
+
+  /**
+   * Transfer validation: apply one destination container to all / checked rows.
+   */
+  function aatReadBulkContainerId(form) {
+    var bulk = form.querySelector('[name="bulk_container_id"]');
+    if (!bulk) {
+      return 0;
+    }
+    return parseInt(bulk.value || '0', 10) || 0;
+  }
+
+  function aatSetRowContainer(form, eid, cid) {
+    if (!eid || !cid) {
+      return;
+    }
+    var sel = form.querySelector('select[name="container[' + eid + ']"]');
+    if (!sel) {
+      return;
+    }
+    sel.value = String(cid);
+    if (window.jQuery) {
+      var $sel = window.jQuery(sel);
+      if ($sel.hasClass('select2-hidden-accessible')) {
+        $sel.val(String(cid)).trigger('change');
+      }
+    }
+    try {
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function aatApplyBulkContainer(form, checkedOnly) {
+    var cid = aatReadBulkContainerId(form);
+    if (cid <= 0) {
+      window.alert(form.getAttribute('data-aat-bulk-missing')
+        || 'Select a container first.');
+      return;
+    }
+    var rows = form.querySelectorAll('tbody tr');
+    for (var i = 0; i < rows.length; i++) {
+      var row = rows[i];
+      var check = row.querySelector('.aat-item-check');
+      if (checkedOnly && check && !check.checked) {
+        continue;
+      }
+      var eid = check ? parseInt(check.getAttribute('data-eid') || '0', 10) : 0;
+      if (!eid) {
+        var named = row.querySelector('select[name^="container["]');
+        if (named && named.name) {
+          var m = named.name.match(/container\[(\d+)\]/);
+          eid = m ? parseInt(m[1], 10) : 0;
+        }
+      }
+      aatSetRowContainer(form, eid, cid);
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.aat-apply-container-all, .aat-apply-container-checked');
+    if (!btn) {
+      return;
+    }
+    var form = btn.closest('.aat-transfer-validate-form');
+    if (!form) {
+      return;
+    }
+    e.preventDefault();
+    aatApplyBulkContainer(form, btn.classList.contains('aat-apply-container-checked'));
+  });
+
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (!el || !el.classList || !el.classList.contains('aat-check-all')) {
+      return;
+    }
+    var form = el.closest('.aat-transfer-validate-form');
+    if (!form) {
+      return;
+    }
+    var boxes = form.querySelectorAll('.aat-item-check');
+    for (var i = 0; i < boxes.length; i++) {
+      boxes[i].checked = !!el.checked;
+    }
+  });
 })();

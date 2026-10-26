@@ -943,7 +943,47 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
 
     public static function isAllowedAssetType(string $itemtype): bool
     {
-        return in_array($itemtype, self::getAllowedAssetTypes(), true);
+        if ($itemtype !== '' && in_array($itemtype, self::getAllowedAssetTypes(), true)) {
+            return true;
+        }
+        // GLPI 11 custom assets (Glpi\CustomAsset\…) may be used even if not yet listed.
+        if ($itemtype !== ''
+            && class_exists($itemtype)
+            && is_a($itemtype, CommonDBTM::class, true)
+            && (str_contains($itemtype, 'CustomAsset') || str_starts_with($itemtype, 'Glpi\\CustomAsset\\'))
+        ) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Human label for a GLPI asset class (Computer, custom Balante, …).
+     */
+    public static function getItemtypeLabel(string $itemtype): string
+    {
+        $itemtype = trim($itemtype);
+        if ($itemtype === '') {
+            return '';
+        }
+        if (class_exists($itemtype) && method_exists($itemtype, 'getTypeName')) {
+            try {
+                $label = trim((string) $itemtype::getTypeName(1));
+                if ($label !== '') {
+                    return $label;
+                }
+            } catch (Throwable) {
+                // Fall through.
+            }
+        }
+        // Glpi\CustomAsset\BalanteAsset → Balante
+        if (preg_match('/\\\\([A-Za-z0-9_]+)Asset$/', $itemtype, $m)) {
+            return $m[1];
+        }
+        $short = str_contains($itemtype, '\\')
+            ? substr($itemtype, (int) strrpos($itemtype, '\\') + 1)
+            : $itemtype;
+        return $short !== '' ? $short : $itemtype;
     }
 
     /**
