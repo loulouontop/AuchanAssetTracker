@@ -397,7 +397,7 @@ class PluginAuchanassettrackerReport
             $where['users_id'] = (int) $filters['users_id'];
         }
 
-        // Same columns as Recent activity (no Entity / itemtype column).
+        // Same columns as Recent activity (Date / User / Action / Details).
         $headers = [__('Date'), __('User'), __('Action'), __('Details')];
         $rows = [];
         foreach ($DB->request([
