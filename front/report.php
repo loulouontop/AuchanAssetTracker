@@ -210,7 +210,7 @@ if ($errors !== []) {
 }
 
 if ($report !== null) {
-    echo "<div class='table-responsive'><table class='table table-hover table-striped'><thead><tr>";
+    echo "<div class='table-responsive'><table class='table table-hover table-striped aat-report-table'><thead><tr>";
     foreach ($report['headers'] as $h) {
         echo '<th>' . Html::entities_deep($h) . '</th>';
     }
@@ -218,7 +218,8 @@ if ($report !== null) {
     foreach ($report['rows'] as $row) {
         echo '<tr>';
         foreach ($row as $cell) {
-            echo '<td>' . Html::entities_deep((string) $cell) . '</td>';
+            // HTML cells (links / audit details) — same clickable style as Recent activity.
+            echo '<td>' . PluginAuchanassettrackerReport::cellHtml($cell) . '</td>';
         }
         echo '</tr>';
     }

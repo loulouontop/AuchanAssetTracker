@@ -584,11 +584,21 @@ if (!str_contains($report_front, 'aat-required')
 if (!str_contains($report_cls, 'getRequiredFilters')
     || !str_contains($report_cls, 'validate')
     || !str_contains($report_cls, 'getItemtypeLabel')
-    || !str_contains($report_cls, 'STATUS_IN_SERVICE')
+    || !str_contains($report_cls, 'formatDetailsHtml')
+    || !str_contains($report_cls, 'formatActionLabel')
+    || !str_contains($report_cls, 'getOverdueInService')
+    || !str_contains($report_cls, 'getOverduePending')
 ) {
-    fail('report class missing required filters / stock-by-type / in-service issues');
+    fail('report class missing required filters / movements details / threshold issues');
 } else {
-    ok('report class required filters + stock-by-type + in-service');
+    ok('report class required filters + movements details + threshold issues');
+}
+if (str_contains($report_cls, "__('Entity')")
+    && preg_match("/movements[\s\S]{0,400}__\\('Entity'\\)/", $report_cls)
+) {
+    fail('movements report must not include Entity column');
+} else {
+    ok('movements report has no Entity column');
 }
 if (!str_contains($js, 'aatSyncReportRequiredMarks')
     || !str_contains($js, 'aatValidateReportForm')
