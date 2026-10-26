@@ -575,11 +575,26 @@ $report_cls = file_get_contents("$root/inc/report.class.php");
 if (!str_contains($report_front, 'aat-required')
     || !str_contains($report_front, 'aat-report-form')
     || !str_contains($report_front, 'aat-report-period')
+    || !str_contains($report_front, 'aat-report-period-arrow')
     || !str_contains($report_front, 'aat-report-actions')
+    || !str_contains($report_front, 'export_csv')
+    || !str_contains($report_front, 'export_excel')
 ) {
-    fail('report form missing required marks / period / actions layout');
+    fail('report form missing required marks / period arrow / export buttons');
 } else {
-    ok('report form layout + required marks');
+    ok('report form layout + required marks + export buttons');
+}
+if (!str_contains($report_cls, 'exportFilename')
+    || !str_contains($report_cls, 'exportMetaLines')
+) {
+    fail('report class missing export filename / meta header helpers');
+} else {
+    ok('report export filename + meta header');
+}
+if (!str_contains($audit, 'PluginAuchanassettrackerPluginlog::info')) {
+    fail('auditlog::record must mirror into plugin log file');
+} else {
+    ok('auditlog mirrors into plugin log file');
 }
 if (!str_contains($report_cls, 'getRequiredFilters')
     || !str_contains($report_cls, 'validate')

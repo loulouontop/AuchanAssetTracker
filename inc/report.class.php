@@ -115,13 +115,78 @@ class PluginAuchanassettrackerReport
         return Html::entities_deep(self::cellText($cell));
     }
 
-    public static function toCsv(array $report): string
+    /**
+     * Download filename: report-YYYY-mm-dd_HH-ii-ss.ext
+     */
+    public static function exportFilename(string $ext): string
+    {
+        $ext = preg_replace('/[^a-z0-9]+/i', '', $ext) ?: 'csv';
+        return 'report-' . date('Y-m-d_H-i-s') . '.' . strtolower($ext);
+    }
+
+    /**
+     * Title / filter lines for the top of CSV / Excel exports.
+     *
+     * @return list<string>
+     */
+    public static function exportMetaLines(string $type, array $filters): array
+    {
+        $types = self::getTypes();
+        $lines = [];
+        $lines[] = __('Report', 'auchanassettracker') . ': '
+            . ($types[$type] ?? $type);
+        $lines[] = __('Generated', 'auchanassettracker') . ': '
+            . date('Y-m-d H:i:s');
+
+        $parts = [];
+        $loc = (int) ($filters['locations_id'] ?? 0);
+        if ($loc > 0) {
+            $parts[] = __('Location') . '=' . trim(strip_tags(
+                (string) Dropdown::getDropdownName('glpi_locations', $loc)
+            ));
+        }
+        $uid = (int) ($filters['users_id'] ?? 0);
+        if ($uid > 0) {
+            $login = PluginAuchanassettrackerAuditlog::userLogin($uid);
+            if ($login === '') {
+                $login = trim(strip_tags((string) getUserName($uid)));
+            }
+            $parts[] = __('User') . '=' . ($login !== '' ? $login : ('#' . $uid));
+        }
+        $cid = (int) ($filters['containers_id'] ?? 0);
+        if ($cid > 0) {
+            $parts[] = __('Container', 'auchanassettracker') . '=' . trim(strip_tags(
+                (string) Dropdown::getDropdownName(
+                    PluginAuchanassettrackerContainer::getTable(),
+                    $cid
+                )
+            ));
+        }
+        $from = trim((string) ($filters['date_from'] ?? ''));
+        $to = trim((string) ($filters['date_to'] ?? ''));
+        if ($from !== '' || $to !== '') {
+            $parts[] = __('Period') . '=' . ($from !== '' ? $from : '…')
+                . ' → ' . ($to !== '' ? $to : '…');
+        }
+        $lines[] = __('Filters', 'auchanassettracker') . ': '
+            . ($parts !== [] ? implode('; ', $parts) : __('None', 'auchanassettracker'));
+
+        return $lines;
+    }
+
+    public static function toCsv(array $report, string $type = '', array $filters = []): string
     {
         $fh = fopen('php://temp', 'r+');
         if ($fh === false) {
             return '';
         }
         fwrite($fh, "\xEF\xBB\xBF");
+        if ($type !== '') {
+            foreach (self::exportMetaLines($type, $filters) as $line) {
+                fputcsv($fh, [$line]);
+            }
+            fputcsv($fh, []); // blank separator
+        }
         fputcsv($fh, $report['headers'] ?? []);
         foreach ($report['rows'] ?? [] as $row) {
             $line = [];
@@ -136,7 +201,7 @@ class PluginAuchanassettrackerReport
         return $csv;
     }
 
-    public static function toExcelXml(array $report): string
+    public static function toExcelXml(array $report, string $type = '', array $filters = []): string
     {
         $esc = static function ($v): string {
             return htmlspecialchars((string) $v, ENT_QUOTES | ENT_XML1, 'UTF-8');
@@ -147,6 +212,14 @@ class PluginAuchanassettrackerReport
         $xml .= '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
             . ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
         $xml .= '<Worksheet ss:Name="Report"><Table>' . "\n";
+
+        if ($type !== '') {
+            foreach (self::exportMetaLines($type, $filters) as $line) {
+                $xml .= '<Row><Cell><Data ss:Type="String">' . $esc($line)
+                    . '</Data></Cell></Row>' . "\n";
+            }
+            $xml .= '<Row></Row>' . "\n";
+        }
 
         $xml .= '<Row>';
         foreach ($report['headers'] ?? [] as $h) {

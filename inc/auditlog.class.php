@@ -89,14 +89,35 @@ class PluginAuchanassettrackerAuditlog extends CommonDBTM
             return;
         }
 
+        $users_id = (int) Session::getLoginUserID();
         $DB->insert(self::getTable(), [
-            'users_id'      => (int) Session::getLoginUserID(),
+            'users_id'      => $users_id,
             'action'        => $action,
             'itemtype'      => $itemtype,
             'items_id'      => $items_id,
             'details'       => $details,
             'date_creation' => $_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s'),
         ]);
+
+        // Mirror into GLPI_LOG_DIR/plugin_auchanassettracker.log (file was empty
+        // because only rare exceptions were written there).
+        try {
+            $who = PluginAuchanassettrackerPluginlog::userRef($users_id);
+            $detail = trim($details);
+            if (strlen($detail) > 500) {
+                $detail = substr($detail, 0, 500) . '…';
+            }
+            PluginAuchanassettrackerPluginlog::info(sprintf(
+                '%s | %s #%d | by %s%s',
+                $action,
+                $itemtype,
+                $items_id,
+                $who,
+                $detail !== '' ? (' | ' . $detail) : ''
+            ));
+        } catch (Throwable $e) {
+            // Never break business flow because of file logging.
+        }
     }
 
     /**
