@@ -1,7 +1,32 @@
 <?php
 
 /**
- * Find glpi_plugins rows that belong to this plugin (any directory casing).
+ * Whether a glpi_plugins row is this plugin (canonical name, on-disk folder, or display name).
+ */
+function plugin_auchanassettracker_is_our_plugin_row(array $row): bool
+{
+    $dir = (string) ($row['directory'] ?? '');
+    $name = (string) ($row['name'] ?? '');
+    $onDisk = function_exists('plugin_auchanassettracker_dir')
+        ? plugin_auchanassettracker_dir()
+        : basename(__DIR__);
+
+    if ($dir !== '' && strcasecmp($dir, 'auchanassettracker') === 0) {
+        return true;
+    }
+    if ($dir !== '' && $onDisk !== '' && strcasecmp($dir, $onDisk) === 0) {
+        return true;
+    }
+    // Deploy typo / rename still stores our display name from plugin_version_*.
+    if ($name === 'AuchanAssetTracker') {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Find glpi_plugins rows that belong to this plugin (any directory casing / spelling).
  *
  * @return list<array<string, mixed>>
  */
@@ -15,7 +40,7 @@ function plugin_auchanassettracker_find_plugin_rows(): array
     }
 
     foreach ($DB->request(['FROM' => 'glpi_plugins']) as $row) {
-        if (strcasecmp((string) ($row['directory'] ?? ''), 'auchanassettracker') === 0) {
+        if (plugin_auchanassettracker_is_our_plugin_row($row)) {
             $rows[] = $row;
         }
     }

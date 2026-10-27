@@ -372,6 +372,53 @@ function plugin_auchanassettracker_check_config(bool $verbose = false): bool
     return true;
 }
 
+/**
+ * GLPI entry points are named from the on-disk plugins/ folder
+ * (plugin_version_<dir>, plugin_init_<dir>, plugin_<dir>_install, …).
+ *
+ * Canonical implementations use "auchanassettracker". PHP function names are
+ * case-insensitive, so AuchanAssetTracker is fine — but a different spelling
+ * (e.g. deploy typo auchanassettraacker) needs explicit aliases or GLPI logs:
+ * "plugin_version_<dir> method must be defined" / unable to load information.
+ */
+function plugin_auchanassettracker_register_directory_aliases(): void
+{
+    $dir = plugin_auchanassettracker_dir();
+    if ($dir === '' || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $dir)) {
+        return;
+    }
+    if (strcasecmp($dir, 'auchanassettracker') === 0) {
+        return;
+    }
+
+    $map = [
+        "plugin_init_{$dir}"                 => 'plugin_init_auchanassettracker',
+        "plugin_version_{$dir}"              => 'plugin_version_auchanassettracker',
+        "plugin_{$dir}_check_prerequisites"  => 'plugin_auchanassettracker_check_prerequisites',
+        "plugin_{$dir}_check_config"         => 'plugin_auchanassettracker_check_config',
+        "plugin_{$dir}_boot"                 => 'plugin_auchanassettracker_boot',
+        "plugin_{$dir}_install"              => 'plugin_auchanassettracker_install',
+        "plugin_{$dir}_uninstall"            => 'plugin_auchanassettracker_uninstall',
+        "plugin_{$dir}_upgrade"              => 'plugin_auchanassettracker_upgrade',
+        "plugin_{$dir}_getDatabaseRelations" => 'plugin_auchanassettracker_getDatabaseRelations',
+        "plugin_{$dir}_addDefaultWhere"      => 'plugin_auchanassettracker_addDefaultWhere',
+    ];
+
+    foreach ($map as $alias => $canonical) {
+        if (function_exists($alias) || !function_exists($canonical)) {
+            continue;
+        }
+        // Safe: $alias / $canonical are validated PHP identifiers only.
+        eval(
+            'function ' . $alias . '(...$args) {'
+            . ' return ' . $canonical . '(...$args);'
+            . '}'
+        );
+    }
+}
+
 if (is_readable(__DIR__ . '/hook.php')) {
     require_once __DIR__ . '/hook.php';
 }
+
+plugin_auchanassettracker_register_directory_aliases();

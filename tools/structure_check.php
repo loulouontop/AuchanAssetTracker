@@ -82,6 +82,17 @@ if (!str_contains($setup, "plugin_init_auchanassettracker")) {
 } else {
     ok('plugin init present');
 }
+if (!str_contains($setup, 'plugin_auchanassettracker_register_directory_aliases')) {
+    fail('setup missing directory alias registrar for mistyped plugin folders');
+} else {
+    ok('setup registers directory aliases');
+}
+$hook = file_get_contents("$root/hook.php");
+if (!str_contains($hook, 'plugin_auchanassettracker_is_our_plugin_row')) {
+    fail('hook missing is_our_plugin_row helper');
+} else {
+    ok('hook has is_our_plugin_row');
+}
 
 if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan Asset Tracker')) {
     fail('plugin name missing');
@@ -101,7 +112,8 @@ if (!str_contains($setup, 'PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
 } else {
     ok('setup has ASSET_REV cache-bust helpers');
 }
-if (str_contains($setup, 'helpdesk_menu_entry')) {
+// Only flag a real hook assignment; a comment may mention the key.
+if (preg_match("/PLUGIN_HOOKS\s*\[\s*['\"]helpdesk_menu_entry['\"]/", $setup)) {
     fail('setup must not register helpdesk_menu_entry (duplicate Plugins menu)');
 } else {
     ok('setup omits helpdesk_menu_entry');

@@ -46,6 +46,14 @@ Increase verbosity: enable GLPI debug mode (**Setup → General → System** / d
 4. Container active, not deleted, token matches.
 5. Test in private window (logged out).
 
+### `plugin_version_<folder> method must be defined` / Unable to load plugin information
+
+GLPI names bootstrap functions after the **exact** `plugins/` folder (`plugin_version_<dir>`, `plugin_init_<dir>`, …). Canonical code uses `auchanassettracker`. Folder casing differs are OK (PHP function names are case-insensitive). A **different spelling** (e.g. `auchanassettraacker` with an extra `a`) used to break load until aliases were added.
+
+1. Prefer renaming the folder to `auchanassettracker` or `AuchanAssetTracker`, then **Setup → Plugins** → refresh / upgrade.
+2. Or deploy a build that registers directory aliases (current `setup.php`) so a mistyped folder still loads.
+3. Confirm `glpi_plugins.directory` matches the on-disk folder after load (self-heal rewrites it).
+
 ## Read-only SQL (inspect only)
 
 Replace IDs as needed. Do not UPDATE/DELETE in production without a backup and change ticket.

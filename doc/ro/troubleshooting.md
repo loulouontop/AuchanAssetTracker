@@ -46,6 +46,14 @@ Mai multă verbositate: activează debug GLPI (**Setup → General → System** 
 4. Container activ, nedeleted, token corect.
 5. Test în fereastră privată (delogat).
 
+### `plugin_version_<folder> method must be defined` / Unable to load plugin information
+
+GLPI denumește funcțiile de bootstrap după folderul exact din `plugins/` (`plugin_version_<dir>`, `plugin_init_<dir>`, …). Codul canonic folosește `auchanassettracker`. Diferențele de majuscule sunt OK; o **ortografie diferită** (ex. `auchanassettraacker`) bloca încărcarea până la alias-uri.
+
+1. Preferabil: redenumește folderul în `auchanassettracker` sau `AuchanAssetTracker`, apoi **Setup → Plugins** → refresh / upgrade.
+2. Sau desfășoară un build cu alias-uri de director (în `setup.php` actual).
+3. Verifică că `glpi_plugins.directory` = folderul de pe disc după încărcare (self-heal îl rescrie).
+
 ## SQL read-only (doar inspectare)
 
 Înlocuiește ID-urile. Nu UPDATE/DELETE în producție fără backup și ticket.
