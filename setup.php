@@ -9,13 +9,13 @@
  * @copyright 2026 Auchan Romania
  */
 
-/** Sprint 5 delivery version — keep at 0.5.0 (do not bump for UX patches). */
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.0');
+/** Plugin version shown in Setup → Plugins. */
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.1');
 /**
- * Asset cache-buster for CSS/JS while PLUGIN version stays 0.5.0.
+ * Asset cache-buster for CSS/JS (independent of PLUGIN version).
  * Bump this when UX CSS/JS must invalidate browser caches.
  */
-define('PLUGIN_AUCHANASSETTRACKER_ASSET_REV', '20261026j');
+define('PLUGIN_AUCHANASSETTRACKER_ASSET_REV', '20261029a');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -127,7 +127,7 @@ function plugin_auchanassettracker_post_init(): void
 }
 
 /**
- * Emit cache-busted CSS/JS (version stays 0.5.0; ASSET_REV invalidates browsers).
+ * Emit cache-busted CSS/JS (ASSET_REV invalidates browsers).
  * Safe to call once per front page after Html::header().
  */
 function plugin_auchanassettracker_emit_assets(): void

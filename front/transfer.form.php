@@ -126,7 +126,7 @@ echo "<div class='aat-workspace'>";
 if (function_exists('plugin_auchanassettracker_emit_assets')) {
     plugin_auchanassettracker_emit_assets();
 }
-// Inline critical transfer UX (v 0.5.0 pins CSS URL — avoid stale cache).
+// Inline critical transfer UX (ASSET_REV / inline — avoid stale CSS cache).
 echo '<style id="aat-transfer-critical-css">'
     . '.aat-transfer-validate-actions{display:flex!important;flex-wrap:wrap;align-items:flex-end;'
     . 'justify-content:flex-end;gap:.75rem 1.25rem;margin-top:1rem;padding:.75rem 1rem;'
