@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.0'")) {
-    fail('expected version 0.5.0 (do not bump for UX patches)');
+if (!str_contains($setup, "'0.5.1'")) {
+    fail('expected version 0.5.1');
 } else {
-    ok('version 0.5.0');
+    ok('version 0.5.1');
 }
 if (!str_contains($setup, 'PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
     || !str_contains($setup, 'plugin_auchanassettracker_emit_assets')

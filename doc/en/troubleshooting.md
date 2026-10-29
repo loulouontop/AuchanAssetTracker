@@ -109,7 +109,7 @@ SELECT name, value FROM glpi_plugin_auchanassettracker_configs;
 | Item | How to verify |
 | --- | --- |
 | GLPI 11.0.2 | Setup → General / about |
-| Plugin 0.5.0 | Setup → Plugins |
+| Plugin 0.5.1 | Setup → Plugins |
 | PHP ≥ 8.1 | `php -v` or server info |
 | GD (QR PNG) | `php -m \| grep -i gd` |
 | MySQL/MariaDB | Same as GLPI requirements |

@@ -24,7 +24,7 @@ if (function_exists('plugin_auchanassettracker_emit_assets')) {
     plugin_auchanassettracker_emit_assets();
 }
 // Critical dashboard colors + Search chrome hide inline so UX cannot regress
-// when a stale plugin CSS cache still serves an older assettracker.css (v pinned 0.5.0).
+// when a stale plugin CSS cache still serves an older assettracker.css.
 echo '<style id="aat-dashboard-critical-css">'
     . '.aat-dashboard-page a.aat-card.aat-card--total{background:#e8f1ff!important;border-color:#9ec5fe!important}'
     . '.aat-dashboard-page a.aat-card.aat-card--total .aat-card-value{color:#1a5fb4!important}'
