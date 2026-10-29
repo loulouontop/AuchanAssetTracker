@@ -108,3 +108,5 @@ Romanian translations: `locales/ro_RO.php` (loaded when GLPI language is `ro_RO`
 ## Documentation (Phase 6)
 
 Deliverables D-03 … D-13 (EN + RO): see [`doc/`](doc/) — `doc/en/` and `doc/ro/`.
+
+Full stakeholder presentation plan (EN + RO): [`doc/en/presentation-plan.md`](doc/en/presentation-plan.md).

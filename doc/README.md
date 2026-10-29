@@ -18,4 +18,5 @@ Plugin: **AuchanAssetTracker** · Version **0.5.0** · GLPI **11.0.2**
 | D-05 | API / hooks / QR URL | `api.md` |
 | D-06 / D-07 / D-08 | User manuals (all roles) | `user-manual.md` |
 | D-09 / D-10 / D-11 / D-12 | Tests, QA, defects, regression | `testing.md` |
+| — | Full plugin presentation plan (stakeholder deck script) | `presentation-plan.md` |
 | D-13 | Debug / troubleshooting | `troubleshooting.md` |
