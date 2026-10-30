@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.2'")) {
-    fail('expected version 0.5.2');
+if (!str_contains($setup, "'0.5.1'")) {
+    fail('expected version 0.5.1');
 } else {
-    ok('version 0.5.2');
+    ok('version 0.5.1');
 }
 if (!str_contains($setup, 'PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
     || !str_contains($setup, 'plugin_auchanassettracker_emit_assets')
@@ -328,9 +328,10 @@ if (!str_contains($rights, 'isCentralAdmin')
 $alloc = file_get_contents("$root/inc/allocation.class.php");
 if (!str_contains($alloc, 'aat-alert-columns') || !str_contains($alloc, 'View all')
     || !str_contains($alloc, 'iconForItemtype')
-    || !str_contains($alloc, 'row-cols-lg-4')
+    || !str_contains($alloc, 'aat-alert-item-name')
+    || !str_contains($alloc, 'row-cols-md-2')
 ) {
-    fail('allocation alerts missing columns / View all / icons');
+    fail('allocation alerts missing columns / View all / icons / names');
 } else {
     ok('allocation alert columns');
 }
@@ -394,7 +395,7 @@ if (!str_contains($alloc, 'aat-alert-item-name')) {
 $css = file_get_contents("$root/css/assettracker.css");
 $pcss = file_get_contents("$root/public/css/assettracker.css");
 if (!str_contains($css, 'aat-location-dropdown')
-    || !str_contains($css, '--bs-gutter-x: 2.5rem')
+    || !str_contains($css, '--bs-gutter-x: 1.25rem')
 ) {
     fail('css missing location wrapper / alert column gap');
 } else {
@@ -427,6 +428,13 @@ if (str_contains($dash, 'Signed in as')) {
     fail('dashboard must not show Signed in as');
 } else {
     ok('dashboard omits Signed in as');
+}
+if (!str_contains($dash, 'canTransfer')
+    || !str_contains($dash, 'show_transfer_alerts')
+) {
+    fail('dashboard must hide transfer alerts when canTransfer is false');
+} else {
+    ok('dashboard gates transfer alerts on canTransfer');
 }
 foreach ([
     'aat-card--', 'aat-alert-heading', 'Active alerts', 'To resolve today',
@@ -683,10 +691,11 @@ if (!str_contains($report_front, 'dropdownRecipientUser')) {
 }
 if (!str_contains($css, 'aat-alert-item-name')
     || !str_contains($css, 'margin-left: 0 !important')
+    || !str_contains($css, 'tblr-body-font-family')
 ) {
-    fail('css missing alert name / report container icon stick');
+    fail('css missing alert name font / container icon stick');
 } else {
-    ok('css alert name + report container icon stick');
+    ok('css alert name + container icon stick');
 }
 if (!str_contains($css, '.aat-report-form')
     || !str_contains($css, '.aat-report-period')

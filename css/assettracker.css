@@ -20,24 +20,34 @@
   width: 220px !important;
 }
 
-/* Native CommonDropdown already builds btn-group; only size the wrapper. */
+/*
+ * Container dropdown = same layout as native GLPI CommonDropdown / Location:
+ * [======== Select2 ========][i][+]  (flush, no blank gap before i/+).
+ */
 .aat-container-dropdown {
   display: inline-block;
   max-width: 100%;
   vertical-align: middle;
 }
 
-.aat-container-dropdown .btn-group,
+.aat-container-dropdown .btn-group {
+  display: inline-flex !important;
+  align-items: center;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  gap: 0;
+}
+
 .aat-container-dropdown .btn,
 .aat-container-dropdown a.btn,
 .aat-container-dropdown a.dropdown_tooltip {
-  flex: 0 0 auto;
-  margin-left: auto !important;
+  flex: 0 0 auto !important;
+  margin-left: 0 !important;
   position: static !important;
   right: auto !important;
 }
 
-/* Native asset / bulk forms: fill the field cell like Location & Manufacturer. */
+/* Native asset / bulk / report forms: fill the field cell like Location. */
 .aat-container-field[data-aat-width="100%"],
 .aat-model-field.aat-field-fill {
   display: block;
@@ -45,17 +55,24 @@
 }
 
 .aat-container-field[data-aat-width="100%"] .aat-container-dropdown {
-  display: flex;
-  align-items: center;
+  display: block;
   width: 100%;
   max-width: 100%;
 }
 
-.aat-container-field[data-aat-width="100%"] .select2-container,
-.aat-model-field.aat-field-fill .select2-container {
-  flex: 1 1 auto;
+.aat-container-field[data-aat-width="100%"] .aat-container-dropdown .btn-group {
+  display: flex !important;
   width: 100% !important;
   max-width: 100%;
+}
+
+.aat-container-field[data-aat-width="100%"] .aat-container-dropdown .select2-container,
+.aat-container-field[data-aat-width="100%"] .aat-container-dropdown select.form-select,
+.aat-model-field.aat-field-fill .select2-container {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
 }
 
 /* Keep container Select2 results anchored under the field (not top-left orphans). */
@@ -205,9 +222,9 @@ select.aat-recipient-user.aat-recipient-pending {
   margin-bottom: 0;
 }
 
-/* 4 columns × up to 5 classic list links (Bootstrap row) */
+/* Alert lists: roomy columns so equipment names stay readable */
 .aat-alert-columns.row {
-  --bs-gutter-x: 2.5rem;
+  --bs-gutter-x: 1.25rem;
   --bs-gutter-y: 0.35rem;
   display: flex !important;
   flex-wrap: wrap !important;
@@ -217,18 +234,53 @@ select.aat-recipient-user.aat-recipient-pending {
 
 .aat-alert-columns .aat-alert-col-wrap {
   min-width: 0;
-  padding-right: 0.5rem;
 }
 
 ul.aat-alert-col {
-  list-style: disc;
+  list-style: none;
   margin: 0;
-  padding-left: 1.15rem;
+  padding-left: 0;
 }
 
 ul.aat-alert-col .aat-alert-li {
-  margin: 0.15rem 0;
-  line-height: 1.35;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.25rem 0;
+  line-height: 1.4;
+  list-style: none;
+}
+
+/* Icon stays on Tabler font; name is a sibling link so body font always applies. */
+ul.aat-alert-col .aat-alert-li .aat-alert-type-icon {
+  flex: 0 0 auto;
+  margin-top: 0.15rem;
+  opacity: 0.9;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+ul.aat-alert-col .aat-alert-li .aat-alert-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: inline;
+  color: var(--tblr-body-color, #1e293b) !important;
+  text-decoration: none;
+  font-family: var(--tblr-body-font-family, var(--tblr-font-sans-serif), system-ui, sans-serif) !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  font-style: normal !important;
+  line-height: 1.4;
+  letter-spacing: normal !important;
+  white-space: normal;
+  word-break: break-word;
+  overflow: visible;
+  opacity: 1;
+  visibility: visible;
+}
+
+ul.aat-alert-col .aat-alert-li .aat-alert-item-name:hover {
+  text-decoration: underline;
 }
 
 /*
@@ -241,64 +293,40 @@ ul.aat-alert-col .aat-alert-li {
 }
 
 .aat-location-dropdown .btn-group {
+  display: flex !important;
+  align-items: center;
   width: 100% !important;
   max-width: 100%;
+  gap: 0;
 }
 
 .aat-location-dropdown select.form-select:not(.select2-hidden-accessible) {
   visibility: hidden !important;
   pointer-events: none !important;
   min-height: 38px;
-  /* Reserve the same footprint Select2 will use (avoids layout jump). */
-  width: calc(100% - 72px) !important;
-  min-width: 280px;
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0;
 }
 
 .aat-location-dropdown .select2-container {
-  width: calc(100% - 72px) !important;
-  min-width: 280px !important;
-  max-width: calc(100% - 72px);
+  flex: 1 1 auto !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none;
+}
+
+.aat-location-dropdown .btn,
+.aat-location-dropdown a.btn,
+.aat-location-dropdown a.dropdown_tooltip {
+  flex: 0 0 auto !important;
+  margin-left: 0 !important;
 }
 
 .aat-location-dropdown .select2-selection--single {
   min-height: 38px;
   display: flex;
   align-items: center;
-}
-
-ul.aat-alert-col .aat-alert-li a {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  max-width: 100%;
-  width: 100%;
-  color: var(--tblr-body-color, #1e293b) !important;
-  text-decoration: none;
-}
-
-ul.aat-alert-col .aat-alert-li a:hover {
-  text-decoration: underline;
-}
-
-ul.aat-alert-col .aat-alert-li a .aat-alert-item-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: inherit !important;
-  opacity: 1;
-  visibility: visible;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.35;
-}
-
-.aat-alert-type-icon {
-  flex: 0 0 auto;
-  opacity: 0.85;
-  font-size: 1rem;
-  line-height: 1;
 }
 
 #aat-gear-user-msg {
@@ -796,30 +824,11 @@ img.aat-qr-preview {
 .aat-report-form .aat-report-period-field label {
   margin-bottom: 0.25rem;
 }
-/* Report container: fill the grid cell; keep Select2 stuck to i/+ (no blank gap). */
+/* Report container: same flush Select2 + i/+ as native GLPI Location. */
 .aat-report-form .aat-container-field,
 .aat-report-form .aat-container-dropdown {
   width: 100%;
   max-width: 100%;
-}
-.aat-report-form .aat-container-dropdown .btn-group {
-  display: flex !important;
-  align-items: center;
-  width: 100% !important;
-  max-width: 100%;
-  gap: 0.25rem;
-}
-.aat-report-form .aat-container-dropdown .select2-container {
-  flex: 1 1 auto !important;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: none;
-}
-.aat-report-form .aat-container-dropdown .btn,
-.aat-report-form .aat-container-dropdown a.btn,
-.aat-report-form .aat-container-dropdown a.dropdown_tooltip {
-  margin-left: 0 !important;
-  flex: 0 0 auto;
 }
 /*
  * Reports: never hide location/container <select>s.

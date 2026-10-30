@@ -296,7 +296,12 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
 
     echo "<div class='aat-col aat-alerts aat-alert-section-block'>";
     echo '<h2 class="aat-alert-heading">' . __('To resolve today', 'auchanassettracker') . '</h2>';
-    foreach ($data['to_resolve']['transfers'] as $t) {
+    // Support technician has no transfer rights — hide awaiting-validation transfers.
+    $show_transfer_alerts = PluginAuchanassettrackerRighthelper::canTransfer();
+    $transfer_alerts = $show_transfer_alerts
+        ? ($data['to_resolve']['transfers'] ?? [])
+        : [];
+    foreach ($transfer_alerts as $t) {
         echo "<div class='aat-alert'><a href='"
             . Html::entities_deep($base . '/front/transfer.form.php?id=' . (int) $t['id']) . "'>"
             . sprintf(__('Transfer #%d awaiting validation', 'auchanassettracker'), (int) $t['id'])
@@ -320,7 +325,7 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
             . sprintf(__('Needs container: %s', 'auchanassettracker'), Html::entities_deep($e['name'] ?? ''))
             . '</a></div>';
     }
-    if ($data['to_resolve']['transfers'] === []
+    if ($transfer_alerts === []
         && $data['to_resolve']['allocations'] === []
         && $data['to_resolve']['needs_container'] === []
     ) {
@@ -351,7 +356,10 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         }
         echo '</div>';
     }
-    foreach ($data['in_movement']['in_transit_out'] as $e) {
+    $transit_rows = $show_transfer_alerts
+        ? ($data['in_movement']['in_transit_out'] ?? [])
+        : [];
+    foreach ($transit_rows as $e) {
         $since = PluginAuchanassettrackerDashboard::formatSinceDate($e['since'] ?? null);
         $days = PluginAuchanassettrackerDashboard::daysSince($e['since'] ?? null);
         $eq_id = (int) ($e['id'] ?? 0);
@@ -366,7 +374,7 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         echo ' — ' . __('Destination', 'auchanassettracker') . ': ' . Html::entities_deep($dest);
         echo '</div>';
     }
-    if ($data['in_movement']['in_service'] === [] && $data['in_movement']['in_transit_out'] === []) {
+    if ($data['in_movement']['in_service'] === [] && $transit_rows === []) {
         echo '<p class="text-muted">' . __('No data.', 'auchanassettracker') . '</p>';
     }
     echo '</div></div></div>';
