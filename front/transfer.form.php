@@ -162,6 +162,8 @@ if ($id > 0) {
     }
     $is_in_transit = $st === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT;
     $can_sender = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
+    // Delete only for the initiator (sender), not Central admin / destination.
+    $can_delete = $is_in_transit && PluginAuchanassettrackerTransfer::isInitiatorForTransfer($tr);
 
     PluginAuchanassettrackerMenu::beginNativeFormCard(
         sprintf(__('Transfer #%d', 'auchanassettracker'), $id),
@@ -272,21 +274,25 @@ if ($id > 0) {
         echo "</div>";
         Html::footer();
         exit;
-    } elseif ($can_sender) {
+    } elseif ($can_sender || $can_delete) {
         echo "<div class='mb-3 d-flex gap-2 flex-wrap'>";
-        echo "<a class='btn btn-sm btn-outline-secondary' href='"
-            . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id . '&edit=1') . "'>"
-            . "<i class='ti ti-edit'></i> " . Html::entities_deep(_x('button', 'Edit')) . "</a>";
-        $confirm_js = json_encode(
-            __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
-            JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
-        );
-        echo "<form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
-        echo Html::hidden('id', ['value' => $id]);
-        echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
-        echo "<button type='submit' name='delete_transfer' value='1' class='btn btn-sm btn-outline-danger'>"
-            . "<i class='ti ti-trash'></i> " . Html::entities_deep(_x('button', 'Delete')) . "</button>";
-        Html::closeForm();
+        if ($can_sender) {
+            echo "<a class='btn btn-sm btn-outline-secondary' href='"
+                . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id . '&edit=1') . "'>"
+                . "<i class='ti ti-edit'></i> " . Html::entities_deep(_x('button', 'Edit')) . "</a>";
+        }
+        if ($can_delete) {
+            $confirm_js = json_encode(
+                __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
+                JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            );
+            echo "<form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
+            echo Html::hidden('id', ['value' => $id]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+            echo "<button type='submit' name='delete_transfer' value='1' class='btn btn-sm btn-outline-danger'>"
+                . "<i class='ti ti-trash'></i> " . Html::entities_deep(_x('button', 'Delete')) . "</button>";
+            Html::closeForm();
+        }
         echo "</div>";
     }
 

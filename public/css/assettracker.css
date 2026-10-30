@@ -267,11 +267,12 @@ ul.aat-alert-col .aat-alert-li {
 }
 
 ul.aat-alert-col .aat-alert-li a {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   max-width: 100%;
-  color: inherit;
+  width: 100%;
+  color: var(--tblr-body-color, #1e293b) !important;
   text-decoration: none;
 }
 
@@ -279,16 +280,25 @@ ul.aat-alert-col .aat-alert-li a:hover {
   text-decoration: underline;
 }
 
-ul.aat-alert-col .aat-alert-li a span {
+ul.aat-alert-col .aat-alert-li a .aat-alert-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: inherit !important;
+  opacity: 1;
+  visibility: visible;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .aat-alert-type-icon {
   flex: 0 0 auto;
   opacity: 0.85;
   font-size: 1rem;
+  line-height: 1;
 }
 
 #aat-gear-user-msg {
@@ -786,20 +796,30 @@ img.aat-qr-preview {
 .aat-report-form .aat-report-period-field label {
   margin-bottom: 0.25rem;
 }
-/* Report container: fill the grid cell. */
+/* Report container: fill the grid cell; keep Select2 stuck to i/+ (no blank gap). */
 .aat-report-form .aat-container-field,
 .aat-report-form .aat-container-dropdown {
   width: 100%;
   max-width: 100%;
 }
 .aat-report-form .aat-container-dropdown .btn-group {
+  display: flex !important;
+  align-items: center;
   width: 100% !important;
   max-width: 100%;
+  gap: 0.25rem;
 }
 .aat-report-form .aat-container-dropdown .select2-container {
-  width: calc(100% - 72px) !important;
+  flex: 1 1 auto !important;
+  width: auto !important;
   min-width: 0 !important;
-  max-width: calc(100% - 72px);
+  max-width: none;
+}
+.aat-report-form .aat-container-dropdown .btn,
+.aat-report-form .aat-container-dropdown a.btn,
+.aat-report-form .aat-container-dropdown a.dropdown_tooltip {
+  margin-left: 0 !important;
+  flex: 0 0 auto;
 }
 /*
  * Reports: never hide location/container <select>s.
@@ -853,9 +873,7 @@ img.aat-qr-preview {
 .aat-report-form .aat-req-mark[hidden] {
   display: none !important;
 }
-.aat-report-form #aat-report-container-wrap[hidden] {
-  display: none !important;
-}
+/* Container stays visible for higher roles; empty until location is chosen. */
 @media (max-width: 767.98px) {
   .aat-report-form .aat-report-grid {
     grid-template-columns: 1fr;

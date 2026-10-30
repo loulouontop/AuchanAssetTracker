@@ -462,29 +462,15 @@
   }
 
   /**
-   * Container filter only appears after a location is chosen; options follow it.
+   * Container stays visible; options reload when location changes (empty until set).
+   * Location sync is handled by aatRefreshContainerDropdown (container.class.php).
    */
-  function aatSyncReportContainerVisibility(form) {
-    var wrap = document.getElementById('aat-report-container-wrap');
-    if (!wrap || !form) {
-      return;
-    }
-    var loc = form.querySelector('select[name="locations_id"], input[name="locations_id"]');
-    var locId = loc ? (parseInt(loc.value || '0', 10) || 0) : 0;
-    if (locId > 0) {
-      wrap.removeAttribute('hidden');
-    } else {
-      wrap.setAttribute('hidden', 'hidden');
-    }
-  }
-
   function aatInitReportForm() {
     var form = document.getElementById('aat-report-form');
     if (!form) {
       return;
     }
     aatSyncReportRequiredMarks(form);
-    aatSyncReportContainerVisibility(form);
     form.addEventListener('change', function (e) {
       var t = e.target;
       if (!t || !t.name) {
@@ -492,9 +478,6 @@
       }
       if (t.name === 'type') {
         aatSyncReportRequiredMarks(form);
-      }
-      if (t.name === 'locations_id') {
-        aatSyncReportContainerVisibility(form);
       }
     });
     // Select2 may not bubble native change on the select in all cases.
@@ -504,13 +487,6 @@
         'select[name="type"]',
         function () {
           aatSyncReportRequiredMarks(form);
-        }
-      );
-      window.jQuery(form).on(
-        'change select2:select select2:clear',
-        'select[name="locations_id"]',
-        function () {
-          aatSyncReportContainerVisibility(form);
         }
       );
     }

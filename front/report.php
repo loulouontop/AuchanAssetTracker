@@ -154,31 +154,29 @@ if ($scope !== null) {
 echo '</div>';
 
 // User — required for equipment_user.
+// Support technician / Location manager: only users from their GLPI location.
 echo "<div class='aat-report-field' data-aat-filter='users_id'>";
 echo "<label class='form-label'>" . __('User')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
-User::dropdown([
-    'name'                => 'users_id',
-    'value'               => $filters['users_id'],
-    'right'               => 'all',
-    'display_emptychoice' => true,
-    'width'               => '100%',
+PluginAuchanassettrackerRighthelper::dropdownRecipientUser([
+    'name'  => 'users_id',
+    'value' => $filters['users_id'],
+    'width' => '100%',
 ]);
 echo '</div>';
 
-// Container — hidden until a location is chosen; options follow that location.
+// Container — always visible for higher roles; empty until a location is chosen.
 $loc_for_container = (int) $filters['locations_id'];
-$show_container = ($loc_for_container > 0);
-echo "<div class='aat-report-field' data-aat-filter='containers_id' id='aat-report-container-wrap'"
-    . ($show_container ? '' : ' hidden') . ">";
+$has_location = ($loc_for_container > 0);
+echo "<div class='aat-report-field' data-aat-filter='containers_id' id='aat-report-container-wrap'>";
 echo "<label class='form-label'>" . __('Container', 'auchanassettracker')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
 echo "<span class='aat-container-field aat-report-container-field' data-aat-width='100%'>";
 PluginAuchanassettrackerContainer::dropdownWithActions([
     'name'      => 'containers_id',
-    'value'     => $show_container ? $filters['containers_id'] : 0,
+    'value'     => $has_location ? $filters['containers_id'] : 0,
     'condition' => [
-        'locations_id' => $show_container ? $loc_for_container : -1,
+        'locations_id' => $has_location ? $loc_for_container : -1,
         'is_deleted'   => 0,
     ],
     'width'               => '100%',

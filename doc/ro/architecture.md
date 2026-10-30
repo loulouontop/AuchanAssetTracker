@@ -1,7 +1,7 @@
 # D-03 — Tehnic / arhitectură
 
 Nume pe disc: folder în `plugins/` (ex. `AuchanAssetTracker`).  
-Versiune: `0.5.1`. GLPI min: `11.0.0` (țintă `11.0.2`). PHP: `8.1+`.
+Versiune: `0.5.2`. GLPI min: `11.0.0` (țintă `11.0.2`). PHP: `8.1+`.
 
 ## Structură
 

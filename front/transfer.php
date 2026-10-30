@@ -70,7 +70,9 @@ foreach ($list as $t) {
     $tr = new PluginAuchanassettrackerTransfer();
     $tr->fields = $t;
     $is_in_transit = $st === PluginAuchanassettrackerTransfer::STATUS_IN_TRANSIT;
-    $can_sender = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
+    $can_edit = $is_in_transit && PluginAuchanassettrackerTransfer::isSenderForTransfer($tr);
+    // Delete only for the initiator (sender), not Central admin / destination.
+    $can_delete = $is_in_transit && PluginAuchanassettrackerTransfer::isInitiatorForTransfer($tr);
 
     echo "<tr><td>" . $tid
         . "</td><td>" . PluginAuchanassettrackerAllocation::locationNameLink((int) $t['locations_id_source'])
@@ -79,18 +81,19 @@ foreach ($list as $t) {
         . "</td><td>" . Html::entities_deep($t['date_initiated'] ?? '')
         . "</td><td class='aat-transfer-actions text-nowrap'>";
 
-    // GLPI-style open / edit / delete (edit+delete only for sender while in transit).
+    // GLPI-style open / edit / delete (delete = initiator only while in transit).
     echo "<a class='btn btn-sm btn-icon btn-ghost-secondary' title='"
         . Html::entities_deep(__('Open')) . "' href='"
         . Html::entities_deep($base . '/front/transfer.form.php?id=' . $tid) . "'>"
         . "<i class='ti ti-eye'></i></a>";
 
-    if ($can_sender) {
+    if ($can_edit) {
         echo " <a class='btn btn-sm btn-icon btn-ghost-secondary' title='"
             . Html::entities_deep(_x('button', 'Edit')) . "' href='"
             . Html::entities_deep($base . '/front/transfer.form.php?id=' . $tid . '&edit=1') . "'>"
             . "<i class='ti ti-edit'></i></a>";
-
+    }
+    if ($can_delete) {
         $confirm_js = json_encode(
             __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
             JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE

@@ -16,7 +16,7 @@ Verifică: **Setup → General** (versiune GLPI) și info PHP pe server.
 Din rădăcina repo:
 
 ```bash
-./tools/build_package.sh /tmp/auchanassettracker-0.5.1.tar.gz
+./tools/build_package.sh /tmp/auchanassettracker-0.5.2.tar.gz
 ```
 
 Sau zip pe folderul plugin (păstrează numele real, include `public/`).  
@@ -31,7 +31,7 @@ Nu pune `.git` în pachetul de producție.
 5. Creează Locații → Containere → apoi recepție echipament.
 6. Deschide un container: URL + QR, tipărește eticheta, scanează URL public (fără login).
 
-## Upgrade (ex. 0.4.x / 0.5.0 → 0.5.1)
+## Upgrade (ex. 0.4.x / 0.5.x → 0.5.2)
 
 1. Înlocuiește fișierele (același nume de folder).
 2. Reîncarcă GLPI sau **Upgrade** în Setup → Plugins. Pluginul face și **self-heal** pe schema/versiune.
@@ -48,7 +48,7 @@ Nu pune `.git` în pachetul de producție.
 
 ## Checklist după instalare
 
-- [ ] Plugin activ, versiune `0.5.1`
+- [ ] Plugin activ, versiune `0.5.2`
 - [ ] Profiluri asignate + Location pe userii scopuiți
 - [ ] Meniu **Auchan Asset Tracker** vizibil
 - [ ] QR container se deschide fără login
