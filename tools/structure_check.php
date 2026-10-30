@@ -164,13 +164,13 @@ if (!str_contains($equip, 'function listInContainer')) {
 } else {
     ok('equipment listInContainer');
 }
-if (!str_contains($equip, 'User::dropdown')
+if (!str_contains($equip, 'dropdownRecipientUser')
     || !str_contains($equip, 'onNativeAssetDelete')
     || !str_contains($equip, 'onNativeAssetRestore')
     || !str_contains($equip, 'onNativeAssetPurge')
     || !str_contains($equip, 'function canDelete')
 ) {
-    fail('equipment missing User dropdown / native trash sync / canDelete');
+    fail('equipment missing location-scoped User dropdown / native trash sync / canDelete');
 } else {
     ok('equipment User dropdown + native trash sync');
 }
@@ -458,6 +458,11 @@ if (!str_contains($dash, 'canTransfer')
     fail('dashboard must hide transfer alerts when canTransfer is false');
 } else {
     ok('dashboard gates transfer alerts on canTransfer');
+}
+if (!preg_match("/aat-alert'><a href=.*Unconfirmed allocation:/s", $dash)) {
+    fail('admin Unconfirmed allocation alerts must be clickable links');
+} else {
+    ok('admin Unconfirmed allocation alerts are clickable');
 }
 foreach ([
     'aat-card--', 'aat-alert-heading', 'Active alerts', 'To resolve today',

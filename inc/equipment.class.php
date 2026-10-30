@@ -683,6 +683,19 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             return false;
         }
 
+        // Support tech / Location manager: only users from their GLPI location.
+        if (array_key_exists('users_id', $input)) {
+            $uid = (int) $input['users_id'];
+            if ($uid > 0 && !PluginAuchanassettrackerRighthelper::canAccessRecipientUser($uid)) {
+                Session::addMessageAfterRedirect(
+                    __('You can only select users from your location.', 'auchanassettracker'),
+                    false,
+                    ERROR
+                );
+                return false;
+            }
+        }
+
         // Preserve workflow status unless the caller explicitly changes it.
         $mark_final = !empty($input['_aat_mark_final']);
         unset($input['_aat_mark_final']);
@@ -870,12 +883,11 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
         echo "</td></tr>";
 
-        // User on the left — same native GLPI User::dropdown as Computer / assets.
+        // User on the left — location-scoped for Support tech / Location manager.
         echo "<tr class='tab_bg_1'><td>" . __('User') . "</td><td>";
-        User::dropdown([
+        PluginAuchanassettrackerRighthelper::dropdownRecipientUser([
             'name'  => 'users_id',
             'value' => (int) ($this->fields['users_id'] ?? 0),
-            'right' => 'all',
             'width' => '220px',
         ]);
         echo "</td><td>" . __('Physical container', 'auchanassettracker');
