@@ -15,7 +15,7 @@ define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.1');
  * Asset cache-buster for CSS/JS (independent of PLUGIN version).
  * Bump this when UX CSS/JS must invalidate browser caches.
  */
-define('PLUGIN_AUCHANASSETTRACKER_ASSET_REV', '20261030b');
+define('PLUGIN_AUCHANASSETTRACKER_ASSET_REV', '20261030c');
 define('PLUGIN_AUCHANASSETTRACKER_MIN_GLPI', '11.0.0');
 define('PLUGIN_AUCHANASSETTRACKER_MAX_GLPI', '11.9.99');
 /**
@@ -263,6 +263,10 @@ function plugin_init_auchanassettracker(): void
         $PLUGIN_HOOKS['item_add'][$plug][$asset_type] = 'plugin_auchanassettracker_item_add_asset';
         $PLUGIN_HOOKS['pre_item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_pre_item_update_asset';
         $PLUGIN_HOOKS['item_update'][$plug][$asset_type] = 'plugin_auchanassettracker_item_update_asset';
+        // Native trash / restore / purge → same state on plugin equipment.
+        $PLUGIN_HOOKS['item_delete'][$plug][$asset_type] = 'plugin_auchanassettracker_item_delete_asset';
+        $PLUGIN_HOOKS['item_restore'][$plug][$asset_type] = 'plugin_auchanassettracker_item_restore_asset';
+        $PLUGIN_HOOKS['item_purge'][$plug][$asset_type] = 'plugin_auchanassettracker_item_purge_asset';
     }
 
     // Service: ticket opened on tracked gear → In service; solved/closed → Allocated.
@@ -305,6 +309,21 @@ function plugin_auchanassettracker_pre_item_update_asset(CommonDBTM $item): bool
 function plugin_auchanassettracker_item_update_asset(CommonDBTM $item): void
 {
     PluginAuchanassettrackerAssetform::onItemUpdate($item);
+}
+
+function plugin_auchanassettracker_item_delete_asset(CommonDBTM $item): void
+{
+    PluginAuchanassettrackerEquipment::onNativeAssetDelete($item);
+}
+
+function plugin_auchanassettracker_item_restore_asset(CommonDBTM $item): void
+{
+    PluginAuchanassettrackerEquipment::onNativeAssetRestore($item);
+}
+
+function plugin_auchanassettracker_item_purge_asset(CommonDBTM $item): void
+{
+    PluginAuchanassettrackerEquipment::onNativeAssetPurge($item);
 }
 
 /**

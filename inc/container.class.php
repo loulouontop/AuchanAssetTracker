@@ -93,6 +93,9 @@ class PluginAuchanassettrackerContainer extends CommonDropdown
         if ($id <= 0) {
             return false;
         }
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($id)) {
+            return false;
+        }
 
         echo "<div class='spaced aat-location-containers'>";
         $params = [

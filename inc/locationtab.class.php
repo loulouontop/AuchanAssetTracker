@@ -17,6 +17,11 @@ class PluginAuchanassettrackerLocationtab extends CommonGLPI
         }
 
         $id = (int) $item->getID();
+        // Location manager / Support technician: only their own location.
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($id)) {
+            return '';
+        }
+
         $nb_containers = 0;
         $nb_equipment = 0;
         if ($_SESSION['glpishow_count_on_tabs'] ?? true) {
@@ -54,6 +59,15 @@ class PluginAuchanassettrackerLocationtab extends CommonGLPI
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
     {
         if (!($item instanceof Location)) {
+            return false;
+        }
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation((int) $item->getID())) {
+            echo "<div class='alert alert-warning mb-0'>"
+                . Html::entities_deep(__(
+                    'You cannot access data from another location.',
+                    'auchanassettracker'
+                ))
+                . '</div>';
             return false;
         }
 

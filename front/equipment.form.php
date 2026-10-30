@@ -69,6 +69,10 @@ if (isset($_POST['add'])) {
     $item->check($_POST['id'], PURGE);
     $item->delete($_POST, 1);
     $item->redirectToList();
+} elseif (isset($_POST['restore'])) {
+    $item->check($_POST['id'], DELETE);
+    $item->restore($_POST);
+    Html::redirect($item->getFormURL() . '?id=' . (int) ($_POST['id'] ?? 0));
 } elseif (isset($_POST['delete'])) {
     $item->check($_POST['id'], DELETE);
     $item->delete($_POST, 0);

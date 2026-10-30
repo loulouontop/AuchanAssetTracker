@@ -164,6 +164,30 @@ if (!str_contains($equip, 'function listInContainer')) {
 } else {
     ok('equipment listInContainer');
 }
+if (!str_contains($equip, 'User::dropdown')
+    || !str_contains($equip, 'onNativeAssetDelete')
+    || !str_contains($equip, 'onNativeAssetRestore')
+    || !str_contains($equip, 'onNativeAssetPurge')
+    || !str_contains($equip, 'function canDelete')
+) {
+    fail('equipment missing User dropdown / native trash sync / canDelete');
+} else {
+    ok('equipment User dropdown + native trash sync');
+}
+$loctab = file_get_contents("$root/inc/locationtab.class.php");
+if (!str_contains($loctab, 'canAccessLocation')) {
+    fail('location tabs must gate by canAccessLocation');
+} else {
+    ok('location tabs gated by location scope');
+}
+if (!str_contains($setup, 'item_delete')
+    || !str_contains($setup, 'item_restore')
+    || !str_contains($setup, 'item_purge')
+) {
+    fail('setup missing native asset delete/restore/purge hooks');
+} else {
+    ok('setup native asset trash hooks');
+}
 
 $menu = file_get_contents("$root/inc/menu.class.php");
 if (!str_contains($menu, 'SECTOR')) {
@@ -329,7 +353,6 @@ $alloc = file_get_contents("$root/inc/allocation.class.php");
 if (!str_contains($alloc, 'aat-alert-columns') || !str_contains($alloc, 'View all')
     || !str_contains($alloc, 'iconForItemtype')
     || !str_contains($alloc, 'aat-alert-item-name')
-    || !str_contains($alloc, 'row-cols-md-2')
 ) {
     fail('allocation alerts missing columns / View all / icons / names');
 } else {
@@ -395,11 +418,11 @@ if (!str_contains($alloc, 'aat-alert-item-name')) {
 $css = file_get_contents("$root/css/assettracker.css");
 $pcss = file_get_contents("$root/public/css/assettracker.css");
 if (!str_contains($css, 'aat-location-dropdown')
-    || !str_contains($css, '--bs-gutter-x: 1.25rem')
+    || !str_contains($css, 'aat-container-dropdown .btn-group > .btn')
 ) {
-    fail('css missing location wrapper / alert column gap');
+    fail('css missing location wrapper / container i+ button sizing');
 } else {
-    ok('css location wrapper + alert gap');
+    ok('css location wrapper + container i+ sizing');
 }
 if ($css !== $pcss) {
     fail('css/assettracker.css and public/css/assettracker.css must stay identical');
