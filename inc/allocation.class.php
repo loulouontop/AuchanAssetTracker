@@ -1047,13 +1047,14 @@ JS);
             return;
         }
 
-        $columns = 4;
-        $per_col = 5;
-        $preview_limit = $columns * $per_col; // 20
+        // 2 columns keeps equipment names readable (4 cols was clipping labels).
+        $columns = 2;
+        $per_col = 8;
+        $preview_limit = $columns * $per_col; // 16
         $preview = array_slice($items, 0, $preview_limit);
         $modal_id = Html::cleanId($uid . '-modal-' . mt_rand());
 
-        // Column-major: col1 = items 0–4, col2 = 5–9, …
+        // Column-major: col1 = items 0–7, col2 = 8–15, …
         $cols = array_fill(0, $columns, []);
         foreach ($preview as $i => $item) {
             $cols[(int) floor($i / $per_col)][] = $item;
@@ -1061,17 +1062,17 @@ JS);
 
         echo "<div class='aat-alert-section'>";
         echo "<p class='mb-1 fw-semibold'>" . Html::entities_deep($title) . "</p>";
-        // Bootstrap row + custom grid CSS (both) so columns stay horizontal in GLPI.
-        echo "<div class='aat-alert-columns row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2'>";
+        echo "<div class='aat-alert-columns row row-cols-1 row-cols-md-2 g-2'>";
         foreach ($cols as $col_items) {
-            echo "<div class='col aat-alert-col-wrap'>";
-            if ($col_items !== []) {
-                echo "<ul class='aat-alert-col'>";
-                foreach ($col_items as $item) {
-                    echo self::formatAlertListItem($item);
-                }
-                echo "</ul>";
+            if ($col_items === []) {
+                continue;
             }
+            echo "<div class='col aat-alert-col-wrap'>";
+            echo "<ul class='aat-alert-col'>";
+            foreach ($col_items as $item) {
+                echo self::formatAlertListItem($item);
+            }
+            echo "</ul>";
             echo "</div>";
         }
         echo "</div>";
@@ -1085,7 +1086,6 @@ JS);
                 . " data-bs-toggle='modal' data-bs-target='#" . Html::entities_deep($modal_id) . "'>"
                 . Html::entities_deep($view_all) . "</button>";
 
-            // Modal: distribute round-robin across 4 columns.
             $modal_cols = array_fill(0, $columns, []);
             foreach ($items as $i => $item) {
                 $modal_cols[$i % $columns][] = $item;
@@ -1101,8 +1101,11 @@ JS);
                 . " aria-label='" . Html::entities_deep(__('Close')) . "'></button>";
             echo "</div>";
             echo "<div class='modal-body'>";
-            echo "<div class='aat-alert-columns aat-alert-columns-modal row row-cols-1 row-cols-sm-2 row-cols-lg-4 g-2'>";
+            echo "<div class='aat-alert-columns aat-alert-columns-modal row row-cols-1 row-cols-md-2 g-2'>";
             foreach ($modal_cols as $col_items) {
+                if ($col_items === []) {
+                    continue;
+                }
                 echo "<div class='col aat-alert-col-wrap'>";
                 echo "<ul class='aat-alert-col'>";
                 foreach ($col_items as $item) {
@@ -1127,17 +1130,19 @@ JS);
     public static function formatAlertListItem(array $item): string
     {
         $icon = self::iconForItemtype((string) ($item['itemtype'] ?? ''));
-        // Class names only (never HTML) — keep label in a dedicated visible span.
+        // Class names only (never HTML markup from getIcon()).
         $icon = preg_replace('/[^a-zA-Z0-9_\-\s]/', '', $icon) ?? 'ti ti-package';
         $icon = trim($icon) !== '' ? trim($icon) : 'ti ti-package';
         $label = trim((string) ($item['label'] ?? ''));
         if ($label === '') {
             $label = '#' . (int) ($item['id'] ?? 0);
         }
+        // Icon and name are siblings — name must not inherit Tabler Icons font
+        // (that was clipping labels to a single glyph / hiding them entirely).
         return "<li class='aat-alert-li'>"
-            . "<a href='" . Html::entities_deep($item['href']) . "'>"
             . "<i class='" . Html::entities_deep($icon) . " aat-alert-type-icon' aria-hidden='true'></i>"
-            . "<span class='aat-alert-item-name'>" . Html::entities_deep($label) . "</span>"
+            . "<a class='aat-alert-item-name' href='" . Html::entities_deep($item['href']) . "'>"
+            . Html::entities_deep($label)
             . "</a></li>";
     }
 }

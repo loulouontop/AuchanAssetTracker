@@ -16,7 +16,7 @@ Verify in GLPI: **Setup → General** (version) and PHP info / server package fo
 From the repo root:
 
 ```bash
-./tools/build_package.sh /tmp/auchanassettracker-0.5.2.tar.gz
+./tools/build_package.sh /tmp/auchanassettracker-0.5.1.tar.gz
 ```
 
 Or zip the plugin folder (keep the real folder name, include `public/`).  
@@ -31,7 +31,7 @@ Do **not** put `.git` inside the package for production.
 5. Create Locations → Physical containers → then receive equipment.
 6. Open a container: check URL + QR, print label, scan public URL (no login).
 
-## Upgrade (e.g. from 0.4.x / 0.5.x → 0.5.2)
+## Upgrade (e.g. from 0.4.x / 0.5.0 → 0.5.1)
 
 1. Replace plugin files (same folder name).
 2. Reload GLPI or click **Upgrade** on Setup → Plugins if shown. Plugin also **self-heals** schema/version on load.
@@ -48,7 +48,7 @@ Do **not** put `.git` inside the package for production.
 
 ## After install checklist
 
-- [ ] Plugin enabled, version `0.5.2`
+- [ ] Plugin enabled, version `0.5.1`
 - [ ] Profiles assigned + Location on scoped users
 - [ ] Menu **Auchan Asset Tracker** visible
 - [ ] Container QR opens without login

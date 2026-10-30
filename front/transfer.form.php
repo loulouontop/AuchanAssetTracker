@@ -260,7 +260,7 @@ if ($id > 0) {
         }
         echo "</tbody></table></div></div>";
 
-        echo "<div class='d-flex gap-2'>";
+        echo "<div class='d-flex gap-2 flex-wrap align-items-center'>";
         echo Html::submit(_x('button', 'Save'), [
             'name'  => 'update_transfer',
             'class' => 'btn btn-primary',
@@ -268,29 +268,49 @@ if ($id > 0) {
         echo "<a class='btn btn-outline-secondary' href='"
             . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id) . "'>"
             . Html::entities_deep(__('Cancel')) . "</a>";
-        echo "</div>";
         Html::closeForm();
+        // GLPI-style delete (initiator/sender only) next to edit actions.
+        if ($can_delete) {
+            $confirm_js = json_encode(
+                __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
+                JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
+            );
+            echo "<form method='post' action='' class='d-inline aat-transfer-actions'"
+                . " onsubmit='return confirm({$confirm_js});'>";
+            echo Html::hidden('id', ['value' => $id]);
+            echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
+            echo "<button type='submit' name='delete_transfer' value='1'"
+                . " class='btn btn-sm btn-icon btn-ghost-danger' title='"
+                . Html::entities_deep(_x('button', 'Delete')) . "'>"
+                . "<i class='ti ti-trash'></i></button>";
+            Html::closeForm();
+        }
+        echo "</div>";
         PluginAuchanassettrackerMenu::endNativeFormCard();
         echo "</div>";
         Html::footer();
         exit;
     } elseif ($can_sender || $can_delete) {
-        echo "<div class='mb-3 d-flex gap-2 flex-wrap'>";
+        // Same GLPI-style icon actions as the transfer list (edit / delete).
+        echo "<div class='mb-3 aat-transfer-actions'>";
         if ($can_sender) {
-            echo "<a class='btn btn-sm btn-outline-secondary' href='"
+            echo "<a class='btn btn-sm btn-icon btn-ghost-secondary' title='"
+                . Html::entities_deep(_x('button', 'Edit')) . "' href='"
                 . Html::entities_deep($base . '/front/transfer.form.php?id=' . $id . '&edit=1') . "'>"
-                . "<i class='ti ti-edit'></i> " . Html::entities_deep(_x('button', 'Edit')) . "</a>";
+                . "<i class='ti ti-edit'></i></a>";
         }
         if ($can_delete) {
             $confirm_js = json_encode(
                 __('Cancel this transfer and restore equipment at source?', 'auchanassettracker'),
                 JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE
             );
-            echo "<form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
+            echo " <form method='post' action='' class='d-inline' onsubmit='return confirm({$confirm_js});'>";
             echo Html::hidden('id', ['value' => $id]);
             echo Html::hidden('_glpi_csrf_token', ['value' => Session::getNewCSRFToken()]);
-            echo "<button type='submit' name='delete_transfer' value='1' class='btn btn-sm btn-outline-danger'>"
-                . "<i class='ti ti-trash'></i> " . Html::entities_deep(_x('button', 'Delete')) . "</button>";
+            echo "<button type='submit' name='delete_transfer' value='1'"
+                . " class='btn btn-sm btn-icon btn-ghost-danger' title='"
+                . Html::entities_deep(_x('button', 'Delete')) . "'>"
+                . "<i class='ti ti-trash'></i></button>";
             Html::closeForm();
         }
         echo "</div>";
