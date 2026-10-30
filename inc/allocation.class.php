@@ -1047,35 +1047,21 @@ JS);
             return;
         }
 
-        // 2 columns keeps equipment names readable (4 cols was clipping labels).
-        $columns = 2;
-        $per_col = 8;
-        $preview_limit = $columns * $per_col; // 16
+        // One full-width list (CSS columns) so labels use the right-side space.
+        $preview_limit = 20;
         $preview = array_slice($items, 0, $preview_limit);
         $modal_id = Html::cleanId($uid . '-modal-' . mt_rand());
 
-        // Column-major: col1 = items 0–7, col2 = 8–15, …
-        $cols = array_fill(0, $columns, []);
-        foreach ($preview as $i => $item) {
-            $cols[(int) floor($i / $per_col)][] = $item;
-        }
-
         echo "<div class='aat-alert-section'>";
         echo "<p class='mb-1 fw-semibold'>" . Html::entities_deep($title) . "</p>";
-        echo "<div class='aat-alert-columns row row-cols-1 row-cols-md-2 g-2'>";
-        foreach ($cols as $col_items) {
-            if ($col_items === []) {
-                continue;
-            }
-            echo "<div class='col aat-alert-col-wrap'>";
-            echo "<ul class='aat-alert-col'>";
-            foreach ($col_items as $item) {
-                echo self::formatAlertListItem($item);
-            }
-            echo "</ul>";
-            echo "</div>";
+        echo "<div class='aat-alert-columns row'>";
+        echo "<div class='col aat-alert-col-wrap'>";
+        echo "<ul class='aat-alert-col'>";
+        foreach ($preview as $item) {
+            echo self::formatAlertListItem($item);
         }
-        echo "</div>";
+        echo "</ul>";
+        echo "</div></div>";
 
         if ($total > $preview_limit) {
             $view_all = sprintf(
@@ -1085,11 +1071,6 @@ JS);
             echo "<button type='button' class='btn btn-sm btn-outline-secondary mt-2'"
                 . " data-bs-toggle='modal' data-bs-target='#" . Html::entities_deep($modal_id) . "'>"
                 . Html::entities_deep($view_all) . "</button>";
-
-            $modal_cols = array_fill(0, $columns, []);
-            foreach ($items as $i => $item) {
-                $modal_cols[$i % $columns][] = $item;
-            }
 
             echo "<div class='modal fade' id='" . Html::entities_deep($modal_id) . "'"
                 . " tabindex='-1' aria-hidden='true'>";
@@ -1101,20 +1082,14 @@ JS);
                 . " aria-label='" . Html::entities_deep(__('Close')) . "'></button>";
             echo "</div>";
             echo "<div class='modal-body'>";
-            echo "<div class='aat-alert-columns aat-alert-columns-modal row row-cols-1 row-cols-md-2 g-2'>";
-            foreach ($modal_cols as $col_items) {
-                if ($col_items === []) {
-                    continue;
-                }
-                echo "<div class='col aat-alert-col-wrap'>";
-                echo "<ul class='aat-alert-col'>";
-                foreach ($col_items as $item) {
-                    echo self::formatAlertListItem($item);
-                }
-                echo "</ul>";
-                echo "</div>";
+            echo "<div class='aat-alert-columns aat-alert-columns-modal row'>";
+            echo "<div class='col aat-alert-col-wrap'>";
+            echo "<ul class='aat-alert-col'>";
+            foreach ($items as $item) {
+                echo self::formatAlertListItem($item);
             }
-            echo "</div></div>";
+            echo "</ul>";
+            echo "</div></div></div>";
             echo "<div class='modal-footer'>";
             echo "<button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>"
                 . Html::entities_deep(__('Close')) . "</button>";

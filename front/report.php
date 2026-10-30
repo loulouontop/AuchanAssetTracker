@@ -171,6 +171,7 @@ $has_location = ($loc_for_container > 0);
 echo "<div class='aat-report-field' data-aat-filter='containers_id' id='aat-report-container-wrap'>";
 echo "<label class='form-label'>" . __('Container', 'auchanassettracker')
     . " <span class='aat-required aat-req-mark' hidden>*</span></label>";
+// Same native CommonDropdown chrome as Equipment / Computer physical container.
 echo "<span class='aat-container-field aat-report-container-field' data-aat-width='100%'>";
 PluginAuchanassettrackerContainer::dropdownWithActions([
     'name'      => 'containers_id',
@@ -181,6 +182,8 @@ PluginAuchanassettrackerContainer::dropdownWithActions([
     ],
     'width'               => '100%',
     'display_emptychoice' => true,
+    'comments'            => true,
+    'addicon'             => true,
     // Refresh when Location changes (central admin); scoped location is fixed.
     'sync_location'       => ($scope === null),
 ]);

@@ -753,8 +753,26 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
     {
         $touched = array_keys($this->updates ?? []);
         if ($touched === []
-            || array_intersect($touched, ['notes', 'status', 'name', 'serial', 'locations_id', 'manufacturers_id']) !== []) {
+            || array_intersect($touched, [
+                'notes', 'status', 'name', 'serial', 'locations_id', 'manufacturers_id', 'users_id',
+            ]) !== []) {
             self::syncGlpiAssetFromPlugin($this->fields);
+        }
+        // Keep native GLPI asset User in sync when changed here.
+        if (in_array('users_id', $touched, true)) {
+            self::syncGlpiAssetOwner(
+                $this->fields,
+                (int) ($this->fields['users_id'] ?? 0)
+            );
+        }
+        // Soft-delete / restore mirrors onto the linked GLPI asset (same trash).
+        if (in_array('is_deleted', $touched, true)
+            && empty($this->input['_aat_skip_glpi_cascade'])
+        ) {
+            self::syncGlpiAssetDeletedFlag(
+                $this->fields,
+                (int) ($this->fields['is_deleted'] ?? 0) === 1
+            );
         }
 
         PluginAuchanassettrackerAuditlog::record(
@@ -852,7 +870,15 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
         }
         echo "</td></tr>";
 
-        echo "<tr class='tab_bg_1'><td>" . __('Physical container', 'auchanassettracker');
+        // User on the left — same native GLPI User::dropdown as Computer / assets.
+        echo "<tr class='tab_bg_1'><td>" . __('User') . "</td><td>";
+        User::dropdown([
+            'name'  => 'users_id',
+            'value' => (int) ($this->fields['users_id'] ?? 0),
+            'right' => 'all',
+            'width' => '220px',
+        ]);
+        echo "</td><td>" . __('Physical container', 'auchanassettracker');
         if ($is_new || $status === self::STATUS_AVAILABLE) {
             echo $req;
         }
@@ -886,7 +912,7 @@ class PluginAuchanassettrackerEquipment extends CommonDBTM
             'sync_location' => ($scope === null),
         ]);
         echo "</span>";
-        echo "</td><td colspan='2'></td></tr>";
+        echo "</td></tr>";
 
         echo "<tr class='tab_bg_1'><td>" . __('Notes') . "</td><td colspan='3'>";
         echo "<textarea name='notes' class='form-control' rows='3'>"
@@ -1367,14 +1393,212 @@ JS);
         return PluginAuchanassettrackerProfile::getStandardRightsSet();
     }
 
+    public static function canDelete(): bool
+    {
+        return Session::haveRight(self::$rightname, DELETE);
+    }
+
+    public static function canPurge(): bool
+    {
+        return Session::haveRight(self::$rightname, PURGE);
+    }
+
     public function delete(array $input, $force = 0, $history = 1)
     {
+        // Capture link before soft/hard delete so we can mirror onto GLPI.
+        $fields = $this->fields;
+        if ((int) ($fields['id'] ?? 0) <= 0 && isset($input['id'])) {
+            $tmp = new self();
+            if ($tmp->getFromDB((int) $input['id'])) {
+                $fields = $tmp->fields;
+            }
+        }
+        $skip_glpi = !empty($input['_aat_skip_glpi_cascade']);
+        unset($input['_aat_skip_glpi_cascade']);
+
         if ($force) {
-            return parent::delete($input, $force, $history);
+            $ok = parent::delete($input, $force, $history);
+            if ($ok && !$skip_glpi) {
+                self::purgeLinkedGlpiAsset($fields);
+            }
+            return $ok;
         }
 
         $input['is_deleted'] = 1;
-        return $this->update($input);
+        $input['_aat_skip_container_check'] = 1;
+        if ($skip_glpi) {
+            $input['_aat_skip_glpi_cascade'] = 1;
+        }
+        $ok = $this->update($input);
+        // post_updateItem mirrors is_deleted onto the GLPI asset (unless skipped).
+        return $ok;
+    }
+
+    public function restore(array $input, $history = 1)
+    {
+        $skip_glpi = !empty($input['_aat_skip_glpi_cascade']);
+        unset($input['_aat_skip_glpi_cascade']);
+        $ok = parent::restore($input, $history);
+        if ($ok && !$skip_glpi && $this->getFromDB((int) ($input['id'] ?? $this->getID()))) {
+            self::syncGlpiAssetDeletedFlag($this->fields, false);
+        }
+        return $ok;
+    }
+
+    /**
+     * Soft-delete / restore the linked native GLPI asset (same trashbin behaviour).
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function syncGlpiAssetDeletedFlag(array $fields, bool $deleted): void
+    {
+        $itemtype = (string) ($fields['itemtype'] ?? '');
+        $items_id = (int) ($fields['items_id'] ?? 0);
+        if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
+            return;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return;
+        }
+
+        try {
+            /** @var CommonDBTM $asset */
+            $asset = new $itemtype();
+            if (!$asset->getFromDB($items_id) || !$asset->isField('is_deleted')) {
+                return;
+            }
+            $want = $deleted ? 1 : 0;
+            if ((int) ($asset->fields['is_deleted'] ?? 0) === $want) {
+                return;
+            }
+            self::suppressNativeHook(true);
+            try {
+                if ($deleted) {
+                    $asset->delete(['id' => $items_id], 0);
+                } else {
+                    $asset->restore(['id' => $items_id]);
+                }
+            } finally {
+                self::suppressNativeHook(false);
+            }
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'syncGlpiAssetDeletedFlag');
+        }
+    }
+
+    /**
+     * Permanently remove the linked native GLPI asset after plugin purge.
+     *
+     * @param array<string, mixed> $fields
+     */
+    public static function purgeLinkedGlpiAsset(array $fields): void
+    {
+        $itemtype = (string) ($fields['itemtype'] ?? '');
+        $items_id = (int) ($fields['items_id'] ?? 0);
+        if ($itemtype === '' || $items_id <= 0 || !class_exists($itemtype)) {
+            return;
+        }
+        if (!is_a($itemtype, CommonDBTM::class, true)) {
+            return;
+        }
+
+        try {
+            /** @var CommonDBTM $asset */
+            $asset = new $itemtype();
+            if (!$asset->getFromDB($items_id)) {
+                return;
+            }
+            self::suppressNativeHook(true);
+            try {
+                $asset->delete(['id' => $items_id], 1);
+            } finally {
+                self::suppressNativeHook(false);
+            }
+        } catch (Throwable $e) {
+            PluginAuchanassettrackerPluginlog::exception($e, 'purgeLinkedGlpiAsset');
+        }
+    }
+
+    /**
+     * Mirror native GLPI asset trash / restore / purge onto the plugin equipment row.
+     */
+    public static function onNativeAssetDelete(CommonDBTM $item): void
+    {
+        if (self::isNativeHookSuppressed()) {
+            return;
+        }
+        $row = self::findByGlpiAsset($item->getType(), (int) $item->getID(), true);
+        if ($row === null) {
+            return;
+        }
+        $eq = new self();
+        if (!$eq->getFromDB((int) $row['id'])) {
+            return;
+        }
+        if ((int) ($eq->fields['is_deleted'] ?? 0) === 1) {
+            return;
+        }
+        self::suppressNativeHook(true);
+        try {
+            $eq->delete([
+                'id'                    => (int) $row['id'],
+                '_aat_skip_glpi_cascade' => 1,
+            ], 0);
+        } finally {
+            self::suppressNativeHook(false);
+        }
+    }
+
+    public static function onNativeAssetRestore(CommonDBTM $item): void
+    {
+        if (self::isNativeHookSuppressed()) {
+            return;
+        }
+        $row = self::findByGlpiAsset($item->getType(), (int) $item->getID(), true);
+        if ($row === null) {
+            return;
+        }
+        $eq = new self();
+        if (!$eq->getFromDB((int) $row['id'])) {
+            return;
+        }
+        if ((int) ($eq->fields['is_deleted'] ?? 0) === 0) {
+            return;
+        }
+        self::suppressNativeHook(true);
+        try {
+            $eq->restore([
+                'id'                    => (int) $row['id'],
+                '_aat_skip_glpi_cascade' => 1,
+            ]);
+        } finally {
+            self::suppressNativeHook(false);
+        }
+    }
+
+    public static function onNativeAssetPurge(CommonDBTM $item): void
+    {
+        if (self::isNativeHookSuppressed()) {
+            return;
+        }
+        $row = self::findByGlpiAsset($item->getType(), (int) $item->getID(), true);
+        if ($row === null) {
+            return;
+        }
+        $eq = new self();
+        if (!$eq->getFromDB((int) $row['id'])) {
+            return;
+        }
+        self::suppressNativeHook(true);
+        try {
+            // Force-purge plugin row; do not cascade back onto GLPI (already purged).
+            $eq->delete([
+                'id'                    => (int) $row['id'],
+                '_aat_skip_glpi_cascade' => 1,
+            ], 1);
+        } finally {
+            self::suppressNativeHook(false);
+        }
     }
 
     /**
@@ -1645,6 +1869,12 @@ JS);
                     $update['manufacturers_id'] = $mfr;
                 }
             }
+            if ($asset->isField('users_id')) {
+                $uid = (int) ($fields['users_id'] ?? 0);
+                if ((int) ($asset->fields['users_id'] ?? 0) !== $uid) {
+                    $update['users_id'] = $uid;
+                }
+            }
 
             if ($update === []) {
                 return;
@@ -1772,22 +2002,29 @@ JS);
      *
      * @return array<string, mixed>|null
      */
-    public static function findByGlpiAsset(string $itemtype, int $items_id): ?array
-    {
+    public static function findByGlpiAsset(
+        string $itemtype,
+        int $items_id,
+        bool $include_deleted = false
+    ): ?array {
         global $DB;
 
         if ($itemtype === '' || $items_id <= 0 || !$DB->tableExists(self::getTable())) {
             return null;
         }
 
+        $where = [
+            'itemtype' => $itemtype,
+            'items_id' => $items_id,
+        ];
+        if (!$include_deleted) {
+            $where['is_deleted'] = 0;
+        }
+
         foreach ($DB->request([
             'FROM'  => self::getTable(),
-            'WHERE' => [
-                'itemtype'   => $itemtype,
-                'items_id'   => $items_id,
-                'is_deleted' => 0,
-            ],
-            'ORDER' => 'plugin_auchanassettracker_containers_id DESC, id DESC',
+            'WHERE' => $where,
+            'ORDER' => 'is_deleted ASC, plugin_auchanassettracker_containers_id DESC, id DESC',
             'LIMIT' => 1,
         ]) as $row) {
             return $row;
@@ -2264,6 +2501,9 @@ JS);
     {
         $id = (int) $location->getID();
         if ($id <= 0) {
+            return false;
+        }
+        if (!PluginAuchanassettrackerRighthelper::canAccessLocation($id)) {
             return false;
         }
 
