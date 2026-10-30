@@ -145,12 +145,14 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         if ($user === '') {
             $user = trim(strip_tags((string) getUserName((int) ($r['users_id_recipient'] ?? 0))));
         }
-        echo "<div class='aat-alert'>" . sprintf(
+        $eq_id = (int) ($r['plugin_auchanassettracker_equipments_id'] ?? 0);
+        $link = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        echo "<div class='aat-alert'><a href='" . Html::entities_deep($link) . "'>" . sprintf(
             __('Unconfirmed allocation: %s — %s — %d days', 'auchanassettracker'),
             Html::entities_deep($r['equipment_name'] ?? ''),
             Html::entities_deep($user),
             PluginAuchanassettrackerDashboard::daysSince($r['allocation_date'] ?? null)
-        ) . '</div>';
+        ) . '</a></div>';
     }
     foreach ($data['alerts']['transfers'] as $r) {
         $tid = (int) ($r['id'] ?? 0);
@@ -312,12 +314,14 @@ if ($role === PluginAuchanassettrackerRighthelper::ROLE_CENTRAL_ADMIN) {
         if ($user === '') {
             $user = trim(strip_tags((string) getUserName((int) ($a['users_id_recipient'] ?? 0))));
         }
-        echo "<div class='aat-alert'>" . sprintf(
+        $eq_id = (int) ($a['plugin_auchanassettracker_equipments_id'] ?? 0);
+        $link = $eq_id > 0 ? $base . '/front/equipment.form.php?id=' . $eq_id : '#';
+        echo "<div class='aat-alert'><a href='" . Html::entities_deep($link) . "'>" . sprintf(
             __('Unconfirmed: %s — %s (%d days)', 'auchanassettracker'),
             Html::entities_deep($a['equipment_name'] ?? ''),
             Html::entities_deep($user),
             PluginAuchanassettrackerDashboard::daysSince($a['allocation_date'] ?? null)
-        ) . '</div>';
+        ) . '</a></div>';
     }
     foreach ($data['to_resolve']['needs_container'] as $e) {
         echo "<div class='aat-alert'><a href='"
