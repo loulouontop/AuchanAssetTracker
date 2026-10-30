@@ -662,7 +662,8 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
             );
             return false;
         }
-        if (!self::isSenderForTransfer($tr)) {
+        // Delete/cancel is initiator-only (not Central admin / destination).
+        if (!self::isInitiatorForTransfer($tr)) {
             Session::addMessageAfterRedirect(__('Insufficient rights.'), false, ERROR);
             return false;
         }
@@ -761,13 +762,22 @@ class PluginAuchanassettrackerTransfer extends CommonDBTM
     }
 
     /**
-     * Current user is the sender (transfer initiator). Central admin can also act.
+     * Current user may edit an in-transit transfer: initiator, or Central admin.
      */
     public static function isSenderForTransfer(self $tr): bool
     {
         if (PluginAuchanassettrackerRighthelper::isCentralAdmin()) {
             return true;
         }
+        return self::isInitiatorForTransfer($tr);
+    }
+
+    /**
+     * Current user is the transfer initiator (sender). Used for delete/cancel only —
+     * Central admin and destination managers cannot delete another user’s transfer.
+     */
+    public static function isInitiatorForTransfer(self $tr): bool
+    {
         $uid = (int) Session::getLoginUserID();
         return $uid > 0 && (int) ($tr->fields['users_id_initiator'] ?? 0) === $uid;
     }

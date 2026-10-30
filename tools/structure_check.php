@@ -89,10 +89,10 @@ if (!str_contains($setup, 'AuchanAssetTracker') && !str_contains($setup, 'Auchan
     ok('plugin name present');
 }
 
-if (!str_contains($setup, "'0.5.1'")) {
-    fail('expected version 0.5.1');
+if (!str_contains($setup, "'0.5.2'")) {
+    fail('expected version 0.5.2');
 } else {
-    ok('version 0.5.1');
+    ok('version 0.5.2');
 }
 if (!str_contains($setup, 'PLUGIN_AUCHANASSETTRACKER_ASSET_REV')
     || !str_contains($setup, 'plugin_auchanassettracker_emit_assets')
@@ -363,6 +363,33 @@ if (!str_contains($xfer, 'function dropdownDestinationLocation')
     fail('transfer missing native Location::dropdown boot / exclude own site');
 } else {
     ok('transfer native Location dropdown boot + exclude');
+}
+if (!str_contains($xfer, 'isInitiatorForTransfer')
+    || !str_contains($xfer, 'cancelBySender')
+) {
+    fail('transfer delete must require isInitiatorForTransfer');
+} else {
+    ok('transfer delete is initiator-only');
+}
+$xfer_list = file_get_contents("$root/front/transfer.php");
+if (!str_contains($xfer_list, 'isInitiatorForTransfer')
+    || !str_contains($xfer_front, 'isInitiatorForTransfer')
+) {
+    fail('transfer UI must gate delete with isInitiatorForTransfer');
+} else {
+    ok('transfer UI delete gated to initiator');
+}
+if (!str_contains($profile, "'clone_from' => ['Super-Admin']")
+    && !preg_match("/ROLE_CENTRAL_ADMIN[\\s\\S]{0,400}clone_from'\\s*=>\\s*\\['Super-Admin'\\]/", $profile)
+) {
+    fail('Central admin must clone GLPI rights from Super-Admin');
+} else {
+    ok('Central admin clones Super-Admin GLPI rights');
+}
+if (!str_contains($alloc, 'aat-alert-item-name')) {
+    fail('allocation alerts must render visible item name span');
+} else {
+    ok('allocation alert item name span');
 }
 $css = file_get_contents("$root/css/assettracker.css");
 $pcss = file_get_contents("$root/public/css/assettracker.css");
@@ -638,11 +665,28 @@ if (str_contains($report_cls, "__('Entity')")
 }
 if (!str_contains($js, 'aatSyncReportRequiredMarks')
     || !str_contains($js, 'aatValidateReportForm')
-    || !str_contains($js, 'aatSyncReportContainerVisibility')
+    || !str_contains($js, 'aatInitReportForm')
 ) {
-    fail('aat-forms.js missing report required-field / container visibility sync');
+    fail('aat-forms.js missing report required-field sync');
 } else {
-    ok('aat-forms.js report required-field + container visibility sync');
+    ok('aat-forms.js report required-field sync');
+}
+if (preg_match('/aat-report-container-wrap[^>]{0,80}hidden/', $report_front)) {
+    fail('report container wrap must stay visible (not hidden until location)');
+} else {
+    ok('report container wrap always visible');
+}
+if (!str_contains($report_front, 'dropdownRecipientUser')) {
+    fail('report user filter must use location-scoped dropdownRecipientUser');
+} else {
+    ok('report user filter is location-scoped');
+}
+if (!str_contains($css, 'aat-alert-item-name')
+    || !str_contains($css, 'margin-left: 0 !important')
+) {
+    fail('css missing alert name / report container icon stick');
+} else {
+    ok('css alert name + report container icon stick');
 }
 if (!str_contains($css, '.aat-report-form')
     || !str_contains($css, '.aat-report-period')

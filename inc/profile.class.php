@@ -305,7 +305,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
                 'comment'    => 'Auchan Asset Tracker — global operations (all locations). Plugin config remains Super-Admin only.',
                 'is_default' => false,
                 'interface'  => 'central',
-                'clone_from' => ['Admin', 'Administrator', 'Administrateur'],
+                // Same native GLPI rights as Super-Admin (plugin Configuration still gated separately).
+                'clone_from' => ['Super-Admin'],
             ],
             PluginAuchanassettrackerRighthelper::ROLE_LOCATION_MANAGER => [
                 'name'       => 'Location manager',
@@ -551,7 +552,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
     }
 
     /**
-     * Find a stock GLPI profile id by one of the given names (Admin, Technician, …).
+     * Find a stock GLPI profile id by one of the given names (Admin, Technician, Super-Admin…).
+     * Super-Admin is used only when explicitly listed (Central admin seed).
      *
      * @param list<string> $names
      */
@@ -563,27 +565,39 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             return 0;
         }
 
-        // Prefer exact name match (skip Super-Admin — too broad for templates).
+        $allow_super = false;
+        foreach ($names as $n) {
+            if (strcasecmp((string) $n, 'Super-Admin') === 0) {
+                $allow_super = true;
+                break;
+            }
+        }
+
+        $where = ['name' => $names];
+        if (!$allow_super) {
+            // Skip Super-Admin for Admin/Technician/Self-Service templates.
+            $where[] = ['NOT' => ['name' => 'Super-Admin']];
+        }
+
+        // Prefer exact name match.
         foreach ($DB->request([
             'SELECT' => ['id', 'name'],
             'FROM'   => 'glpi_profiles',
-            'WHERE'  => [
-                'name' => $names,
-                ['NOT' => ['name' => 'Super-Admin']],
-            ],
+            'WHERE'  => $where,
             'LIMIT'  => 1,
         ]) as $row) {
             return (int) ($row['id'] ?? 0);
         }
 
-        // Fallback: case-insensitive / partial match on known templates.
-        foreach ($DB->request([
+        // Fallback: case-insensitive match on known templates.
+        $fallback = [
             'SELECT' => ['id', 'name', 'interface'],
             'FROM'   => 'glpi_profiles',
-            'WHERE'  => [
-                ['NOT' => ['name' => 'Super-Admin']],
-            ],
-        ]) as $row) {
+        ];
+        if (!$allow_super) {
+            $fallback['WHERE'] = [['NOT' => ['name' => 'Super-Admin']]];
+        }
+        foreach ($DB->request($fallback) as $row) {
             $pname = trim((string) ($row['name'] ?? ''));
             if ($pname === '') {
                 continue;
@@ -629,8 +643,8 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         return $n;
     }
 
-    /** Config flag: one-time seed of Admin/Technician/Self-Service rights onto bundled profiles. */
-    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v4';
+    /** Config flag: seed of Super-Admin/Admin/Technician/Self-Service rights onto bundled profiles. */
+    public const CFG_CORE_RIGHTS_SEEDED = 'core_rights_seeded_v5';
 
     /**
      * Copy non-plugin ProfileRight rows from a template profile (create only).

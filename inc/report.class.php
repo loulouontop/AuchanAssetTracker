@@ -69,6 +69,12 @@ class PluginAuchanassettrackerReport
             }
         }
 
+        // Support tech / Location manager: only users from their GLPI location.
+        $uid = (int) ($filters['users_id'] ?? 0);
+        if ($uid > 0 && !PluginAuchanassettrackerRighthelper::canAccessRecipientUser($uid)) {
+            $errors[] = __('User is required for this report.', 'auchanassettracker');
+        }
+
         return array_values(array_unique($errors));
     }
 

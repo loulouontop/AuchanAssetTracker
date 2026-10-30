@@ -984,10 +984,18 @@ JS);
             $items = [];
             foreach ($overdue as $row) {
                 $eid = (int) ($row['plugin_auchanassettracker_equipments_id'] ?? 0);
-                $label = trim((string) ($row['equipment_name'] ?? ''));
-                if ($label === '') {
-                    $label = '#' . $eid;
+                $ename = trim((string) ($row['equipment_name'] ?? ''));
+                if ($ename === '') {
+                    $ename = '#' . $eid;
                 }
+                $rname = trim((string) ($row['recipient_name'] ?? ''));
+                if ($rname === '') {
+                    $rid = (int) ($row['users_id_recipient'] ?? 0);
+                    if ($rid > 0) {
+                        $rname = trim(strip_tags((string) getUserName($rid)));
+                    }
+                }
+                $label = $rname !== '' ? ($ename . ' — ' . $rname) : $ename;
                 $items[] = [
                     'id'       => $eid,
                     'label'    => $label,
@@ -1119,10 +1127,17 @@ JS);
     public static function formatAlertListItem(array $item): string
     {
         $icon = self::iconForItemtype((string) ($item['itemtype'] ?? ''));
+        // Class names only (never HTML) — keep label in a dedicated visible span.
+        $icon = preg_replace('/[^a-zA-Z0-9_\-\s]/', '', $icon) ?? 'ti ti-package';
+        $icon = trim($icon) !== '' ? trim($icon) : 'ti ti-package';
+        $label = trim((string) ($item['label'] ?? ''));
+        if ($label === '') {
+            $label = '#' . (int) ($item['id'] ?? 0);
+        }
         return "<li class='aat-alert-li'>"
             . "<a href='" . Html::entities_deep($item['href']) . "'>"
-            . "<i class='" . Html::entities_deep($icon) . " aat-alert-type-icon' aria-hidden='true'></i> "
-            . "<span>" . Html::entities_deep($item['label']) . "</span>"
+            . "<i class='" . Html::entities_deep($icon) . " aat-alert-type-icon' aria-hidden='true'></i>"
+            . "<span class='aat-alert-item-name'>" . Html::entities_deep($label) . "</span>"
             . "</a></li>";
     }
 }
