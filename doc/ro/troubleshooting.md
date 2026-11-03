@@ -57,9 +57,9 @@ Creștere verbosity: activați modul debug GLPI (**Setup → General → System*
 ### Pluginul se activează apoi se dezactivează singur / „version changed”
 
 1. Preferabil folder `AuchanAssetTracker` sau `auchanassettracker` în `plugins/`.
-2. Foldere legacy / greșite (ex. `auchanequipment`) sunt suportate prin aliasuri în acest build — redenumiți când puteți.
+2. Ortografii greșite de folder sunt suportate prin aliasuri — redenumiți când puteți.
 3. Deschideți o dată **Setup → Plugins** după deploy (scan complet). Dacă apare **Upgrade**, apăsați-l; self-heal termină și NOTUPDATED → activ la load.
-4. Rând DB rămas pentru vechiul `auchanequipment` fără folder: curățați rândul sau păstrați ambele foldere până GLPI marchează vechiul ca **Replaced** (`oldname`).
+4. **AuchanEquipment** este un plugin separat — pot rula împreună. Acest plugin nu trebuie să declare `oldname: auchanequipment` (ar marca Equipment ca Replaced).
 5. Cron reverifică doar pluginurile **activate** — după un bump de fișiere, deschideți Setup → Plugins dacă rămâne pe Upgrade.
 
 ## SQL read-only (doar inspecție)

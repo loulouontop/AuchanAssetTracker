@@ -57,9 +57,9 @@ Increase verbosity: enable GLPI debug mode (**Setup → General → System** / d
 ### Plugin enables then auto-disables / “version changed”
 
 1. Prefer folder name `AuchanAssetTracker` or `auchanassettracker` under `plugins/`.
-2. Legacy / mistyped folders (e.g. `auchanequipment`) are supported via directory aliases in this build — still rename when you can.
+2. Mistyped folder spellings are supported via directory aliases — still rename when you can.
 3. Open **Setup → Plugins** once after deploy (full scan). If **Upgrade** is shown, click it; self-heal also finishes NOTUPDATED → activated on load.
-4. Leftover DB row for old `auchanequipment` with no matching folder: remove/clean that row or keep both folders until GLPI marks the old one **Replaced** (`oldname`).
+4. **AuchanEquipment** is a separate plugin — both can run together. This plugin must not declare `oldname: auchanequipment` (that would mark Equipment as Replaced).
 5. Cron only re-checks **activated** plugins — after a version bump, visit Setup → Plugins if the plugin sits on Upgrade.
 
 ## Read-only SQL (inspect only)

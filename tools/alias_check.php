@@ -8,7 +8,7 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 
 // Simulate deploy under a legacy / mistyped folder name without moving files.
-$fakeDir = 'auchanequipment';
+$fakeDir = 'auchanassettraacker';
 
 // Minimal stubs so setup.php can load without GLPI.
 if (!defined('GLPI_VERSION')) {
@@ -61,18 +61,18 @@ foreach ($map as $alias => $canonical) {
     );
 }
 
-if (!function_exists('plugin_version_auchanequipment')) {
-    fwrite(STDERR, "FAIL: alias plugin_version_auchanequipment not created\n");
+if (!function_exists('plugin_version_auchanassettraacker')) {
+    fwrite(STDERR, "FAIL: alias plugin_version_auchanassettraacker not created\n");
     exit(1);
 }
 
-$info = plugin_version_auchanequipment();
+$info = plugin_version_auchanassettraacker();
 if (($info['name'] ?? '') !== 'AuchanAssetTracker') {
     fwrite(STDERR, "FAIL: alias returned unexpected name\n");
     exit(1);
 }
-if (($info['oldname'] ?? '') !== 'auchanequipment') {
-    fwrite(STDERR, "FAIL: oldname missing\n");
+if (array_key_exists('oldname', $info)) {
+    fwrite(STDERR, "FAIL: oldname must not be set (would replace another plugin)\n");
     exit(1);
 }
 
