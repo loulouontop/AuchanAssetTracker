@@ -21,12 +21,6 @@ function plugin_auchanassettracker_is_our_plugin_row(array $row): bool
     if ($name === 'AuchanAssetTracker') {
         return true;
     }
-    // Legacy folder only when THIS code lives there (do not claim a separate install).
-    if ($dir !== '' && strcasecmp($dir, 'auchanequipment') === 0
-        && strcasecmp($onDisk, 'auchanequipment') === 0) {
-        return true;
-    }
-
     return false;
 }
 

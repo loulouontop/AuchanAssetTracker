@@ -371,9 +371,6 @@ function plugin_version_auchanassettracker(): array
         'author'         => 'Lokmane BENAZIZA',
         'license'        => 'Auchan RO',
         'homepage'       => '',
-        // Former plugin directory — lets GLPI mark leftover rows as replaced
-        // when both folders exist (Setup → Plugins full scan).
-        'oldname'        => 'auchanequipment',
         'minGlpiVersion' => PLUGIN_AUCHANASSETTRACKER_MIN_GLPI,
         'requirements'   => [
             'glpi' => [
@@ -405,8 +402,9 @@ function plugin_auchanassettracker_check_config(bool $verbose = false): bool
  *
  * Canonical implementations use "auchanassettracker". PHP function names are
  * case-insensitive, so AuchanAssetTracker is fine — but a different spelling
- * (deploy typo, or legacy folder auchanequipment) needs aliases or GLPI logs:
+ * (deploy typo / wrong folder spelling) needs aliases or GLPI logs:
  * "plugin_version_<dir> method must be defined" / unable to load / auto-disable.
+ * Do not set plugin_version oldname to auchanequipment — that is a separate plugin.
  */
 function plugin_auchanassettracker_register_directory_aliases(): void
 {

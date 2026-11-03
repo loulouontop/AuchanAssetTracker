@@ -94,12 +94,15 @@ if (!str_contains($setup, "'0.5.2'")) {
 } else {
     ok('version 0.5.2');
 }
-if (!str_contains($setup, 'plugin_auchanassettracker_register_directory_aliases')
-    || !str_contains($setup, "'oldname'")
-) {
-    fail('setup missing directory aliases / oldname');
+if (!str_contains($setup, 'plugin_auchanassettracker_register_directory_aliases')) {
+    fail('setup missing directory aliases');
 } else {
-    ok('setup has directory aliases + oldname');
+    ok('setup has directory aliases');
+}
+if (preg_match("/'oldname'\\s*=>\\s*'auchanequipment'/", $setup)) {
+    fail('setup must not declare oldname auchanequipment (separate plugin)');
+} else {
+    ok('setup does not replace auchanequipment');
 }
 if (!str_contains($hook = file_get_contents("$root/hook.php"), 'plugin_auchanassettracker_is_our_plugin_row')) {
     fail('hook missing is_our_plugin_row matcher');
