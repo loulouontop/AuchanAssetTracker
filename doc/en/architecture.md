@@ -1,7 +1,7 @@
 # D-03 — Technical / architecture
 
 Plugin name on disk: folder under `plugins/` (e.g. `AuchanAssetTracker`).  
-Version: **0.5.1**. Min GLPI: `11.0.0` (target **11.0.2**, max `11.9.99`). PHP: **8.1+** (GD recommended for QR PNG).
+Min GLPI: `11.0.0` (target **11.0.2**, max `11.9.99`). PHP: **8.1+** (GD recommended for QR PNG).
 
 ## Layout
 

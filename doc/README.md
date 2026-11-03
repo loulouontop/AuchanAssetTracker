@@ -1,6 +1,6 @@
 # Auchan Asset Tracker — documentation (Phase 6)
 
-Plugin: **AuchanAssetTracker** · Version **0.5.1** · GLPI **11.0.2**
+Plugin: **AuchanAssetTracker** · GLPI **11.0.2**
 
 | Lang | Markdown | PDF |
 | --- | --- | --- |

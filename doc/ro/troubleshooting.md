@@ -54,6 +54,14 @@ Creștere verbosity: activați modul debug GLPI (**Setup → General → System*
 3. Pluginul folosește `Mailhelper` (nu șabloanele Setup → Notification templates).
 4. Alertele pe prag nu trimit mail singure.
 
+### Pluginul se activează apoi se dezactivează singur / „version changed”
+
+1. Preferabil folder `AuchanAssetTracker` sau `auchanassettracker` în `plugins/`.
+2. Foldere legacy / greșite (ex. `auchanequipment`) sunt suportate prin aliasuri în acest build — redenumiți când puteți.
+3. Deschideți o dată **Setup → Plugins** după deploy (scan complet). Dacă apare **Upgrade**, apăsați-l; self-heal termină și NOTUPDATED → activ la load.
+4. Rând DB rămas pentru vechiul `auchanequipment` fără folder: curățați rândul sau păstrați ambele foldere până GLPI marchează vechiul ca **Replaced** (`oldname`).
+5. Cron reverifică doar pluginurile **activate** — după un bump de fișiere, deschideți Setup → Plugins dacă rămâne pe Upgrade.
+
 ## SQL read-only (doar inspecție)
 
 Înlocuiți ID-urile. Nu faceți UPDATE/DELETE în producție fără backup și tichet de schimbare.
@@ -115,12 +123,12 @@ SELECT * FROM glpi_plugin_auchanassettracker_profiles;
 4. Migrare greșită: restaurați backup DB; preferabil doar tabelele plugin dacă DBA le poate izola.
 5. Nu „reparați” statusuri finale sau tranzit prin SQL brut fără să înțelegeți legăturile alocare/transfer/ticket.
 
-## Checklist mediu / versiune
+## Checklist mediu
 
 | Element | Cum verificați |
 | --- | --- |
 | GLPI 11.0.2 | Setup → General / about |
-| Plugin 0.5.1 | Setup → Plugins |
+| Plugin activ | Setup → Plugins |
 | PHP ≥ 8.1 | `php -v` sau info server |
 | GD (QR PNG) | `php -m \| grep -i gd` |
 | MySQL/MariaDB | Ca cerințele GLPI |

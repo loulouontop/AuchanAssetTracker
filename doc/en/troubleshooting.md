@@ -54,6 +54,14 @@ Increase verbosity: enable GLPI debug mode (**Setup → General → System** / d
 3. Plugin uses `Mailhelper` (not Setup → Notification templates).
 4. Threshold alerts alone never send mail.
 
+### Plugin enables then auto-disables / “version changed”
+
+1. Prefer folder name `AuchanAssetTracker` or `auchanassettracker` under `plugins/`.
+2. Legacy / mistyped folders (e.g. `auchanequipment`) are supported via directory aliases in this build — still rename when you can.
+3. Open **Setup → Plugins** once after deploy (full scan). If **Upgrade** is shown, click it; self-heal also finishes NOTUPDATED → activated on load.
+4. Leftover DB row for old `auchanequipment` with no matching folder: remove/clean that row or keep both folders until GLPI marks the old one **Replaced** (`oldname`).
+5. Cron only re-checks **activated** plugins — after a version bump, visit Setup → Plugins if the plugin sits on Upgrade.
+
 ## Read-only SQL (inspect only)
 
 Replace IDs as needed. Do not UPDATE/DELETE in production without a backup and change ticket.
@@ -115,12 +123,12 @@ SELECT * FROM glpi_plugin_auchanassettracker_profiles;
 4. Bad migration: restore DB backup; prefer restoring only plugin tables if your DBA can isolate them.
 5. Never “fix” final statuses or transit by raw SQL unless you understand allocations/transfers/tickets links.
 
-## Environment / version checklist
+## Environment checklist
 
 | Item | How to verify |
 | --- | --- |
 | GLPI 11.0.2 | Setup → General / about |
-| Plugin 0.5.1 | Setup → Plugins |
+| Plugin enabled | Setup → Plugins |
 | PHP ≥ 8.1 | `php -v` or server info |
 | GD (QR PNG) | `php -m \| grep -i gd` |
 | MySQL/MariaDB | Same as GLPI requirements |

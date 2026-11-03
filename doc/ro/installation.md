@@ -17,7 +17,7 @@ Verificați: **Setup → General** (versiune GLPI) și versiunea PHP pe server (
 Din rădăcina repo-ului:
 
 ```bash
-./tools/build_package.sh /tmp/auchanassettracker-0.5.1.tar.gz
+./tools/build_package.sh /tmp/auchanassettracker.tar.gz
 ```
 
 Arhiva conține un folder (`auchanassettracker/`) de extras în `glpi/plugins/`.  
@@ -39,12 +39,12 @@ Nu includeți `.git`, `*.zip` sau `*.tar.gz` în pachetul de producție.
 7. Deschideți un container: URL public (stânga) + QR (dreapta), tipăriți eticheta, deschideți URL-ul delogat pentru verificarea raftului.
 8. Opțional: **Setup → General → URL of the application** (host fallback pentru linkuri QR).
 
-## Upgrade (ex. 0.4.x / 0.5.0 → 0.5.1)
+## Upgrade (de pe o versiune anterioară)
 
 1. Backup DB + folderul curent al pluginului.
 2. Înlocuiți fișierele (același nume de folder).
 3. Reîncărcați GLPI sau apăsați **Upgrade** pe Setup → Plugins dacă apare.  
-   Pluginul face și **self-heal** la load: `upgrade` + `ensure_schema`, apoi actualizează `glpi_plugins.version` la **0.5.1**.
+   Pluginul face și **self-heal** la load: `upgrade` + `ensure_schema`, apoi actualizează `glpi_plugins.version`.
 4. Logout / login; goliți cache browser / GLPI dacă CSS/meniul par vechi.
 5. Smoke-check: Dashboard, Rapoarte, praguri Configurare, o alocare + confirmare, un scan QR (delogat).
 
@@ -58,7 +58,7 @@ Nu includeți `.git`, `*.zip` sau `*.tar.gz` în pachetul de producție.
 
 ## Checklist după instalare
 
-- [ ] Plugin activ, versiune `0.5.1`
+- [ ] Plugin activ
 - [ ] Patru profile prezente; useri atribuiți; Location pe manageri/tech
 - [ ] Meniu **Auchan Asset Tracker** vizibil pe fiecare rol (End user: Dashboard + Confirmare)
 - [ ] QR container se deschide fără login

@@ -37,7 +37,6 @@ META = {
         "lang": "en",
         "title": "Auchan Asset Tracker — Documentation",
         "subtitle": "GLPI plugin · Phase 6 deliverables D-03 – D-13",
-        "version_label": "Plugin version",
         "glpi_label": "Target GLPI",
         "date_label": "Document date",
         "lang_label": "Language",
@@ -55,7 +54,6 @@ META = {
         "lang": "ro",
         "title": "Auchan Asset Tracker — Documentație",
         "subtitle": "Plugin GLPI · Livrabile Faza 6 D-03 – D-13",
-        "version_label": "Versiune plugin",
         "glpi_label": "GLPI țintă",
         "date_label": "Data documentului",
         "lang_label": "Limbă",
@@ -76,7 +74,7 @@ CSS = """
   size: A4;
   margin: 18mm 16mm 20mm 16mm;
   @bottom-left {
-    content: "Auchan Asset Tracker · v0.5.1";
+    content: "Auchan Asset Tracker";
     font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
     font-size: 8.5pt;
     color: #667085;
@@ -321,7 +319,7 @@ def first_heading(text: str) -> str:
     return "Section"
 
 
-def build_html(lang: str, version: str, glpi: str, doc_date: str) -> str:
+def build_html(lang: str, glpi: str, doc_date: str) -> str:
     meta = META[lang]
     parts: list[str] = []
     toc_items: list[str] = []
@@ -356,7 +354,6 @@ def build_html(lang: str, version: str, glpi: str, doc_date: str) -> str:
     <h1>{html.escape(meta['title'])}</h1>
     <p class="subtitle">{html.escape(meta['subtitle'])}</p>
     <div class="meta-grid">
-      <div class="meta-item"><label>{html.escape(meta['version_label'])}</label><span>{html.escape(version)}</span></div>
       <div class="meta-item"><label>{html.escape(meta['glpi_label'])}</label><span>{html.escape(glpi)}</span></div>
       <div class="meta-item"><label>{html.escape(meta['date_label'])}</label><span>{html.escape(doc_date)}</span></div>
       <div class="meta-item"><label>{html.escape(meta['lang_label'])}</label><span>{html.escape(meta['lang_name'])}</span></div>
@@ -444,7 +441,6 @@ def html_to_pdf(html_doc: str, pdf_path: Path, base_url: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lang", choices=("en", "ro", "all"), default="all")
-    parser.add_argument("--version", default="0.5.1")
     parser.add_argument("--glpi", default="11.0.2")
     parser.add_argument("--date", default=date.today().isoformat())
     parser.add_argument("--keep-html", action="store_true")
@@ -454,7 +450,7 @@ def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     for lang in langs:
-        html_doc = build_html(lang, args.version, args.glpi, args.date)
+        html_doc = build_html(lang, args.glpi, args.date)
         if args.keep_html:
             preview = OUT_DIR / f"preview-{lang}.html"
             preview.write_text(html_doc, encoding="utf-8")

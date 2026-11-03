@@ -1,7 +1,7 @@
 # D-03 — Tehnic / arhitectură
 
 Nume pe disc: folder în `plugins/` (ex. `AuchanAssetTracker`).  
-Versiune: **0.5.1**. GLPI min: `11.0.0` (țintă **11.0.2**, max `11.9.99`). PHP: **8.1+** (GD recomandat pentru QR PNG).
+GLPI min: `11.0.0` (țintă **11.0.2**, max `11.9.99`). PHP: **8.1+** (GD recomandat pentru QR PNG).
 
 ## Structură
 
