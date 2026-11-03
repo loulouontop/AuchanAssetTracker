@@ -107,4 +107,8 @@ Romanian translations: `locales/ro_RO.php` (loaded when GLPI language is `ro_RO`
 
 ## Documentation (Phase 6)
 
-Deliverables D-03 … D-13 (EN + RO): see [`doc/`](doc/) — `doc/en/` and `doc/ro/`.
+Deliverables D-03 … D-13 (EN + RO): see [`doc/`](doc/) — Markdown in `doc/en/` and `doc/ro/`, client PDFs in `doc/pdf/`.
+
+```bash
+python3 tools/build_docs_pdf.py
+```

@@ -2,10 +2,16 @@
 
 Plugin: **AuchanAssetTracker** · Version **0.5.1** · GLPI **11.0.2**
 
-| Lang | Folder |
-| --- | --- |
-| English | [en/](en/) |
-| Romanian | [ro/](ro/) |
+| Lang | Markdown | PDF |
+| --- | --- | --- |
+| English | [en/](en/) | [pdf/AuchanAssetTracker-Documentation-EN.pdf](pdf/AuchanAssetTracker-Documentation-EN.pdf) |
+| Romanian | [ro/](ro/) | [pdf/AuchanAssetTracker-Documentation-RO.pdf](pdf/AuchanAssetTracker-Documentation-RO.pdf) |
+
+Rebuild PDFs after editing Markdown:
+
+```bash
+python3 tools/build_docs_pdf.py
+```
 
 ## Deliverables map
 
@@ -19,3 +25,5 @@ Plugin: **AuchanAssetTracker** · Version **0.5.1** · GLPI **11.0.2**
 | D-06 / D-07 / D-08 | User manuals (all roles) | `user-manual.md` |
 | D-09 / D-10 / D-11 / D-12 | Tests, QA, defects, regression | `testing.md` |
 | D-13 | Debug / troubleshooting | `troubleshooting.md` |
+
+D-10 / D-11 tables are **templates** — fill only with real QA results.
