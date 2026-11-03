@@ -1,7 +1,37 @@
 <?php
 
 /**
- * Find glpi_plugins rows that belong to this plugin (any directory casing).
+ * Whether a glpi_plugins row is this plugin (canonical name, on-disk folder, or display name).
+ */
+function plugin_auchanassettracker_is_our_plugin_row(array $row): bool
+{
+    $dir = (string) ($row['directory'] ?? '');
+    $name = (string) ($row['name'] ?? '');
+    $onDisk = function_exists('plugin_auchanassettracker_dir')
+        ? plugin_auchanassettracker_dir()
+        : basename(__DIR__);
+
+    if ($dir !== '' && strcasecmp($dir, 'auchanassettracker') === 0) {
+        return true;
+    }
+    if ($dir !== '' && $onDisk !== '' && strcasecmp($dir, $onDisk) === 0) {
+        return true;
+    }
+    // Deploy typo / rename still stores our display name from plugin_version_*.
+    if ($name === 'AuchanAssetTracker') {
+        return true;
+    }
+    // Legacy folder only when THIS code lives there (do not claim a separate install).
+    if ($dir !== '' && strcasecmp($dir, 'auchanequipment') === 0
+        && strcasecmp($onDisk, 'auchanequipment') === 0) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Find glpi_plugins rows that belong to this plugin (any directory casing / spelling).
  *
  * @return list<array<string, mixed>>
  */
@@ -15,7 +45,7 @@ function plugin_auchanassettracker_find_plugin_rows(): array
     }
 
     foreach ($DB->request(['FROM' => 'glpi_plugins']) as $row) {
-        if (strcasecmp((string) ($row['directory'] ?? ''), 'auchanassettracker') === 0) {
+        if (plugin_auchanassettracker_is_our_plugin_row($row)) {
             $rows[] = $row;
         }
     }
@@ -127,17 +157,19 @@ function plugin_auchanassettracker_self_heal_on_load(): void
 
     $canonical = plugin_auchanassettracker_dir();
     $needsVersion = $info['version'] !== PLUGIN_AUCHANASSETTRACKER_VERSION;
-    // GLPI: ACTIVATED=1, NOTACTIVATED=2, TOBECONFIGURED=3, NOTINSTALLED=4, NOTUPDATED=6
+    // GLPI Plugin states:
+    // ACTIVATED=1, NOTINSTALLED=2, TOBECONFIGURED=3, NOTACTIVATED=4, NOTUPDATED=6, REPLACED=7
     $state = (int) $info['state'];
 
-    // Respect explicit uninstall / disable — only sync the directory name.
-    if ($state === 4 || $state === 2) {
+    // Respect explicit uninstall / user disable — only sync the directory name.
+    if ($state === 2 /* NOTINSTALLED */ || $state === 4 /* NOTACTIVATED */) {
         return;
     }
 
-    $wasPendingUpdate = ($state === 6);
+    $wasPendingUpdate = ($state === 6); // NOTUPDATED — finish upgrade + re-enable
     $wasActive = ($state === 1);
 
+    // Directory already synced above; nothing else if version/state are fine.
     if (!$needsVersion && !$wasPendingUpdate) {
         return;
     }
@@ -153,7 +185,7 @@ function plugin_auchanassettracker_self_heal_on_load(): void
             plugin_auchanassettracker_upgrade($info['version']);
         }
 
-        // Only auto-activate when updating from ACTIVATED or NOTUPDATED.
+        // Auto-activate when updating from ACTIVATED or NOTUPDATED (GLPI "version changed").
         $newState = ($wasActive || $wasPendingUpdate) ? 1 : $state;
 
         $DB->update('glpi_plugins', [

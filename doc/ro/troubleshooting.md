@@ -5,50 +5,66 @@
 | Ce | Unde |
 | --- | --- |
 | Log fișier plugin | `{GLPI_LOG_DIR}/plugin_auchanassettracker.log` (`PluginAuchanassettrackerPluginlog`) |
-| Niveluri | INFO / WARNING / ERROR (+ helper exception) |
-| Log-uri core GLPI | Același `GLPI_LOG_DIR` (`php-errors.log` etc.) |
+| Niveluri | INFO / WARNING / ERROR (+ helper excepții) |
+| Loguri core GLPI | Același `GLPI_LOG_DIR` (`php-errors.log` etc.) |
 | Audit (business) | Tabel `glpi_plugin_auchanassettracker_auditlogs` + UI Audit |
 
-Mai multă verbositate: activează debug GLPI (**Setup → General → System** / debug bar) în timp ce reproduci; urmărește `plugin_auchanassettracker.log` și log-ul PHP. Nu există switch „trace” separat — pe copie non-prod poți adăuga temporar `PluginAuchanassettrackerPluginlog::info()`.
+Creștere verbosity: activați modul debug GLPI (**Setup → General → System** / debug bar) în timp ce reproduceți; urmăriți `plugin_auchanassettracker.log` și logul PHP. Nu există switch separat „trace” — adăugați temporar `PluginAuchanassettrackerPluginlog::info()` doar pe o copie non-prod dacă e nevoie.
 
 ## Checklist diagnostic
 
-### Blocat: Așteaptă validare
+### Echipament blocat: Așteaptă validare
 
-1. Deschide echipamentul → status + alocare pending.
-2. Destinatar Confirm / Did not receive (sau cale admin).
-3. SQL: alocări pending (vezi mai jos).
-4. Dacă e orphan: repară din UI dacă se poate; nu inventa status în DB fără backup.
+1. Deschideți echipamentul → status `awaiting_validation`; găsiți alocarea legată cu `allocation_status = pending`.
+2. Cereți destinatarului Confirmare / Nu am primit (comentariu obligatoriu la respingere).
+3. SQL: alocări pending pentru acel echipament (query-uri mai jos).
+4. Preferabil remediere din UI; nu inventați status în DB fără backup.
 
 ### Blocat: În tranzit
 
-1. **Transfers** → rând `in_transit`.
-2. Dest validează cu containere, sau reject/cancel.
-3. Verifică transfer items pe echipament.
+1. **Transferuri** → găsiți rând cu `transfer_status = in_transit`.
+2. Destinația validează cu containere, sau expeditor/dest respinge (comentariu) / expeditorul șterge când e permis.
+3. Verificați că `transferitems` încă pointează la echipament.
 
 ### Blocat: În service
 
-1. Vezi `service_tickets_id` pe echipament.
-2. Deschide ticket — solve/close → revine Alocat.
-3. Dacă ticket lipsește dar status e stuck: verifică starea ticket + audit.
+1. Citiți `service_tickets_id` / `service_since` pe echipament.
+2. Deschideți ticketul — rezolvați/închideți pentru revenire la Alocat.
+3. Dacă ticketul lipsește dar statusul e blocat: verificați starea ticketului; folosiți jurnalul audit pentru ultimul eveniment service.
 
 ### Asociere container greșită
 
-1. Disponibil trebuie să aibă `plugin_auchanassettracker_containers_id` > 0 și aceeași Locație.
-2. Alocat / awaiting / transit de obicei au container `0`.
-3. Pagina QR listează doar echipamentul nedeles din acel container.
+1. Disponibil trebuie să aibă `plugin_auchanassettracker_containers_id` > 0 și aceeași Location ca containerul.
+2. Alocat / awaiting / transit au de obicei container `0`.
+3. Pagina QR listează doar echipament non-șters aflat în acel container (`is_active`, nu deleted).
 
-### QR inaccesibil
+### Pagina QR inaccesibilă
 
-1. URL: `/plugins/{ExactFolder}/qr.php?t=…` — **fără** `/public/`.
-2. Nume folder = `glpi_plugins.directory` (case-sensitive pe Linux).
-3. `setup.php` înregistrează Firewall `STRATEGY_NO_CHECK` pentru `qr.php`.
-4. Container activ, nedeleted, token corect.
-5. Test în fereastră privată (delogat).
+1. URL-ul trebuie să fie `/plugins/{ExactFolder}/qr.php?t=…` — **fără** `/public/` în cale.
+2. Numele folderului trebuie să coincidă cu `glpi_plugins.directory` (case-sensitive pe Linux).
+3. Confirmați că `setup.php` înregistrează Firewall `STRATEGY_NO_CHECK` pentru `qr.php`.
+4. Container activ, nu șters, token potrivit.
+5. Testați în fereastră privată (delogat).
+6. Dacă lipsește imaginea QR pe formular: verificați PHP GD (`php -m | grep -i gd`).
 
-## SQL read-only (doar inspectare)
+### Nu vine email la alocare / respingere
 
-Înlocuiește ID-urile. Nu UPDATE/DELETE în producție fără backup și ticket.
+1. Destinatarul / alocatorul trebuie să aibă email valid pe userul GLPI.
+2. Transportul mail GLPI trebuie să funcționeze (Setup → Notifications / mailer).
+3. Pluginul folosește `Mailhelper` (nu șabloanele Setup → Notification templates).
+4. Alertele pe prag nu trimit mail singure.
+
+### Pluginul se activează apoi se dezactivează singur / „version changed”
+
+1. Preferabil folder `AuchanAssetTracker` sau `auchanassettracker` în `plugins/`.
+2. Foldere legacy / greșite (ex. `auchanequipment`) sunt suportate prin aliasuri în acest build — redenumiți când puteți.
+3. Deschideți o dată **Setup → Plugins** după deploy (scan complet). Dacă apare **Upgrade**, apăsați-l; self-heal termină și NOTUPDATED → activ la load.
+4. Rând DB rămas pentru vechiul `auchanequipment` fără folder: curățați rândul sau păstrați ambele foldere până GLPI marchează vechiul ca **Replaced** (`oldname`).
+5. Cron reverifică doar pluginurile **activate** — după un bump de fișiere, deschideți Setup → Plugins dacă rămâne pe Upgrade.
+
+## SQL read-only (doar inspecție)
+
+Înlocuiți ID-urile. Nu faceți UPDATE/DELETE în producție fără backup și tichet de schimbare.
 
 ```sql
 -- Prezentare echipamente
@@ -94,24 +110,27 @@ LIMIT 100;
 
 -- Praguri
 SELECT name, value FROM glpi_plugin_auchanassettracker_configs;
+
+-- Mapare profil → rol
+SELECT * FROM glpi_plugin_auchanassettracker_profiles;
 ```
 
 ## Rollback / recovery
 
 1. **Înainte de upgrade:** backup DB + folder `plugins/{dir}`.
-2. Versiune defectă: disable → restaurează folder vechi → enable/upgrade.
-3. Uninstall = soft (tabele rămân). Drop tabele plugin = ultima opțiune (pierzi doar istoricul plugin) — nu atinge Assets/Tickets/Users.
-4. Migrație greșită: restore backup DB; ideal doar tabele plugin dacă DBA poate izola.
-5. Nu „repara” status final / tranzit cu SQL brut fără să înțelegi legăturile alocare/transfer/ticket.
+2. Versiune nouă defectă: disable plugin → restaurați folderul anterior → enable/upgrade.
+3. Uninstall = soft (tabele păstrate). Drop pe tabelele plugin e ultima soluție și pierde doar istoricul plugin — nu Assets/Tickets/Users core.
+4. Migrare greșită: restaurați backup DB; preferabil doar tabelele plugin dacă DBA le poate izola.
+5. Nu „reparați” statusuri finale sau tranzit prin SQL brut fără să înțelegeți legăturile alocare/transfer/ticket.
 
-## Checklist mediu / versiuni
+## Checklist mediu
 
-| Item | Cum verifici |
+| Element | Cum verificați |
 | --- | --- |
 | GLPI 11.0.2 | Setup → General / about |
-| Plugin 0.5.1 | Setup → Plugins |
+| Plugin activ | Setup → Plugins |
 | PHP ≥ 8.1 | `php -v` sau info server |
 | GD (QR PNG) | `php -m \| grep -i gd` |
-| MySQL/MariaDB | Cerințele GLPI |
-| Casing folder plugin | = `glpi_plugins.directory` |
-| `url_base` (opțional) | Setup → General — dacă lipsește host-ul din request |
+| MySQL/MariaDB | Ca cerințele GLPI |
+| Casing folder plugin | Coincide cu `glpi_plugins.directory` |
+| `url_base` (opțional) | Setup → General — folosit dacă lipsește hostul din request |

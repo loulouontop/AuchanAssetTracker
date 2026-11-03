@@ -4,8 +4,8 @@
 
 | What | Where |
 | --- | --- |
-| Plugin file log | `{GLPI_LOG_DIR}/plugin_auchanassettracker.log` (via `PluginAuchanassettrackerPluginlog`) |
-| Levels | INFO / WARNING / ERROR (and exception helper) |
+| Plugin file log | `{GLPI_LOG_DIR}/plugin_auchanassettracker.log` (`PluginAuchanassettrackerPluginlog`) |
+| Levels | INFO / WARNING / ERROR (+ exception helper) |
 | GLPI core logs | Same `GLPI_LOG_DIR` (`php-errors.log`, etc.) |
 | Audit (business) | Table `glpi_plugin_auchanassettracker_auditlogs` + UI Audit log |
 
@@ -15,28 +15,28 @@ Increase verbosity: enable GLPI debug mode (**Setup → General → System** / d
 
 ### Equipment stuck: Awaiting validation
 
-1. Open equipment → check status + linked allocation (pending).
-2. Ask recipient to Confirm / Did not receive (or admin reject path).
+1. Open equipment → status should be `awaiting_validation`; find linked allocation with `allocation_status = pending`.
+2. Ask recipient to Confirm / Did not receive (comment required on reject).
 3. SQL: pending allocations for that equipment (queries below).
-4. If orphaned: fix via UI if possible; do not invent status in DB without backup.
+4. Prefer UI fix; do not invent status in DB without backup.
 
 ### Stuck: In transit
 
-1. Open **Transfers** → find `in_transit` row.
-2. Destination validates with containers, or sender/dest rejects/cancels.
-3. Check transfer items still point at the equipment.
+1. **Transfers** → find row with `transfer_status = in_transit`.
+2. Destination validates with containers, or sender/dest rejects (comment) / sender deletes while allowed.
+3. Check `transferitems` still point at the equipment.
 
 ### Stuck: In service
 
-1. Find `service_tickets_id` on equipment.
+1. Read `service_tickets_id` / `service_since` on equipment.
 2. Open ticket — solve/close to return to Allocated.
 3. If ticket gone but status stuck: verify ticket state; use audit log for last service event.
 
 ### Container association wrong
 
-1. Available must have `plugin_auchanassettracker_containers_id` > 0 and same Location.
+1. Available must have `plugin_auchanassettracker_containers_id` > 0 and same Location as the container.
 2. Allocated / awaiting / transit usually have container `0`.
-3. QR page lists only non-deleted gear currently in that container.
+3. QR page lists only non-deleted gear currently in that container (`is_active`, not deleted).
 
 ### QR page not accessible
 
@@ -45,6 +45,22 @@ Increase verbosity: enable GLPI debug mode (**Setup → General → System** / d
 3. Confirm `setup.php` registers Firewall `STRATEGY_NO_CHECK` for `qr.php`.
 4. Container active, not deleted, token matches.
 5. Test in private window (logged out).
+6. If QR image missing on form: check PHP GD (`php -m | grep -i gd`).
+
+### No email on allocate / reject
+
+1. Recipient / allocator must have a valid email on the GLPI user.
+2. GLPI mail transport must work (Setup → Notifications / mailer).
+3. Plugin uses `Mailhelper` (not Setup → Notification templates).
+4. Threshold alerts alone never send mail.
+
+### Plugin enables then auto-disables / “version changed”
+
+1. Prefer folder name `AuchanAssetTracker` or `auchanassettracker` under `plugins/`.
+2. Legacy / mistyped folders (e.g. `auchanequipment`) are supported via directory aliases in this build — still rename when you can.
+3. Open **Setup → Plugins** once after deploy (full scan). If **Upgrade** is shown, click it; self-heal also finishes NOTUPDATED → activated on load.
+4. Leftover DB row for old `auchanequipment` with no matching folder: remove/clean that row or keep both folders until GLPI marks the old one **Replaced** (`oldname`).
+5. Cron only re-checks **activated** plugins — after a version bump, visit Setup → Plugins if the plugin sits on Upgrade.
 
 ## Read-only SQL (inspect only)
 
@@ -94,6 +110,9 @@ LIMIT 100;
 
 -- Thresholds
 SELECT name, value FROM glpi_plugin_auchanassettracker_configs;
+
+-- Profile → role mapping
+SELECT * FROM glpi_plugin_auchanassettracker_profiles;
 ```
 
 ## Rollback / recovery
@@ -104,12 +123,12 @@ SELECT name, value FROM glpi_plugin_auchanassettracker_configs;
 4. Bad migration: restore DB backup; prefer restoring only plugin tables if your DBA can isolate them.
 5. Never “fix” final statuses or transit by raw SQL unless you understand allocations/transfers/tickets links.
 
-## Environment / version checklist
+## Environment checklist
 
 | Item | How to verify |
 | --- | --- |
 | GLPI 11.0.2 | Setup → General / about |
-| Plugin 0.5.1 | Setup → Plugins |
+| Plugin enabled | Setup → Plugins |
 | PHP ≥ 8.1 | `php -v` or server info |
 | GD (QR PNG) | `php -m \| grep -i gd` |
 | MySQL/MariaDB | Same as GLPI requirements |
