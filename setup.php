@@ -215,8 +215,13 @@ function plugin_init_auchanassettracker(): void
     plugin_auchanassettracker_load_translations();
 
     // Register / migrate GLPI ProfileRight rows (idempotent; missing rows only).
+    // Never let rights seeding abort plugin_init (GLPI would auto-disable on throw).
     if ($DB->tableExists('glpi_profilerights')) {
-        PluginAuchanassettrackerProfile::initProfile();
+        try {
+            PluginAuchanassettrackerProfile::initProfile();
+        } catch (Throwable) {
+            // ignore
+        }
     }
 
     // Top-level “Auchan Asset Tracker” menu (not under Assets).

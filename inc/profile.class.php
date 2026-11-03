@@ -175,10 +175,12 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
     /**
      * Ensure profilerights rows exist (insert missing; optionally refresh values).
-     * Idempotent: never DELETE+INSERT (avoids unicity 1062 on plugin init).
+     *
+     * Must never throw: MySQL unicity 1062 during plugin_init makes GLPI log
+     * "Error while loading plugin" and auto-disable the plugin.
      *
      * @param array<string, int> $rights
-     * @param bool               $drop_existing When true, UPDATE existing rows to $value.
+     * @param bool               $drop_existing When true, force rights value (upsert).
      */
     public static function addDefaultProfileInfos(
         int $profiles_id,
@@ -193,84 +195,81 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
 
         foreach ($rights as $right => $value) {
             $value = (int) $value;
-            $exists = false;
-            if (function_exists('countElementsInTable')) {
-                $exists = countElementsInTable('glpi_profilerights', [
-                    'profiles_id' => $profiles_id,
-                    'name'        => $right,
-                ]) > 0;
-            } else {
-                foreach ($DB->request([
-                    'SELECT' => ['id'],
-                    'FROM'   => 'glpi_profilerights',
-                    'WHERE'  => [
-                        'profiles_id' => $profiles_id,
-                        'name'        => $right,
-                    ],
-                    'LIMIT'  => 1,
-                ]) as $_) {
-                    $exists = true;
-                }
-            }
+            $name = (string) $right;
+            $where = [
+                'profiles_id' => $profiles_id,
+                'name'        => $name,
+            ];
 
-            if ($exists) {
-                if ($drop_existing) {
-                    $DB->update('glpi_profilerights', [
-                        'rights' => $value,
-                    ], [
-                        'profiles_id' => $profiles_id,
-                        'name'        => $right,
-                    ]);
-                    if ((int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id) {
-                        $_SESSION['glpiactiveprofile'][$right] = $value;
-                    }
-                }
-                continue;
-            }
-
-            // Insert missing row; ignore duplicate-key races so plugin init cannot abort.
             $applied = false;
             try {
-                $ok = $DB->insert('glpi_profilerights', [
-                    'profiles_id' => $profiles_id,
-                    'name'        => $right,
-                    'rights'      => $value,
-                ]);
-                if ($ok !== false) {
+                if ($drop_existing && method_exists($DB, 'updateOrInsert')) {
+                    $DB->updateOrInsert(
+                        'glpi_profilerights',
+                        ['rights' => $value],
+                        $where
+                    );
                     $applied = true;
-                } elseif ($drop_existing) {
-                    $DB->update('glpi_profilerights', [
-                        'rights' => $value,
-                    ], [
-                        'profiles_id' => $profiles_id,
-                        'name'        => $right,
-                    ]);
-                    $applied = true;
+                } else {
+                    $exists = self::profilerightExists($profiles_id, $name);
+                    if ($exists) {
+                        if ($drop_existing) {
+                            $DB->update('glpi_profilerights', ['rights' => $value], $where);
+                            $applied = true;
+                        }
+                    } else {
+                        $DB->insert('glpi_profilerights', $where + ['rights' => $value]);
+                        $applied = true;
+                    }
                 }
             } catch (\Throwable $e) {
-                $msg = $e->getMessage();
-                $is_duplicate = str_contains($msg, '1062')
-                    || stripos($msg, 'Duplicate') !== false;
-                if (!$is_duplicate) {
-                    throw $e;
-                }
-                if ($drop_existing) {
-                    $DB->update('glpi_profilerights', [
-                        'rights' => $value,
-                    ], [
-                        'profiles_id' => $profiles_id,
-                        'name'        => $right,
-                    ]);
-                    $applied = true;
+                // Concurrent init or already-seeded row — never rethrow (plugin disable).
+                if (self::isDuplicateKeyException($e) && $drop_existing) {
+                    try {
+                        $DB->update('glpi_profilerights', ['rights' => $value], $where);
+                        $applied = true;
+                    } catch (\Throwable) {
+                        // ignore
+                    }
                 }
             }
 
             if ($applied
                 && (int) ($_SESSION['glpiactiveprofile']['id'] ?? 0) === $profiles_id
             ) {
-                $_SESSION['glpiactiveprofile'][$right] = $value;
+                $_SESSION['glpiactiveprofile'][$name] = $value;
             }
         }
+    }
+
+    /**
+     * @return bool True when a profilerights row already exists for profile + right name.
+     */
+    private static function profilerightExists(int $profiles_id, string $name): bool
+    {
+        global $DB;
+
+        foreach ($DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_profilerights',
+            'WHERE'  => [
+                'profiles_id' => $profiles_id,
+                'name'        => $name,
+            ],
+            'LIMIT'  => 1,
+        ]) as $_) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static function isDuplicateKeyException(\Throwable $e): bool
+    {
+        $msg = $e->getMessage();
+        return str_contains($msg, '1062')
+            || stripos($msg, 'Duplicate') !== false
+            || stripos($msg, 'unicity') !== false;
     }
 
     /**
@@ -693,19 +692,44 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
             }
 
             $rights = (int) ($row['rights'] ?? 0);
-            if ($exists) {
-                $DB->update('glpi_profilerights', [
-                    'rights' => $rights,
-                ], [
-                    'profiles_id' => $profiles_id,
-                    'name'        => $name,
-                ]);
-            } else {
-                $DB->insert('glpi_profilerights', [
-                    'profiles_id' => $profiles_id,
-                    'name'        => $name,
-                    'rights'      => $rights,
-                ]);
+            try {
+                if ($exists) {
+                    $DB->update('glpi_profilerights', [
+                        'rights' => $rights,
+                    ], [
+                        'profiles_id' => $profiles_id,
+                        'name'        => $name,
+                    ]);
+                } elseif (method_exists($DB, 'updateOrInsert')) {
+                    $DB->updateOrInsert(
+                        'glpi_profilerights',
+                        ['rights' => $rights],
+                        [
+                            'profiles_id' => $profiles_id,
+                            'name'        => $name,
+                        ]
+                    );
+                } else {
+                    $DB->insert('glpi_profilerights', [
+                        'profiles_id' => $profiles_id,
+                        'name'        => $name,
+                        'rights'      => $rights,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                if (!self::isDuplicateKeyException($e)) {
+                    continue;
+                }
+                try {
+                    $DB->update('glpi_profilerights', [
+                        'rights' => $rights,
+                    ], [
+                        'profiles_id' => $profiles_id,
+                        'name'        => $name,
+                    ]);
+                } catch (\Throwable) {
+                    // ignore — cloning core rights must not abort plugin init
+                }
             }
         }
     }
@@ -933,6 +957,20 @@ class PluginAuchanassettrackerProfile extends CommonDBTM
         if (!$DB->tableExists('glpi_profilerights') || !$DB->tableExists('glpi_profiles')) {
             return;
         }
+
+        try {
+            self::initProfileUnsafe($force_bundled_rights);
+        } catch (\Throwable) {
+            // Rights seeding must never take the plugin down (GLPI unactivates on init throw).
+        }
+    }
+
+    /**
+     * @param bool $force_bundled_rights Re-apply bundled profile right presets (install/upgrade).
+     */
+    private static function initProfileUnsafe(bool $force_bundled_rights = false): void
+    {
+        global $DB, $GLPI_CACHE;
 
         if (isset($GLPI_CACHE) && is_object($GLPI_CACHE) && method_exists($GLPI_CACHE, 'set')) {
             $GLPI_CACHE->set('all_possible_rights', []);
