@@ -2077,6 +2077,38 @@ JS);
     }
 
     /**
+     * Any plugin row with this serial.
+     * UNIQUE KEY serial_uniq also covers soft-deleted rows — sync must reclaim them.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findBySerial(string $serial, bool $include_deleted = true): ?array
+    {
+        global $DB;
+
+        $serial = trim($serial);
+        if ($serial === '' || !$DB->tableExists(self::getTable())) {
+            return null;
+        }
+
+        $where = ['serial' => $serial];
+        if (!$include_deleted) {
+            $where['is_deleted'] = 0;
+        }
+
+        foreach ($DB->request([
+            'FROM'  => self::getTable(),
+            'WHERE' => $where,
+            'ORDER' => 'is_deleted ASC, plugin_auchanassettracker_containers_id DESC, id DESC',
+            'LIMIT' => 1,
+        ]) as $row) {
+            return $row;
+        }
+
+        return null;
+    }
+
+    /**
      * Ensure a plugin equipment row exists for a native GLPI asset (import / sync).
      *
      * @return int plugin equipment id (0 on failure)
@@ -2086,8 +2118,6 @@ JS);
         int $items_id,
         ?int $container_id = null
     ): int {
-        global $DB;
-
         if (!self::isAllowedAssetType($itemtype) || $items_id <= 0 || !class_exists($itemtype)) {
             return 0;
         }
@@ -2125,101 +2155,37 @@ JS);
         }
         $model = self::resolveModelName($itemtype, $models_id, '');
 
-        $existing = self::findByGlpiAsset($itemtype, $items_id);
+        // Include soft-deleted: serial_uniq still holds those rows.
+        $existing = self::findByGlpiAsset($itemtype, $items_id, true);
         // Plugin form just created the row; items_id not linked yet → reuse it.
         if ($existing === null && $serial !== '') {
             $existing = self::findOrphanBySerial($itemtype, $serial);
         }
-        // Never insert a second row for the same serial.
+        // Never insert a second row for the same serial (active or trashed).
         if ($existing === null && $serial !== '') {
-            foreach ($DB->request([
-                'FROM'  => self::getTable(),
-                'WHERE' => [
-                    'serial'     => $serial,
-                    'is_deleted' => 0,
-                ],
-                'ORDER' => 'plugin_auchanassettracker_containers_id DESC, id DESC',
-                'LIMIT' => 1,
-            ]) as $row) {
-                $existing = $row;
-            }
+            $existing = self::findBySerial($serial, true);
         }
 
         $eq = new self();
 
         if ($existing !== null) {
-            $id = (int) $existing['id'];
-            if (!$eq->getFromDB($id)) {
-                return 0;
-            }
-
-            $status = (string) ($existing['status'] ?? self::STATUS_AVAILABLE);
-            $existing_users_id = (int) ($existing['users_id'] ?? 0);
-
-            // Pending receipt: GLPI owner is still 0 until confirm — never wipe the recipient.
-            if ($status === self::STATUS_AWAITING_VALIDATION) {
-                if ($users_id <= 0) {
-                    $users_id = $existing_users_id;
-                }
-            } else {
-                $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
-            }
-
-            // Keep an already-saved container unless the form posts a new value.
-            $kept_container = (int) ($existing['plugin_auchanassettracker_containers_id'] ?? 0);
-            $next_container = $kept_container;
-            if ($container_id !== null) {
-                if ($container_id > 0
-                    && $locations_id > 0
-                    && !self::containerBelongsToLocation($container_id, $locations_id)) {
-                    $container_id = 0;
-                }
-                $next_container = max(0, $container_id);
-            }
-
-            // Pending allocations leave the shelf; do not restore a container from native sync.
-            if ($status === self::STATUS_AWAITING_VALIDATION) {
-                $next_container = 0;
-            }
-
-            $next_name = $name !== '' ? $name : (string) ($existing['name'] ?? '');
-            $next_serial = $serial !== '' ? $serial : null;
-
-            $fields = [
-                'name'             => $next_name,
-                'serial'           => $next_serial,
-                'itemtype'         => $itemtype,
-                'items_id'         => $items_id,
-                'locations_id'     => $locations_id,
-                'manufacturers_id' => $mfr_id,
-                'models_id'        => $models_id,
-                'model'            => $model,
-                'users_id'         => $users_id,
-                'status'           => $status,
-                'entities_id'      => $entities_id,
-                'notes'            => $notes,
-                'plugin_auchanassettracker_containers_id' => $next_container,
-            ];
-            if ($DB->fieldExists(self::getTable(), 'is_recursive')) {
-                $fields['is_recursive'] = (int) ($asset->fields['is_recursive'] ?? $existing['is_recursive'] ?? 0);
-            }
-
-            $changed = false;
-            foreach ($fields as $key => $val) {
-                $old = $existing[$key] ?? null;
-                if ((string) ($old ?? '') !== (string) ($val ?? '')) {
-                    $changed = true;
-                    break;
-                }
-            }
-
-            if ($changed) {
-                // Keep existing date_mod — background sync must not rise to top of "Last update".
-                unset($fields['date_mod']);
-                // Silent write — no CommonDBTM success / validation flash for background sync.
-                $DB->update(self::getTable(), $fields, ['id' => $id]);
-            }
-            return $id;
+            return self::refreshFromGlpiAsset(
+                $eq,
+                $existing,
+                $asset,
+                $itemtype,
+                $items_id,
+                $locations_id,
+                $users_id,
+                $name,
+                $serial,
+                $mfr_id,
+                $models_id,
+                $model,
+                $entities_id,
+                $notes,
+                $container_id
+            );
         }
 
         $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
@@ -2233,9 +2199,129 @@ JS);
         $asset_created = trim((string) ($asset->fields['date_creation'] ?? ''));
 
         // Background import: suppress “Item successfully added” noise from CommonDBTM.
-        $new_id = $eq->add([
-            'name'             => $name,
-            'serial'           => $serial,
+        try {
+            $new_id = $eq->add([
+                'name'             => $name,
+                'serial'           => $serial,
+                'itemtype'         => $itemtype,
+                'items_id'         => $items_id,
+                'locations_id'     => $locations_id,
+                'manufacturers_id' => $mfr_id,
+                'models_id'        => $models_id,
+                'model'            => $model,
+                'users_id'         => $users_id,
+                'status'           => $status,
+                'entities_id'      => $entities_id,
+                'is_recursive'     => (int) ($asset->fields['is_recursive'] ?? 0),
+                'notes'            => $notes,
+                'plugin_auchanassettracker_containers_id' => $cid,
+                'date_creation'    => $asset_created !== '' ? $asset_created : null,
+                'date_mod'         => $asset_mod !== '' ? $asset_mod : null,
+                '_aat_from_glpi'   => 1,
+                '_aat_keep_dates'  => 1,
+                '_no_message'      => true,
+                '_disablenotif'    => true,
+            ]);
+        } catch (Throwable $e) {
+            // Race / soft-deleted serial: reclaim existing row instead of crashing the list.
+            if ($serial !== ''
+                && (str_contains($e->getMessage(), '1062')
+                    || str_contains($e->getMessage(), 'Duplicate entry')
+                    || str_contains($e->getMessage(), 'serial_uniq'))
+            ) {
+                $existing = self::findBySerial($serial, true);
+                if ($existing !== null) {
+                    return self::refreshFromGlpiAsset(
+                        $eq,
+                        $existing,
+                        $asset,
+                        $itemtype,
+                        $items_id,
+                        $locations_id,
+                        $users_id,
+                        $name,
+                        $serial,
+                        $mfr_id,
+                        $models_id,
+                        $model,
+                        $entities_id,
+                        $notes,
+                        $container_id
+                    );
+                }
+            }
+            PluginAuchanassettrackerPluginlog::exception($e, 'ensureFromGlpiAsset');
+            return 0;
+        }
+
+        return $new_id ? (int) $new_id : 0;
+    }
+
+    /**
+     * Update / undelete an existing plugin equipment row from a native GLPI asset.
+     *
+     * @param array<string, mixed> $existing
+     * @param CommonDBTM           $asset
+     */
+    private static function refreshFromGlpiAsset(
+        self $eq,
+        array $existing,
+        CommonDBTM $asset,
+        string $itemtype,
+        int $items_id,
+        int $locations_id,
+        int $users_id,
+        string $name,
+        string $serial,
+        int $mfr_id,
+        int $models_id,
+        string $model,
+        int $entities_id,
+        string $notes,
+        ?int $container_id
+    ): int {
+        global $DB;
+
+        $id = (int) $existing['id'];
+        if ($id <= 0 || !$eq->getFromDB($id)) {
+            return 0;
+        }
+
+        $status = (string) ($existing['status'] ?? self::STATUS_AVAILABLE);
+        $existing_users_id = (int) ($existing['users_id'] ?? 0);
+
+        // Pending receipt: GLPI owner is still 0 until confirm — never wipe the recipient.
+        if ($status === self::STATUS_AWAITING_VALIDATION) {
+            if ($users_id <= 0) {
+                $users_id = $existing_users_id;
+            }
+        } else {
+            $status = $users_id > 0 ? self::STATUS_ALLOCATED : self::STATUS_AVAILABLE;
+        }
+
+        // Keep an already-saved container unless the form posts a new value.
+        $kept_container = (int) ($existing['plugin_auchanassettracker_containers_id'] ?? 0);
+        $next_container = $kept_container;
+        if ($container_id !== null) {
+            if ($container_id > 0
+                && $locations_id > 0
+                && !self::containerBelongsToLocation($container_id, $locations_id)) {
+                $container_id = 0;
+            }
+            $next_container = max(0, $container_id);
+        }
+
+        // Pending allocations leave the shelf; do not restore a container from native sync.
+        if ($status === self::STATUS_AWAITING_VALIDATION) {
+            $next_container = 0;
+        }
+
+        $next_name = $name !== '' ? $name : (string) ($existing['name'] ?? '');
+        $next_serial = $serial !== '' ? $serial : null;
+
+        $fields = [
+            'name'             => $next_name,
+            'serial'           => $next_serial,
             'itemtype'         => $itemtype,
             'items_id'         => $items_id,
             'locations_id'     => $locations_id,
@@ -2245,18 +2331,31 @@ JS);
             'users_id'         => $users_id,
             'status'           => $status,
             'entities_id'      => $entities_id,
-            'is_recursive'     => (int) ($asset->fields['is_recursive'] ?? 0),
             'notes'            => $notes,
-            'plugin_auchanassettracker_containers_id' => $cid,
-            'date_creation'    => $asset_created !== '' ? $asset_created : null,
-            'date_mod'         => $asset_mod !== '' ? $asset_mod : null,
-            '_aat_from_glpi'   => 1,
-            '_aat_keep_dates'  => 1,
-            '_no_message'      => true,
-            '_disablenotif'    => true,
-        ]);
+            // Active GLPI asset → bring a soft-deleted plugin row back.
+            'is_deleted'       => 0,
+            'plugin_auchanassettracker_containers_id' => $next_container,
+        ];
+        if ($DB->fieldExists(self::getTable(), 'is_recursive')) {
+            $fields['is_recursive'] = (int) ($asset->fields['is_recursive'] ?? $existing['is_recursive'] ?? 0);
+        }
 
-        return $new_id ? (int) $new_id : 0;
+        $changed = false;
+        foreach ($fields as $key => $val) {
+            $old = $existing[$key] ?? null;
+            if ((string) ($old ?? '') !== (string) ($val ?? '')) {
+                $changed = true;
+                break;
+            }
+        }
+
+        if ($changed) {
+            // Keep existing date_mod — background sync must not rise to top of "Last update".
+            unset($fields['date_mod']);
+            // Silent write — no CommonDBTM success / validation flash for background sync.
+            $DB->update(self::getTable(), $fields, ['id' => $id]);
+        }
+        return $id;
     }
 
     /**
@@ -2325,8 +2424,13 @@ JS);
                 if ($iid <= 0) {
                     continue;
                 }
-                if (self::ensureFromGlpiAsset($itemtype, $iid) > 0) {
-                    $done++;
+                try {
+                    if (self::ensureFromGlpiAsset($itemtype, $iid) > 0) {
+                        $done++;
+                    }
+                } catch (Throwable $e) {
+                    // One bad asset must not blank the Equipment list page.
+                    PluginAuchanassettrackerPluginlog::exception($e, 'syncVisibleGlpiAssets');
                 }
                 if ($done >= $limit) {
                     break;

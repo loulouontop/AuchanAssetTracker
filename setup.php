@@ -10,7 +10,7 @@
  */
 
 /** Plugin version shown in Setup → Plugins. */
-define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.2');
+define('PLUGIN_AUCHANASSETTRACKER_VERSION', '0.5.3');
 /**
  * Asset cache-buster for CSS/JS (independent of PLUGIN version).
  * Bump this when UX CSS/JS must invalidate browser caches.
